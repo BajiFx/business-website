@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seller - Live Customer Tracking</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #f4f6f9; }
+    .header { background: #1e293b; color: white; padding: 15px 20px; text-align: center; }
+    .header a { color: #94a3b8; text-decoration: none; margin: 0 15px; }
+    #map { height: calc(100vh - 140px); width: 100%; }
+    .info-panel {
+      position: absolute; bottom: 20px; left: 20px;
+      background: rgba(0,0,0,0.7); color: white; padding: 12px 20px; border-radius: 30px;
+      font-size: 0.9rem; z-index: 1000;
+    }
+    .customer-list {
+      position: absolute; top: 80px; right: 20px;
+      background: white; padding: 15px; border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      max-height: 300px; overflow-y: auto; width: 260px; z-index: 1000;
+    }
+    .customer-list h4 { margin: 0 0 8px; color: #1e293b; }
+    .customer-item {
+      display: flex; justify-content: space-between; padding: 6px 0;
+      border-bottom: 1px solid #e2e8f0; font-size: 0.85rem;
+    }
+    .customer-item .info { display: flex; flex-direction: column; align-items: flex-end; }
+    .customer-item .dist { font-weight: bold; color: #2563eb; }
+    .customer-item .time { font-size: 0.7rem; color: #64748b; }
+    .customer-item .dir { font-size: 0.7rem; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📡 Live Customer Tracking</h1>
+    <a href="/admin.html">← Admin Panel</a>
+    <a href="/">Public Shop</a>
+  </div>
+  <div id="map"></div>
+  <div class="info-panel" id="info">👥 Customers online: 0</div>
+  <div class="customer-list" id="customerList">
+    <h4>📋 Active Customers</h4>
+    <div id="customerItems">None</div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    let map, shopMarker;
+    let customerMarkers = {};
+    let shopLat, shopLng;
+    let socket;
+
+    // ---- Helpers ----
+    function getDistance(lat1, lng1, lat2, lng2) {
+      const R = 6371e3;
+      const φ1 = lat1 * Math.PI/180, φ2 = lat2 * Math.PI/180;
+      const Δφ = (lat2-lat1) * Math.PI/180;
+      const Δλ = (lng2-lng1) * Math.PI/180;
+      const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function formatDistance(meters) {
+      if (meters < 1000) return Math.round(meters) + ' m';
+      return (meters/1000).toFixed(1) + ' km';
+    }
+
+    function formatTime(seconds) {
+      if (seconds < 60) return Math.round(seconds) + ' sec';
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.round(seconds % 60);
+      return mins + ' min ' + (secs > 0 ? secs + ' sec' : '');
+    }
+
+    // ---- Map init ----
+    async function getShopLocation() {
+      const res = await fetch('/api/shop');
+      const shop = await res.json();
+      shopLat = parseFloat(shop.latitude);
+      shopLng = parseFloat(shop.longitude);
+      if (!shopLat || !shopLng) {
+        alert('Shop location not set. Please set it in admin panel.');
+        return false;
+      }
+      return true;
+    }
+
+    function initMap() {
+      map = L.map('map').setView([shopLat, shopLng], 14);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(map);
+      shopMarker = L.marker([shopLat, shopLng])
+        .addTo(map)
+        .bindPopup('🏪 Your Shop');
+      L.circle([shopLat, shopLng], { radius: 1000, color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.1 }).addTo(map);
+    }
+
+    // ---- Update customer ----
+    function updateCustomerOnMap(customer) {
+      const { socketId, lat, lng, name } = customer;
+      if (!lat || !lng) return;
+      const latNum = parseFloat(lat);
+      const lngNum = parseFloat(lng);
+      if (isNaN(latNum) || isNaN(lngNum)) return;
+
+      const dist = getDistance(shopLat, shopLng, latNum, lngNum);
+      const timeSec = dist / 1.4; // 1.4 m/s
+      const distStr = formatDistance(dist);
+      const timeStr = formatTime(timeSec);
+      // Direction indicator (we can't determine without history, so we'll show a simple icon)
+      // We'll store previous distance per customer to compute direction.
+      if (!customer._prevDist) customer._prevDist = null;
+      let dirText = '';
+      if (customer._prevDist !== null) {
+        const diff = dist - customer._prevDist;
+        if (diff < -2) dirText = '⬆️ closer';
+        else if (diff > 2) dirText = '⬇️ away';
+        else dirText = '⟷ steady';
+      }
+      customer._prevDist = dist;
+
+      // Update marker
+      if (customerMarkers[socketId]) {
+        customerMarkers[socketId].setLatLng([latNum, lngNum]);
+        customerMarkers[socketId].setPopupContent(
+          `🧑 ${name || 'Customer'}<br>Distance: ${distStr}<br>~ ${timeStr} walk`
+        );
+      } else {
+        const icon = L.divIcon({ className: 'custom-div-icon', html: '🧑‍🦯', iconSize: [30, 30] });
+        const marker = L.marker([latNum, lngNum], { icon }).addTo(map)
+          .bindPopup(`🧑 ${name || 'Customer'}<br>Distance: ${distStr}<br>~ ${timeStr} walk`);
+        customerMarkers[socketId] = marker;
+        // Store prevDist for this customer
+        customerMarkers[socketId]._prevDist = dist;
+      }
+
+      // Update customer list
+      updateCustomerList();
+    }
+
+    function removeCustomer(socketId) {
+      if (customerMarkers[socketId]) {
+        map.removeLayer(customerMarkers[socketId]);
+        delete customerMarkers[socketId];
+      }
+      updateCustomerList();
+    }
+
+    function updateCustomerList() {
+      const container = document.getElementById('customerItems');
+      const ids = Object.keys(customerMarkers);
+      if (ids.length === 0) {
+        container.innerHTML = 'No active customers';
+        document.getElementById('info').textContent = '👥 Customers online: 0';
+        return;
+      }
+      let html = '';
+      ids.forEach(id => {
+        const marker = customerMarkers[id];
+        const popup = marker.getPopup();
+        const content = popup ? popup.getContent() : '';
+        // extract distance and time from popup content
+        const distMatch = content.match(/Distance: ([\d.]+ [km]+)/);
+        const timeMatch = content.match(/~ ([\d.]+ [a-z]+)/);
+        const distStr = distMatch ? distMatch[1] : '?';
+        const timeStr = timeMatch ? timeMatch[1] : '?';
+        html += `
+          <div class="customer-item">
+            <span>🧑 ${id.slice(0,6)}</span>
+            <div class="info">
+              <span class="dist">${distStr}</span>
+              <span class="time">${timeStr} walk</span>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+      document.getElementById('info').textContent = `👥 Customers online: ${ids.length}`;
+    }
+
+    // ---- Socket events ----
+    async function init() {
+      const ok = await getShopLocation();
+      if (!ok) return;
+      initMap();
+
+      socket = io();
+      socket.on('connect', () => {
+        console.log('Seller connected');
+        socket.emit('get-customers');
+      });
+
+      socket.on('customer-list', (customers) => {
+        customers.forEach(c => updateCustomerOnMap(c));
+      });
+
+      socket.on('customer-update', (data) => {
+        updateCustomerOnMap(data);
+      });
+
+      socket.on('customer-left', (socketId) => {
+        removeCustomer(socketId);
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>

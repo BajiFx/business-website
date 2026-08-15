@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Track Your Route to Shop</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #f4f6f9; }
+    .header { background: #1e293b; color: white; padding: 15px 20px; text-align: center; }
+    .header a { color: #94a3b8; text-decoration: none; margin: 0 15px; }
+    #map { height: calc(100vh - 180px); width: 100%; }
+    .info-panel {
+      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.8); color: white; padding: 14px 28px; border-radius: 40px;
+      font-size: 1.1rem; z-index: 1000; pointer-events: none; white-space: nowrap;
+      max-width: 90%; overflow: hidden; text-overflow: ellipsis;
+    }
+    .share-btn {
+      position: absolute; top: 20px; right: 20px;
+      background: #2563eb; color: white; border: none; padding: 10px 20px;
+      border-radius: 30px; font-weight: bold; cursor: pointer; z-index: 1000;
+    }
+    .share-btn:hover { background: #1d4ed8; }
+    .status { text-align: center; padding: 8px; background: #e2e8f0; font-size: 0.9rem; }
+    .direction-indicator {
+      font-size: 1.2rem; margin-left: 10px;
+    }
+    @media (max-width: 600px) {
+      .info-panel { font-size: 0.9rem; padding: 10px 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📍 Live Location to Shop</h1>
+    <a href="/">← Back to Shop</a>
+  </div>
+  <div id="map"></div>
+  <div class="info-panel" id="infoPanel">
+    ⏳ Getting your location...
+  </div>
+  <button class="share-btn" id="shareBtn" onclick="shareLocation()">📤 Share My Location</button>
+  <div class="status" id="statusMsg">Waiting for GPS...</div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    let map, userMarker, shopMarker;
+    let shopLat, shopLng;
+    let socket;
+    let watchId;
+    let isSharing = false;
+    let prevDist = null;
+
+    // ---- Helper functions ----
+    function getDistance(lat1, lng1, lat2, lng2) {
+      const R = 6371e3; // meters
+      const φ1 = lat1 * Math.PI/180, φ2 = lat2 * Math.PI/180;
+      const Δφ = (lat2-lat1) * Math.PI/180;
+      const Δλ = (lng2-lng1) * Math.PI/180;
+      const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function formatDistance(meters) {
+      if (meters < 1000) return Math.round(meters) + ' m';
+      return (meters/1000).toFixed(1) + ' km';
+    }
+
+    function formatTime(seconds) {
+      if (seconds < 60) return Math.round(seconds) + ' sec';
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.round(seconds % 60);
+      return mins + ' min ' + (secs > 0 ? secs + ' sec' : '');
+    }
+
+    function updateInfo(lat, lng) {
+      if (!shopLat || !shopLng) return;
+      const dist = getDistance(lat, lng, shopLat, shopLng);
+      // Estimate walking time: average speed 1.4 m/s (5 km/h)
+      const speed = 1.4; // m/s
+      const timeSec = dist / speed;
+      const dir = document.querySelector('.direction-indicator');
+      let directionText = '';
+      if (prevDist !== null) {
+        const diff = dist - prevDist;
+        if (diff < -2) directionText = '⬆️ Getting closer!';
+        else if (diff > 2) directionText = '⬇️ Moving away';
+        else directionText = '⟷ Steady';
+      }
+      prevDist = dist;
+      document.getElementById('infoPanel').innerHTML = `
+        <span>📍 Shop distance: <strong>${formatDistance(dist)}</strong></span>
+        <span style="margin-left:15px;">🚶 ~ ${formatTime(timeSec)} walk</span>
+        <span class="direction-indicator">${directionText}</span>
+      `;
+    }
+
+    // ---- Map init ----
+    async function getShopLocation() {
+      const res = await fetch('/api/shop');
+      const shop = await res.json();
+      shopLat = parseFloat(shop.latitude);
+      shopLng = parseFloat(shop.longitude);
+      if (!shopLat || !shopLng) {
+        alert('Shop location not set. Please contact the seller.');
+        return false;
+      }
+      return true;
+    }
+
+    function initMap(customerLat, customerLng) {
+      map = L.map('map').setView([customerLat, customerLng], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(map);
+
+      // Shop marker & circle
+      if (shopLat && shopLng) {
+        shopMarker = L.marker([shopLat, shopLng])
+          .addTo(map)
+          .bindPopup('📍 Shop');
+        L.circle([shopLat, shopLng], { radius: 1000, color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.1 }).addTo(map);
+      }
+
+      // User marker
+      const userIcon = L.divIcon({ className: 'custom-div-icon', html: '🧑‍🦯', iconSize: [30, 30] });
+      userMarker = L.marker([customerLat, customerLng], { icon: userIcon }).addTo(map).bindPopup('You are here');
+      map.setView([customerLat, customerLng], 15);
+      updateInfo(customerLat, customerLng);
+    }
+
+    // ---- GPS tracking ----
+    function startTracking() {
+      if (!navigator.geolocation) {
+        alert('Geolocation not supported');
+        return;
+      }
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          if (userMarker) {
+            userMarker.setLatLng([lat, lng]);
+            map.setView([lat, lng], 15);
+          } else {
+            initMap(lat, lng);
+          }
+          updateInfo(lat, lng);
+
+          if (isSharing && socket) {
+            socket.emit('customer-location', { lat, lng, name: 'Customer' });
+          }
+        },
+        (err) => {
+          document.getElementById('statusMsg').textContent = '❌ GPS error: ' + err.message;
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    // ---- Share toggle ----
+    function shareLocation() {
+      if (!socket) {
+        socket = io();
+        socket.on('connect', () => {
+          document.getElementById('statusMsg').textContent = '✅ Connected. Sharing live location...';
+        });
+        socket.on('disconnect', () => {
+          document.getElementById('statusMsg').textContent = '❌ Disconnected from server';
+        });
+      }
+      isSharing = !isSharing;
+      const btn = document.getElementById('shareBtn');
+      if (isSharing) {
+        btn.textContent = '🛑 Stop Sharing';
+        btn.style.background = '#ef4444';
+        navigator.geolocation.getCurrentPosition((pos) => {
+          socket.emit('customer-location', { lat: pos.coords.latitude, lng: pos.coords.longitude, name: 'Customer' });
+        });
+        document.getElementById('statusMsg').textContent = '🔄 Sharing your live location with the seller...';
+      } else {
+        btn.textContent = '📤 Share My Location';
+        btn.style.background = '#2563eb';
+        document.getElementById('statusMsg').textContent = '📍 Sharing stopped. You are still tracking yourself.';
+      }
+    }
+
+    // ---- Start ----
+    (async function() {
+      const ok = await getShopLocation();
+      if (!ok) return;
+      startTracking();
+      socket = io();
+      socket.on('connect', () => console.log('Socket connected'));
+    })();
+  </script>
+</body>
+</html>

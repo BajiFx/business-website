@@ -1,0 +1,24 @@
+# Node dependencies
+node_modules/
+
+# Environment variables (sensitive!)
+.env
+
+# Uploaded files (local storage)
+public/uploads/
+
+# Database (if any local)
+*.sqlite
+*.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
