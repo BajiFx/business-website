@@ -19,10 +19,9 @@ const io = socketIo(server);
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
-if (!JWT_SECRET || !ADMIN_PASSWORD) {
-  console.error('❌ Missing JWT_SECRET or ADMIN_PASSWORD in .env');
+if (!JWT_SECRET) {
+  console.error('❌ Missing JWT_SECRET in .env');
   process.exit(1);
 }
 
@@ -88,10 +87,18 @@ const upload = multer({
   fileFilter
 });
 
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({ error: err.message });
+  } else if (err) {
+    return res.status(500).json({ error: err.message });
+  }
+  next();
+});
+
 // ---------- Upload to Cloudinary ----------
 async function uploadToCloudinary(filePath, options = {}) {
   try {
-    // Default options for images
     const defaultOptions = {
       folder: 'business_shop',
       transformation: [
@@ -111,7 +118,7 @@ async function uploadToCloudinary(filePath, options = {}) {
 
 // ---------- JWT Auth ----------
 function generateToken() {
-  return jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '1d' });
+  return jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '7d' });
 }
 
 function authMiddleware(req, res, next) {
@@ -130,20 +137,83 @@ function authMiddleware(req, res, next) {
 
 // ---------- API Routes ----------
 
-// Admin login
-app.post('/api/auth/login', async (req, res) => {
-  const { password } = req.body;
-  if (!password) {
-    return res.status(400).json({ error: 'Password required' });
+// ---- Check if admin exists ----
+app.get('/api/auth/admin-exists', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT COUNT(*) FROM admin_users');
+    const count = parseInt(result.rows[0].count);
+    res.json({ exists: count > 0 });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
   }
-  const hash = await bcrypt.hash(ADMIN_PASSWORD, 10);
-  const match = await bcrypt.compare(password, hash);
-  if (match) {
+});
+
+// ---- Admin Registration (one-time only) ----
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    // Check if admin already exists
+    const existsResult = await pool.query('SELECT COUNT(*) FROM admin_users');
+    const count = parseInt(existsResult.rows[0].count);
+    if (count > 0) {
+      return res.status(403).json({ error: 'An admin account already exists. Registration is closed.' });
+    }
+
+    // Validate
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required.' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await pool.query(
+      'INSERT INTO admin_users (email, password) VALUES ($1, $2)',
+      [email, hashedPassword]
+    );
+
+    const token = generateToken();
+    res.json({ success: true, token, message: 'Admin account created successfully!' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Admin Login ----
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required.' });
+    }
+
+    const result = await pool.query('SELECT * FROM admin_users WHERE email = $1', [email]);
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const user = result.rows[0];
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
     const token = generateToken();
     res.json({ success: true, token });
-  } else {
-    res.status(401).json({ error: 'Invalid password' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
   }
+});
+
+// ---- Check if user is authenticated ----
+app.get('/api/auth/verify', authMiddleware, (req, res) => {
+  res.json({ authenticated: true });
 });
 
 // ---- Shop Profile ----
@@ -173,11 +243,9 @@ app.post('/api/shop', authMiddleware, upload.fields([{ name: 'logo' }, { name: '
 
     let logo = null, heroImage = null;
 
-    // Upload logo to Cloudinary
     if (req.files['logo']) {
       const file = req.files['logo'][0];
       logo = await uploadToCloudinary(file.path);
-      // Delete local file after upload
       fs.unlink(file.path, (err) => { if (err) console.error('Failed to delete local file:', err); });
     }
 
@@ -238,17 +306,14 @@ app.post('/api/products', authMiddleware, upload.fields([{ name: 'image' }, { na
     const { name, price, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival } = req.body;
     let image = null, video = null;
 
-    // Upload image to Cloudinary
     if (req.files['image']) {
       const file = req.files['image'][0];
       image = await uploadToCloudinary(file.path);
       fs.unlink(file.path, (err) => { if (err) console.error('Failed to delete local file:', err); });
     }
 
-    // Upload video to Cloudinary
     if (req.files['video']) {
       const file = req.files['video'][0];
-      // For videos, we want to keep the original format and use auto quality
       try {
         const result = await cloudinary.uploader.upload(file.path, {
           resource_type: 'video',
@@ -261,10 +326,8 @@ app.post('/api/products', authMiddleware, upload.fields([{ name: 'image' }, { na
         video = result.secure_url;
       } catch (err) {
         console.error('Video upload error:', err);
-        // Fallback: keep local file path if Cloudinary fails
         video = '/uploads/' + file.filename;
       }
-      // Delete local file regardless
       fs.unlink(file.path, (err) => { if (err) console.error('Failed to delete local file:', err); });
     }
 
@@ -330,7 +393,6 @@ io.on('connection', (socket) => {
 // ---------- Start Server ----------
 server.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
-  console.log(`🔐 Admin login: use password from .env`);
-  console.log(`📦 Connected to Neon PostgreSQL`);
   console.log(`☁️ Cloudinary ready`);
+  console.log(`📦 Neon PostgreSQL connected`);
 });
