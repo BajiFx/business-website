@@ -329,7 +329,6 @@ app.get('/api/shop', async (req, res) => {
     const row = result.rows[0];
     const heroImage = getHeroImage(row);
     console.log('📦 Shop data fetched:', heroImage ? '✅ heroImage present' : '❌ heroImage missing');
-    // Return the row with the correct key
     res.json({ ...row, heroImage });
   } catch (err) {
     console.error(err);
@@ -366,7 +365,6 @@ app.post('/api/shop', authMiddleware, upload.fields([{ name: 'logo' }, { name: '
     const existing = await pool.query('SELECT * FROM shop LIMIT 1');
     let updatedRow;
     if (existing.rows.length === 0) {
-      // Insert new row
       const insertResult = await pool.query(`
         INSERT INTO shop (
           name, location, address, latitude, longitude, description, mission, vision,
@@ -377,7 +375,6 @@ app.post('/api/shop', authMiddleware, upload.fields([{ name: 'logo' }, { name: '
           logo, heroImage, whatsapp, tiktok, instagram, facebook, phone]);
       updatedRow = insertResult.rows[0];
     } else {
-      // Update existing row
       const fields = ['name','location','address','latitude','longitude','description','mission','vision',
                       'whatsapp','tiktok','instagram','facebook','phone'];
       const values = fields.map(f => req.body[f] || null);
@@ -403,7 +400,6 @@ app.post('/api/shop', authMiddleware, upload.fields([{ name: 'logo' }, { name: '
       updatedRow = updateResult.rows[0];
       console.log('✅ Shop profile updated with heroImage:', getHeroImage(updatedRow) || '(no new image)');
     }
-    // Return the updated row with heroImage normalized
     const hero = getHeroImage(updatedRow);
     res.json({ success: true, shop: { ...updatedRow, heroImage: hero } });
   } catch (err) {
@@ -412,7 +408,7 @@ app.post('/api/shop', authMiddleware, upload.fields([{ name: 'logo' }, { name: '
   }
 });
 
-// ---- Products ----
+// ---- Products (CRUD) ----
 app.get('/api/products', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM products ORDER BY created_at DESC');
@@ -457,6 +453,60 @@ app.post('/api/products', authMiddleware, upload.fields([{ name: 'image' }, { na
       INSERT INTO products (name, price, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival, image, video)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *
     `, [name, price, contact, rating, badge1, badge2, shipping, isFlashSale === 'true', isNewArrival === 'true', image, video]);
+    res.json({ success: true, product: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT: Update a product
+app.put('/api/products/:id', authMiddleware, upload.fields([{ name: 'image' }, { name: 'video' }]), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { name, price, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival } = req.body;
+    
+    // Fetch existing product to keep old image/video if not replaced
+    const existing = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    const oldProduct = existing.rows[0];
+    let image = oldProduct.image;
+    let video = oldProduct.video;
+
+    // Upload new image if provided
+    if (req.files['image']) {
+      const file = req.files['image'][0];
+      image = await uploadToCloudinary(file.path);
+      fs.unlink(file.path, (err) => { if (err) console.error('Failed to delete local file:', err); });
+    }
+    if (req.files['video']) {
+      const file = req.files['video'][0];
+      try {
+        const result = await cloudinary.uploader.upload(file.path, {
+          resource_type: 'video',
+          folder: 'business_shop_videos',
+          transformation: [
+            { quality: 'auto:good' },
+            { fetch_format: 'auto' }
+          ]
+        });
+        video = result.secure_url;
+      } catch (err) {
+        console.error('Video upload error:', err);
+        video = '/uploads/' + file.filename;
+      }
+      fs.unlink(file.path, (err) => { if (err) console.error('Failed to delete local file:', err); });
+    }
+
+    const result = await pool.query(`
+      UPDATE products 
+      SET name = $1, price = $2, contact = $3, rating = $4, badge1 = $5, badge2 = $6, 
+          shipping = $7, isFlashSale = $8, isNewArrival = $9, image = $10, video = $11
+      WHERE id = $12
+      RETURNING *
+    `, [name, price, contact, rating, badge1, badge2, shipping, isFlashSale === 'true', isNewArrival === 'true', image, video, id]);
     res.json({ success: true, product: result.rows[0] });
   } catch (err) {
     console.error(err);
