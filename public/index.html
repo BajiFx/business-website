@@ -20,12 +20,14 @@
 <!-- ===== TINY ADMIN DOT ===== -->
 <a href="/admin.html" class="admin-dot" title="Admin Panel">•</a>
 
+<!-- ===== HEADER ===== -->
 <div class="header">
   <h1>🛍️ <span id="shopNameHeader">Our Business</span></h1>
   <a href="/">Home</a>
   <a href="/track.html" style="color:#60a5fa;">📍 Track</a>
 </div>
 
+<!-- ===== HERO / COVER SECTION ===== -->
 <div class="hero-section" id="heroSection">
   <div class="hero-overlay">
     <div class="hero-content">
@@ -34,14 +36,29 @@
       <p id="heroLocation">📍 Nairobi, Kenya</p>
       <p id="heroAddress"></p>
       <p id="heroDesc">We sell quality goods.</p>
-      <div class="hero-mission-vision">
-        <div><strong>Mission:</strong> <span id="heroMission">-</span></div>
-        <div><strong>Vision:</strong> <span id="heroVision">-</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ABOUT / MISSION & VISION ===== -->
+<div class="container">
+  <div class="about-card">
+    <div class="about-grid">
+      <div class="about-item">
+        <i class="fas fa-bullseye" style="color:#2563eb; font-size:2rem;"></i>
+        <h3>Mission</h3>
+        <p id="heroMission">-</p>
+      </div>
+      <div class="about-item">
+        <i class="fas fa-eye" style="color:#7c3aed; font-size:2rem;"></i>
+        <h3>Vision</h3>
+        <p id="heroVision">-</p>
       </div>
     </div>
   </div>
 </div>
 
+<!-- ===== PRODUCT SLIDER ===== -->
 <div class="slider-container">
   <div class="slider-wrapper" id="sliderWrapper">
     <div class="slide">✨ Loading products...</div>
@@ -50,11 +67,12 @@
   <button class="slider-btn next" onclick="changeSlide(1)">❯</button>
 </div>
 
+<!-- ===== PRODUCT GRID ===== -->
 <div class="container">
   <h2 style="margin-bottom:20px;">📦 Our Products</h2>
   <div class="products-grid" id="productGrid"></div>
 
-  <!-- Location Request Button -->
+  <!-- ===== LOCATION REQUEST ===== -->
   <div style="text-align:center; margin:30px 0;">
     <button id="requestLocationBtn" class="btn btn-primary" style="font-size:1.1rem; padding:12px 30px;">
       📍 Request Location Sharing
@@ -62,13 +80,14 @@
     <p id="locationRequestStatus" style="margin-top:8px; color:#64748b; font-size:0.9rem;"></p>
   </div>
 
-  <!-- Live Location Map (if approved) -->
+  <!-- ===== LIVE LOCATION MAP ===== -->
   <div id="liveLocationSection" style="display:none; margin:30px 0;">
     <h2>📍 Seller's Live Location</h2>
     <div id="liveMap" style="height:400px; border-radius:16px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
     <p id="liveDistance" style="margin-top:8px; font-weight:600; color:#2563eb;"></p>
   </div>
 
+  <!-- ===== CONTACT ICONS ===== -->
   <div id="contactIcons" style="margin:40px 0; text-align:center;">
     <h3>📞 Contact Us</h3>
     <div style="display:flex; justify-content:center; gap:20px; flex-wrap:wrap; margin-top:15px;">
@@ -86,13 +105,14 @@
   </div>
 </div>
 
+<!-- ===== STATIC MAP (Shop Location) ===== -->
 <div class="container" style="margin-top:40px;">
   <h2>📍 Find Our Shop</h2>
   <div id="shopMap" style="height:400px; border-radius:16px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
   <p id="mapAddress" style="margin-top:8px; color:#475569;"></p>
 </div>
 
-<!-- Chat Widget -->
+<!-- ===== CHAT WIDGET ===== -->
 <div id="chatWidget" style="position:fixed; bottom:20px; right:20px; z-index:1000;">
   <button id="chatToggle" onclick="toggleChat()" style="background:#2563eb; color:white; border:none; border-radius:50%; width:60px; height:60px; font-size:2rem; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.3);">
     <i class="fas fa-comment"></i>

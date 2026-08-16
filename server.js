@@ -36,9 +36,7 @@ console.log('✅ Cloudinary configured');
 // ---------- PostgreSQL (Neon) ----------
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false,
-  },
+  ssl: { rejectUnauthorized: false },
 });
 
 pool.connect((err) => {
@@ -49,7 +47,7 @@ pool.connect((err) => {
   console.log('✅ Neon PostgreSQL connected');
 });
 
-// ---------- Security (Helmet) ----------
+// ---------- Security ----------
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -114,7 +112,7 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// ---------- File Upload (Multer) ----------
+// ---------- File Upload ----------
 const uploadDir = path.join(__dirname, 'public', 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -148,13 +146,13 @@ app.use((err, req, res, next) => {
   next();
 });
 
-// ---------- Upload to Cloudinary ----------
+// ---------- Upload to Cloudinary (with local fallback) ----------
 async function uploadToCloudinary(filePath, options = {}) {
   try {
     const defaultOptions = {
       folder: 'business_shop',
       transformation: [
-        { width: 800, height: 800, crop: 'limit' },
+        { width: 1920, height: 600, crop: 'limit' },
         { quality: 'auto:good' },
         { fetch_format: 'auto' }
       ]
@@ -163,13 +161,21 @@ async function uploadToCloudinary(filePath, options = {}) {
     const result = await cloudinary.uploader.upload(filePath, mergedOptions);
     return result.secure_url;
   } catch (err) {
-    console.error('Cloudinary upload error:', err);
-    return null;
+    console.error('❌ Cloudinary upload error:', err);
+    const localPath = '/uploads/' + path.basename(filePath);
+    console.log('⚠️ Using local fallback:', localPath);
+    return localPath;
   }
 }
 
+// ---------- Helper: extract hero image (case-insensitive) ----------
+function getHeroImage(row) {
+  if (!row) return null;
+  return row.heroImage || row.heroimage || null;
+}
+
 // ---------- JWT Auth ----------
-function generateToken(userId, role = 'customer') {
+function generateToken(userId, role = 'admin') {
   return jwt.sign({ userId, role }, JWT_SECRET, { expiresIn: '7d' });
 }
 
@@ -320,7 +326,11 @@ app.get('/api/shop', async (req, res) => {
         location_sharing_enabled: false, admin_lat: '', admin_lng: ''
       });
     }
-    res.json(result.rows[0]);
+    const row = result.rows[0];
+    const heroImage = getHeroImage(row);
+    console.log('📦 Shop data fetched:', heroImage ? '✅ heroImage present' : '❌ heroImage missing');
+    // Return the row with the correct key
+    res.json({ ...row, heroImage });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -338,32 +348,43 @@ app.post('/api/shop', authMiddleware, upload.fields([{ name: 'logo' }, { name: '
 
     if (req.files['logo']) {
       const file = req.files['logo'][0];
-      logo = await uploadToCloudinary(file.path);
-      fs.unlink(file.path, (err) => { if (err) console.error('Failed to delete local file:', err); });
+      logo = await uploadToCloudinary(file.path, { folder: 'business_shop/logos' });
+      if (logo) {
+        fs.unlink(file.path, (err) => { if (err) console.error('Failed to delete local file:', err); });
+      }
     }
 
     if (req.files['heroImage']) {
       const file = req.files['heroImage'][0];
-      heroImage = await uploadToCloudinary(file.path);
-      fs.unlink(file.path, (err) => { if (err) console.error('Failed to delete local file:', err); });
+      heroImage = await uploadToCloudinary(file.path, { folder: 'business_shop/hero', width: 1920, height: 600 });
+      console.log('📸 Hero image uploaded:', heroImage);
+      if (heroImage) {
+        fs.unlink(file.path, (err) => { if (err) console.error('Failed to delete local file:', err); });
+      }
     }
 
     const existing = await pool.query('SELECT * FROM shop LIMIT 1');
+    let updatedRow;
     if (existing.rows.length === 0) {
-      await pool.query(`
+      // Insert new row
+      const insertResult = await pool.query(`
         INSERT INTO shop (
           name, location, address, latitude, longitude, description, mission, vision,
           logo, heroImage, whatsapp, tiktok, instagram, facebook, phone
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+        RETURNING *
       `, [name, location, address, latitude, longitude, description, mission, vision,
           logo, heroImage, whatsapp, tiktok, instagram, facebook, phone]);
+      updatedRow = insertResult.rows[0];
     } else {
+      // Update existing row
       const fields = ['name','location','address','latitude','longitude','description','mission','vision',
                       'whatsapp','tiktok','instagram','facebook','phone'];
       const values = fields.map(f => req.body[f] || null);
       let setClause = fields.map((f, i) => `${f} = $${i+1}`).join(', ');
       let params = [...values];
       let paramIdx = fields.length + 1;
+
       if (logo) {
         setClause += `, logo = $${paramIdx}`;
         params.push(logo);
@@ -373,12 +394,20 @@ app.post('/api/shop', authMiddleware, upload.fields([{ name: 'logo' }, { name: '
         setClause += `, heroImage = $${paramIdx}`;
         params.push(heroImage);
         paramIdx++;
+        console.log('📸 Saving heroImage to DB:', heroImage);
       }
-      await pool.query(`UPDATE shop SET ${setClause} WHERE id = 1`, params);
+      const updateResult = await pool.query(
+        `UPDATE shop SET ${setClause} WHERE id = 1 RETURNING *`,
+        params
+      );
+      updatedRow = updateResult.rows[0];
+      console.log('✅ Shop profile updated with heroImage:', getHeroImage(updatedRow) || '(no new image)');
     }
-    res.json({ success: true });
+    // Return the updated row with heroImage normalized
+    const hero = getHeroImage(updatedRow);
+    res.json({ success: true, shop: { ...updatedRow, heroImage: hero } });
   } catch (err) {
-    console.error(err);
+    console.error('❌ Shop update error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -462,9 +491,7 @@ app.get('/api/chat', async (req, res) => {
   }
 });
 
-// ---- LOCATION SHARING ----
-
-// Admin: Get pending location requests
+// ---- Location Sharing (unchanged) ----
 app.get('/api/admin/location/requests', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   try {
@@ -482,17 +509,14 @@ app.get('/api/admin/location/requests', authMiddleware, async (req, res) => {
   }
 });
 
-// Admin: Approve a request
 app.post('/api/admin/location/requests/:id/approve', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   const id = parseInt(req.params.id);
   try {
     await pool.query('UPDATE location_requests SET status = $1, updated_at = NOW() WHERE id = $2', ['approved', id]);
-    // Get customer_id to notify them
     const result = await pool.query('SELECT customer_id FROM location_requests WHERE id = $1', [id]);
     const customerId = result.rows[0]?.customer_id;
     if (customerId) {
-      // Emit socket event to notify customer (they will receive via socket)
       io.to(`customer_${customerId}`).emit('location_request_approved');
     }
     res.json({ success: true });
@@ -502,7 +526,6 @@ app.post('/api/admin/location/requests/:id/approve', authMiddleware, async (req,
   }
 });
 
-// Admin: Reject a request
 app.post('/api/admin/location/requests/:id/reject', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   const id = parseInt(req.params.id);
@@ -515,12 +538,10 @@ app.post('/api/admin/location/requests/:id/reject', authMiddleware, async (req, 
   }
 });
 
-// Customer: Request location sharing
 app.post('/api/customer/location/request', authMiddleware, async (req, res) => {
   if (req.role !== 'customer') return res.status(403).json({ error: 'Customer only' });
   const customerId = req.userId;
   try {
-    // Check if already has a pending request
     const existing = await pool.query(
       'SELECT * FROM location_requests WHERE customer_id = $1 AND status = $2',
       [customerId, 'pending']
@@ -528,7 +549,6 @@ app.post('/api/customer/location/request', authMiddleware, async (req, res) => {
     if (existing.rows.length > 0) {
       return res.status(400).json({ error: 'You already have a pending request.' });
     }
-    // Check if already approved
     const approved = await pool.query(
       'SELECT * FROM location_requests WHERE customer_id = $1 AND status = $2',
       [customerId, 'approved']
@@ -547,7 +567,6 @@ app.post('/api/customer/location/request', authMiddleware, async (req, res) => {
   }
 });
 
-// Customer: Check if location sharing is approved
 app.get('/api/customer/location/status', authMiddleware, async (req, res) => {
   if (req.role !== 'customer') return res.status(403).json({ error: 'Customer only' });
   const customerId = req.userId;
@@ -564,7 +583,6 @@ app.get('/api/customer/location/status', authMiddleware, async (req, res) => {
   }
 });
 
-// Admin: Update location sharing state (toggle on/off and update coordinates)
 app.post('/api/admin/location/toggle', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   const { lat, lng, enabled } = req.body;
@@ -573,9 +591,7 @@ app.post('/api/admin/location/toggle', authMiddleware, async (req, res) => {
       'UPDATE shop SET location_sharing_enabled = $1, admin_lat = $2, admin_lng = $3',
       [enabled, lat || null, lng || null]
     );
-    // If enabled, broadcast current location to all approved customers
     if (enabled && lat && lng) {
-      // Get all approved customer IDs
       const customers = await pool.query(
         'SELECT customer_id FROM location_requests WHERE status = $1',
         ['approved']
@@ -591,15 +607,12 @@ app.post('/api/admin/location/toggle', authMiddleware, async (req, res) => {
   }
 });
 
-// Admin: Update location (for continuous tracking)
 app.post('/api/admin/location/update', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   const { lat, lng } = req.body;
   if (!lat || !lng) return res.status(400).json({ error: 'Missing coordinates' });
   try {
-    // Update shop table
     await pool.query('UPDATE shop SET admin_lat = $1, admin_lng = $2', [lat, lng]);
-    // Broadcast to approved customers
     const customers = await pool.query(
       'SELECT customer_id FROM location_requests WHERE status = $1',
       ['approved']
@@ -618,7 +631,6 @@ app.post('/api/admin/location/update', authMiddleware, async (req, res) => {
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
   if (!token) {
-    // Allow connection without token for public
     socket.customerId = null;
     return next();
   }
@@ -638,7 +650,6 @@ io.on('connection', (socket) => {
     socket.join(`customer_${socket.customerId}`);
   }
 
-  // Chat message
   socket.on('chat-message', async (data) => {
     try {
       const { message } = data;

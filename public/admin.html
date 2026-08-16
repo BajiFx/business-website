@@ -42,7 +42,6 @@
 
     .hidden { display: none !important; }
 
-    /* Dashboard styles */
     .dashboard-container { max-width: 900px; margin: 20px auto; padding: 0 20px; }
     .dashboard-section { background: white; padding: 25px; border-radius: 16px; margin-bottom: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
     .dashboard-section h2 { border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 20px; }
@@ -81,12 +80,60 @@
       color: #94a3b8;
     }
 
+    .cover-preview, .logo-preview {
+      border: 2px dashed #d1d5db;
+      border-radius: 12px;
+      background: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #94a3b8;
+      overflow: hidden;
+      position: relative;
+      margin-top: 10px;
+    }
+    .cover-preview {
+      width: 100%;
+      height: 200px;
+    }
+    .logo-preview {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      margin: 10px auto;
+    }
+    .cover-preview img, .logo-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .cover-preview .placeholder, .logo-preview .placeholder {
+      font-size: 0.9rem;
+      text-align: center;
+    }
+    .cover-preview .placeholder i, .logo-preview .placeholder i {
+      font-size: 2rem;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .upload-area {
+      border: 2px dashed #d1d5db;
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+      cursor: pointer;
+      transition: 0.2s;
+      background: #f8fafc;
+    }
+    .upload-area:hover { border-color: #2563eb; background: #eff6ff; }
+    .upload-area i { font-size: 2rem; color: #2563eb; }
+
     .logout-btn { background: #ef4444; color: white; border: none; padding: 6px 16px; border-radius: 30px; cursor: pointer; font-weight: 600; }
     .logout-btn:hover { background: #dc2626; }
     .btn-success { background: #22c55e; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; }
     .btn-success:hover { background: #16a34a; }
 
-    /* Location requests list */
     .request-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
     .request-item .info { flex: 1; }
     .request-item .actions button { margin-left: 8px; padding: 4px 12px; border-radius: 20px; border: none; font-weight: 600; cursor: pointer; }
@@ -104,7 +151,7 @@
   </div>
 </div>
 
-<!-- AUTH SECTION (unchanged) -->
+<!-- AUTH SECTION -->
 <div id="authContainer" class="auth-container">
   <div class="auth-tabs">
     <button id="loginTab" class="active" onclick="showTab('login')">Login</button>
@@ -132,7 +179,7 @@
 <!-- ============ DASHBOARD ============ -->
 <div id="dashboardContainer" class="hidden dashboard-container">
 
-  <!-- SHOP PROFILE (unchanged) -->
+  <!-- SHOP PROFILE -->
   <div class="dashboard-section">
     <h2>🏪 Shop Profile</h2>
     <form id="shopForm" enctype="multipart/form-data">
@@ -150,16 +197,51 @@
           </div>
           <div id="adminMapPreview"><p>No location set. Click "Get Current Location" to see map.</p></div>
         </div>
-        <div><label><i class="fab fa-whatsapp"></i> WhatsApp</label><input type="text" id="shopWhatsapp" name="whatsapp" placeholder="254712345678"></div>
+
+        <!-- COVER IMAGE (Hero Image) -->
+        <div class="full">
+          <label style="font-size:1.1rem; color:#0f172a;">🖼️ Cover Photo (Hero Image)</label>
+          <p style="font-size:0.8rem; color:#64748b; margin-bottom:8px;">This image will appear as the background cover on your public page.</p>
+          <div class="upload-area" onclick="document.getElementById('shopHero').click()">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <p style="margin-top:4px;">Click to upload cover image</p>
+            <input type="file" id="shopHero" name="heroImage" accept="image/*" style="display:none;">
+          </div>
+          <div id="coverPreview" class="cover-preview">
+            <div class="placeholder">
+              <i class="fas fa-image"></i>
+              No cover image uploaded
+            </div>
+          </div>
+        </div>
+
+        <!-- SHOP LOGO -->
+        <div class="full">
+          <label style="font-size:1.1rem; color:#0f172a;">🖼️ Shop Logo (Profile Picture)</label>
+          <p style="font-size:0.8rem; color:#64748b; margin-bottom:8px;">This image will appear as your profile picture on the public page.</p>
+          <div class="upload-area" onclick="document.getElementById('shopLogo').click()">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <p style="margin-top:4px;">Click to upload logo</p>
+            <input type="file" id="shopLogo" name="logo" accept="image/*" style="display:none;">
+          </div>
+          <div id="logoPreview" class="logo-preview">
+            <div class="placeholder">
+              <i class="fas fa-user-circle"></i>
+              No logo
+            </div>
+          </div>
+        </div>
+
+        <div class="full"><label>Description</label><textarea id="shopDesc" name="description" rows="3" placeholder="Describe your business..."></textarea></div>
+        <div><label>Mission</label><textarea id="shopMission" name="mission" rows="2" placeholder="Your mission..."></textarea></div>
+        <div><label>Vision</label><textarea id="shopVision" name="vision" rows="2" placeholder="Your vision..."></textarea></div>
+
+        <!-- CONTACT DETAILS -->
+        <div class="full"><label><i class="fab fa-whatsapp"></i> WhatsApp</label><input type="text" id="shopWhatsapp" name="whatsapp" placeholder="254712345678"></div>
         <div><label><i class="fab fa-tiktok"></i> TikTok</label><input type="text" id="shopTiktok" name="tiktok" placeholder="@myshop"></div>
         <div><label><i class="fab fa-instagram"></i> Instagram</label><input type="text" id="shopInstagram" name="instagram" placeholder="@myshop"></div>
         <div><label><i class="fab fa-facebook"></i> Facebook</label><input type="text" id="shopFacebook" name="facebook" placeholder="username"></div>
         <div><label><i class="fas fa-phone"></i> Phone</label><input type="text" id="shopPhone" name="phone" placeholder="+254700000000"></div>
-        <div class="full"><label>Description</label><textarea id="shopDesc" name="description" rows="2"></textarea></div>
-        <div><label>Mission</label><textarea id="shopMission" name="mission" rows="2"></textarea></div>
-        <div><label>Vision</label><textarea id="shopVision" name="vision" rows="2"></textarea></div>
-        <div><label>Logo</label><input type="file" id="shopLogo" name="logo" accept="image/*"></div>
-        <div><label>Hero Image</label><input type="file" id="shopHero" name="heroImage" accept="image/*"></div>
       </div>
       <button type="submit" class="btn-success">💾 Update Shop Profile</button>
     </form>
@@ -215,13 +297,12 @@
 <script>
 let token = localStorage.getItem('token');
 let adminMap = null;
-let locationSocket = null;
 let isSharing = false;
 let shareInterval = null;
 
 console.log('✅ admin.html loaded');
 
-// ============ TAB SWITCHING ============
+// ---- TAB SWITCHING ----
 function showTab(tab) {
   document.getElementById('loginForm').classList.toggle('active', tab === 'login');
   document.getElementById('registerForm').classList.toggle('active', tab === 'register');
@@ -229,7 +310,7 @@ function showTab(tab) {
   document.getElementById('registerTab').classList.toggle('active', tab === 'register');
 }
 
-// ============ TOGGLE PASSWORD ============
+// ---- TOGGLE PASSWORD ----
 function togglePassword(inputId, btn) {
   const input = document.getElementById(inputId);
   const icon = btn.querySelector('i');
@@ -242,7 +323,7 @@ function togglePassword(inputId, btn) {
   }
 }
 
-// ============ AUTH ============
+// ---- AUTH ----
 async function checkAdminExists() {
   try {
     const res = await fetch('/api/auth/admin-exists');
@@ -343,7 +424,7 @@ function showDashboard() {
   checkSharingStatus();
 }
 
-// ============ SHOP PROFILE ============
+// ---- SHOP PROFILE ----
 async function loadShopProfile() {
   const res = await fetch('/api/shop', { headers: { 'Authorization': `Bearer ${token}` } });
   if (res.status === 401) { logout(); return; }
@@ -361,6 +442,23 @@ async function loadShopProfile() {
   document.getElementById('shopDesc').value = shop.description || '';
   document.getElementById('shopMission').value = shop.mission || '';
   document.getElementById('shopVision').value = shop.vision || '';
+
+  // Cover image preview
+  const coverPreview = document.getElementById('coverPreview');
+  if (shop.heroImage) {
+    coverPreview.innerHTML = `<img src="${shop.heroImage}" alt="Cover Image">`;
+  } else {
+    coverPreview.innerHTML = `<div class="placeholder"><i class="fas fa-image"></i>No cover image uploaded</div>`;
+  }
+
+  // Logo preview
+  const logoPreview = document.getElementById('logoPreview');
+  if (shop.logo) {
+    logoPreview.innerHTML = `<img src="${shop.logo}" alt="Logo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+  } else {
+    logoPreview.innerHTML = `<div class="placeholder"><i class="fas fa-user-circle"></i>No logo</div>`;
+  }
+
   updateAdminMap(shop.latitude, shop.longitude);
 }
 
@@ -380,7 +478,7 @@ function updateAdminMap(lat, lng) {
   }
 }
 
-// ============ GPS ============
+// ---- GPS ----
 document.getElementById('getLocationBtn').addEventListener('click', function() {
   if (!navigator.geolocation) {
     document.getElementById('locationStatus').textContent = '❌ Not supported';
@@ -407,7 +505,7 @@ document.getElementById('getLocationBtn').addEventListener('click', function() {
   );
 });
 
-// ============ LOCATION SHARING ============
+// ---- LOCATION SHARING ----
 async function checkSharingStatus() {
   try {
     const res = await fetch('/api/shop', { headers: { 'Authorization': `Bearer ${token}` } });
@@ -442,11 +540,9 @@ document.getElementById('shareLocationBtn').addEventListener('click', function()
     return;
   }
   if (isSharing) {
-    // Stop sharing
     toggleSharing(false);
     return;
   }
-  // Start sharing: get current location then toggle
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       const lat = pos.coords.latitude;
@@ -472,7 +568,6 @@ async function toggleSharing(enabled, lat, lng) {
       isSharing = enabled;
       updateShareUI();
       if (enabled) {
-        // Start continuous location updates every 5 seconds
         if (shareInterval) clearInterval(shareInterval);
         shareInterval = setInterval(() => {
           navigator.geolocation.getCurrentPosition(
@@ -500,7 +595,7 @@ async function toggleSharing(enabled, lat, lng) {
   }
 }
 
-// ============ LOCATION REQUESTS ============
+// ---- LOCATION REQUESTS ----
 async function loadLocationRequests() {
   try {
     const res = await fetch('/api/admin/location/requests', { headers: { 'Authorization': `Bearer ${token}` } });
@@ -535,7 +630,7 @@ async function handleRequest(id, action) {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (res.ok) {
-      loadLocationRequests(); // refresh list
+      loadLocationRequests();
     } else {
       alert('Failed to ' + action + ' request.');
     }
@@ -545,7 +640,7 @@ async function handleRequest(id, action) {
   }
 }
 
-// ============ SHOP FORM ============
+// ---- SHOP FORM SUBMIT ----
 document.getElementById('shopForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const formData = new FormData(e.target);
@@ -567,7 +662,7 @@ document.getElementById('shopForm').addEventListener('submit', async (e) => {
   }
 });
 
-// ============ PRODUCTS ============
+// ---- PRODUCTS ----
 document.getElementById('productForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const formData = new FormData(e.target);
@@ -613,7 +708,30 @@ async function deleteProduct(id) {
   loadAdminProducts();
 }
 
-// ============ AUTO-LOGIN ============
+// ---- FILE PREVIEW (Cover & Logo) ----
+document.getElementById('shopHero').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    const preview = document.getElementById('coverPreview');
+    preview.innerHTML = `<img src="${event.target.result}" alt="Cover Preview">`;
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('shopLogo').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    const preview = document.getElementById('logoPreview');
+    preview.innerHTML = `<img src="${event.target.result}" alt="Logo Preview" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+  };
+  reader.readAsDataURL(file);
+});
+
+// ---- AUTO-LOGIN ----
 if (token) {
   fetch('/api/auth/verify', { headers: { 'Authorization': `Bearer ${token}` } })
     .then(res => res.ok ? showDashboard() : logout())
@@ -622,7 +740,6 @@ if (token) {
   checkAdminExists();
 }
 
-// EVENT LISTENERS
 document.getElementById('registerBtn').addEventListener('click', handleRegister);
 document.getElementById('loginBtn').addEventListener('click', handleLogin);
 </script>

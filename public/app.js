@@ -1,4 +1,4 @@
-// ===== TYPING EFFECT =====
+// ===== TYPING EFFECT FOR HERO TITLE =====
 document.addEventListener('DOMContentLoaded', () => {
   const heroTitle = document.getElementById('heroTitle');
   if (heroTitle) {
@@ -29,65 +29,122 @@ let chatMessages = [];
 let customerToken = localStorage.getItem('customerToken');
 let customerName = '';
 let isLocationApproved = false;
-let requestStatus = 'none';
+let heroImages = [];
+let heroImageIndex = 0;
+let heroImageInterval = null;
 
-// ---- LOAD SHOP PROFILE ----
+// ---- LOAD SHOP PROFILE (FIXED) ----
 async function loadShopProfile() {
-  const res = await fetch('/api/shop');
-  const shop = await res.json();
-  
-  document.getElementById('shopNameHeader').textContent = shop.name || 'Our Business';
-  document.getElementById('heroTitle').textContent = shop.name || 'Welcome';
-  document.getElementById('heroLocation').textContent = shop.location ? `📍 ${shop.location}` : '';
-  document.getElementById('heroAddress').textContent = shop.address ? `🏠 ${shop.address}` : '';
-  document.getElementById('heroDesc').textContent = shop.description || '';
-  document.getElementById('heroMission').textContent = shop.mission || '-';
-  document.getElementById('heroVision').textContent = shop.vision || '-';
-  
-  const logo = document.getElementById('heroLogo');
-  if (shop.logo) logo.src = shop.logo;
-  else logo.style.display = 'none';
-  
-  const heroSection = document.getElementById('heroSection');
-  if (shop.heroImage) {
-    heroSection.style.backgroundImage = `url(${shop.heroImage})`;
-  } else {
-    heroSection.style.backgroundImage = 'linear-gradient(135deg, #1e293b, #0f172a)';
-  }
+  try {
+    const res = await fetch('/api/shop');
+    const shop = await res.json();
+    
+    console.log('📦 Shop data:', shop); // Debug: see full shop object
 
-  // Map
-  const lat = parseFloat(shop.latitude);
-  const lng = parseFloat(shop.longitude);
-  const address = shop.address || '';
-  const mapContainer = document.getElementById('shopMap');
-  if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
-    if (mapInstance) mapInstance.remove();
-    mapInstance = L.map('shopMap').setView([lat, lng], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap'
-    }).addTo(mapInstance);
-    L.marker([lat, lng]).addTo(mapInstance)
-      .bindPopup(`<strong>${shop.name}</strong><br>${address || shop.location || ''}`);
-    document.getElementById('mapAddress').textContent = address ? `📍 ${address}` : '';
-  } else {
-    mapContainer.innerHTML = '<p style="padding:20px;text-align:center;color:#ef4444;">⚠️ No location set.</p>';
-    document.getElementById('mapAddress').textContent = '';
-  }
+    // Header shop name
+    document.getElementById('shopNameHeader').textContent = shop.name || 'Our Business';
+    
+    // Hero section text
+    document.getElementById('heroTitle').textContent = shop.name || 'Welcome';
+    document.getElementById('heroLocation').textContent = shop.location ? `📍 ${shop.location}` : '';
+    document.getElementById('heroAddress').textContent = shop.address ? `🏠 ${shop.address}` : '';
+    document.getElementById('heroDesc').textContent = shop.description || '';
+    
+    // Mission & Vision
+    document.getElementById('heroMission').textContent = shop.mission || '-';
+    document.getElementById('heroVision').textContent = shop.vision || '-';
+    
+    // Logo
+    const logo = document.getElementById('heroLogo');
+    if (shop.logo && shop.logo !== '') {
+      logo.src = shop.logo;
+      logo.style.display = 'block';
+    } else {
+      logo.style.display = 'none';
+    }
+    
+    // *** COVER PHOTO (Hero Image) - FIXED ***
+    const heroSection = document.getElementById('heroSection');
+    if (shop.heroImage && shop.heroImage !== '') {
+      console.log('✅ Hero image found:', shop.heroImage);
+      // Apply the image as background
+      heroSection.style.backgroundImage = `url(${shop.heroImage})`;
+      heroSection.style.backgroundSize = 'cover';
+      heroSection.style.backgroundPosition = 'center';
+      heroSection.style.backgroundRepeat = 'no-repeat';
+      // Remove any inline style that might override it
+      heroSection.style.backgroundColor = 'transparent';
+    } else {
+      console.warn('⚠️ No hero image found in shop data. Using gradient fallback.');
+      heroSection.style.backgroundImage = 'linear-gradient(135deg, #1e293b, #0f172a)';
+    }
 
-  // Contact Icons
-  document.getElementById('iconWhatsapp').href = shop.whatsapp ? `https://wa.me/${shop.whatsapp}` : '#';
-  document.getElementById('iconTiktok').href = shop.tiktok ? `https://tiktok.com/@${shop.tiktok.replace('@','')}` : '#';
-  document.getElementById('iconInstagram').href = shop.instagram ? `https://instagram.com/${shop.instagram.replace('@','')}` : '#';
-  document.getElementById('iconFacebook').href = shop.facebook ? `https://facebook.com/messages/t/${shop.facebook.replace('@','')}` : '#';
-  document.getElementById('iconPhone').href = shop.phone ? `tel:${shop.phone}` : '#';
+    // ---- Static Map ----
+    const lat = parseFloat(shop.latitude);
+    const lng = parseFloat(shop.longitude);
+    const address = shop.address || '';
+    const mapContainer = document.getElementById('shopMap');
+    if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+      if (mapInstance) mapInstance.remove();
+      mapInstance = L.map('shopMap').setView([lat, lng], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(mapInstance);
+      L.marker([lat, lng]).addTo(mapInstance)
+        .bindPopup(`<strong>${shop.name}</strong><br>${address || shop.location || ''}`);
+      document.getElementById('mapAddress').textContent = address ? `📍 ${address}` : '';
+    } else {
+      mapContainer.innerHTML = '<p style="padding:20px;text-align:center;color:#ef4444;">⚠️ No location set.</p>';
+      document.getElementById('mapAddress').textContent = '';
+    }
+
+    // ---- Contact Icons ----
+    document.getElementById('iconWhatsapp').href = shop.whatsapp ? `https://wa.me/${shop.whatsapp}` : '#';
+    document.getElementById('iconTiktok').href = shop.tiktok ? `https://tiktok.com/@${shop.tiktok.replace('@','')}` : '#';
+    document.getElementById('iconInstagram').href = shop.instagram ? `https://instagram.com/${shop.instagram.replace('@','')}` : '#';
+    document.getElementById('iconFacebook').href = shop.facebook ? `https://facebook.com/messages/t/${shop.facebook.replace('@','')}` : '#';
+    document.getElementById('iconPhone').href = shop.phone ? `tel:${shop.phone}` : '#';
+  } catch (err) {
+    console.error('Error loading shop profile:', err);
+  }
+}
+
+// ---- HERO SLIDESHOW ----
+function startHeroSlideshow() {
+  if (heroImageInterval) clearInterval(heroImageInterval);
+  if (heroImages.length <= 1) return;
+  heroImageIndex = 0;
+  heroImageInterval = setInterval(() => {
+    heroImageIndex = (heroImageIndex + 1) % heroImages.length;
+    const heroSection = document.getElementById('heroSection');
+    heroSection.style.backgroundImage = `url(${heroImages[heroImageIndex]})`;
+    heroSection.style.transition = 'background-image 1s ease-in-out';
+  }, 5000);
+}
+
+function addImageToSlideshow(imageUrl) {
+  if (!imageUrl) return;
+  if (!heroImages.includes(imageUrl)) {
+    heroImages.push(imageUrl);
+    if (heroImages.length > 1 && !heroImageInterval) {
+      startHeroSlideshow();
+    }
+  }
 }
 
 // ---- LOAD PRODUCTS ----
 async function loadProducts() {
-  const res = await fetch('/api/products');
-  allProducts = await res.json();
-  renderSlider();
-  renderGrid();
+  try {
+    const res = await fetch('/api/products');
+    allProducts = await res.json();
+    allProducts.forEach(p => {
+      if (p.image) addImageToSlideshow(p.image);
+    });
+    renderSlider();
+    renderGrid();
+  } catch (err) {
+    console.error('Error loading products:', err);
+  }
 }
 
 function renderSlider() {
@@ -177,7 +234,7 @@ function renderGrid() {
   }).join('');
 }
 
-// ---- CHAT FUNCTIONS (same as before, with customer auth) ----
+// ---- CHAT FUNCTIONS ----
 function openChatWithProduct(productName) {
   if (!customerToken) {
     toggleChat();
@@ -320,7 +377,7 @@ async function customerRegister() {
       localStorage.setItem('customerToken', data.token);
       customerToken = data.token;
       customerName = data.customer.name;
-      checkLocationStatus(); // check if already approved
+      checkLocationStatus();
       setTimeout(() => showChatPanel(), 500);
     } else {
       status.textContent = '❌ ' + (data.error || 'Registration failed');
@@ -387,6 +444,7 @@ document.getElementById('requestLocationBtn').addEventListener('click', async fu
   if (!customerToken) {
     statusElem.textContent = '❌ Please login or create an account first.';
     statusElem.style.color = '#ef4444';
+    toggleChat();
     return;
   }
   btn.disabled = true;
@@ -438,25 +496,20 @@ async function checkLocationStatus() {
 
 function showLiveLocation() {
   document.getElementById('liveLocationSection').style.display = 'block';
-  // Connect to socket to receive admin location updates
   if (!liveMapInstance) {
     const mapContainer = document.getElementById('liveMap');
-    // Set initial view to shop location (or admin's last location)
     liveMapInstance = L.map(mapContainer).setView([-1.2921, 36.8219], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap'
     }).addTo(liveMapInstance);
-    // Connect socket for location updates
     const liveSocket = io({ auth: { token: customerToken } });
     liveSocket.on('admin_location', (data) => {
       const { lat, lng } = data;
       updateLiveLocation(lat, lng);
     });
     liveSocket.on('location_request_approved', () => {
-      // This also triggers when admin approves
       checkLocationStatus();
     });
-    // Also request current admin location from shop
     fetch('/api/shop').then(res => res.json()).then(shop => {
       if (shop.admin_lat && shop.admin_lng) {
         updateLiveLocation(parseFloat(shop.admin_lat), parseFloat(shop.admin_lng));
@@ -470,11 +523,16 @@ function updateLiveLocation(lat, lng) {
   if (liveMarker) {
     liveMarker.setLatLng([lat, lng]);
   } else {
-    liveMarker = L.marker([lat, lng]).addTo(liveMapInstance);
+    liveMarker = L.marker([lat, lng], {
+      icon: L.divIcon({
+        className: 'admin-live-marker',
+        html: '📍',
+        iconSize: [30, 30]
+      })
+    }).addTo(liveMapInstance);
   }
   liveMapInstance.setView([lat, lng], 15);
 
-  // Calculate distance from customer (if we have their location)
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition((pos) => {
       const userLat = pos.coords.latitude;
@@ -483,12 +541,15 @@ function updateLiveLocation(lat, lng) {
       const distText = dist < 1000 ? dist.toFixed(0) + ' m' : (dist/1000).toFixed(2) + ' km';
       const time = (dist / 1.4).toFixed(0);
       document.getElementById('liveDistance').textContent = `📍 Distance: ${distText} (about ${time} seconds walk)`;
-      // Draw route line
       if (liveRouteLine) {
         liveMapInstance.removeLayer(liveRouteLine);
       }
-      liveRouteLine = L.polyline([[userLat, userLng], [lat, lng]], { color: 'blue', weight: 4 }).addTo(liveMapInstance);
-    });
+      liveRouteLine = L.polyline([[userLat, userLng], [lat, lng]], { 
+        color: '#2563eb', 
+        weight: 3,
+        dashArray: '8, 5'
+      }).addTo(liveMapInstance);
+    }, () => {}, { enableHighAccuracy: true, timeout: 5000 });
   }
 }
 
@@ -501,6 +562,14 @@ function getDistance(lat1, lng1, lat2, lng2) {
   const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
+
+// ---- MODAL ----
+function openModal() { document.getElementById('loginModal').style.display = 'flex'; }
+function closeModal() { document.getElementById('loginModal').style.display = 'none'; }
+window.onclick = function(e) {
+  const modal = document.getElementById('loginModal');
+  if (e.target === modal) closeModal();
+};
 
 // ---- START ----
 loadShopProfile();
