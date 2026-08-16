@@ -49,8 +49,60 @@ pool.connect((err) => {
   console.log('✅ Neon PostgreSQL connected');
 });
 
-// ---------- Security ----------
-app.use(helmet());
+// ---------- Security (Helmet) ----------
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: [
+        "'self'",
+        "'unsafe-inline'",
+        "'unsafe-eval'",
+        "https://unpkg.com",
+        "https://cdnjs.cloudflare.com",
+        "https://localhost:3000",
+      ],
+      scriptSrcAttr: ["'unsafe-inline'"],
+      styleSrc: [
+        "'self'",
+        "'unsafe-inline'",
+        "https://unpkg.com",
+        "https://cdnjs.cloudflare.com",
+        "https://fonts.googleapis.com",
+      ],
+      styleSrcElem: [
+        "'self'",
+        "'unsafe-inline'",
+        "https://fonts.googleapis.com",
+        "https://unpkg.com",
+        "https://cdnjs.cloudflare.com",
+      ],
+      fontSrc: [
+        "'self'",
+        "https://cdnjs.cloudflare.com",
+        "https://fonts.gstatic.com",
+        "data:",
+      ],
+      imgSrc: [
+        "'self'",
+        "data:",
+        "https://res.cloudinary.com",
+        "https://*.tile.openstreetmap.org",
+        "https://*.openstreetmap.org",
+        "https://unpkg.com",
+      ],
+      connectSrc: [
+        "'self'",
+        "ws://localhost:3000",
+        "wss://*.onrender.com",
+        "https://unpkg.com",
+      ],
+      objectSrc: ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
+
 app.use(cors({ origin: process.env.CLIENT_URL || '*' }));
 app.use(express.json());
 app.use(express.static('public'));
@@ -117,8 +169,8 @@ async function uploadToCloudinary(filePath, options = {}) {
 }
 
 // ---------- JWT Auth ----------
-function generateToken() {
-  return jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '7d' });
+function generateToken(userId, role = 'customer') {
+  return jwt.sign({ userId, role }, JWT_SECRET, { expiresIn: '7d' });
 }
 
 function authMiddleware(req, res, next) {
@@ -128,7 +180,9 @@ function authMiddleware(req, res, next) {
   }
   const token = authHeader.split(' ')[1];
   try {
-    jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.userId = decoded.userId;
+    req.role = decoded.role;
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Invalid token' });
@@ -137,7 +191,7 @@ function authMiddleware(req, res, next) {
 
 // ---------- API Routes ----------
 
-// ---- Check if admin exists ----
+// ---- Admin Auth ----
 app.get('/api/auth/admin-exists', async (req, res) => {
   try {
     const result = await pool.query('SELECT COUNT(*) FROM admin_users');
@@ -149,34 +203,26 @@ app.get('/api/auth/admin-exists', async (req, res) => {
   }
 });
 
-// ---- Admin Registration (one-time only) ----
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { email, password } = req.body;
-    
-    // Check if admin already exists
     const existsResult = await pool.query('SELECT COUNT(*) FROM admin_users');
     const count = parseInt(existsResult.rows[0].count);
     if (count > 0) {
       return res.status(403).json({ error: 'An admin account already exists. Registration is closed.' });
     }
-
-    // Validate
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required.' });
     }
     if (password.length < 6) {
       return res.status(400).json({ error: 'Password must be at least 6 characters.' });
     }
-
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     await pool.query(
       'INSERT INTO admin_users (email, password) VALUES ($1, $2)',
       [email, hashedPassword]
     );
-
-    const token = generateToken();
+    const token = generateToken(email, 'admin');
     res.json({ success: true, token, message: 'Admin account created successfully!' });
   } catch (err) {
     console.error(err);
@@ -184,26 +230,22 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// ---- Admin Login ----
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required.' });
     }
-
     const result = await pool.query('SELECT * FROM admin_users WHERE email = $1', [email]);
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-
     const user = result.rows[0];
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-
-    const token = generateToken();
+    const token = generateToken(email, 'admin');
     res.json({ success: true, token });
   } catch (err) {
     console.error(err);
@@ -211,9 +253,59 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// ---- Check if user is authenticated ----
 app.get('/api/auth/verify', authMiddleware, (req, res) => {
-  res.json({ authenticated: true });
+  res.json({ authenticated: true, role: req.role });
+});
+
+// ---- Customer Auth ----
+app.post('/api/auth/customer/register', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'All fields are required.' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+    }
+    const existing = await pool.query('SELECT * FROM customers WHERE email = $1', [email]);
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ error: 'Email already registered.' });
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const result = await pool.query(
+      'INSERT INTO customers (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email',
+      [name, email, hashedPassword]
+    );
+    const customer = result.rows[0];
+    const token = generateToken(customer.id, 'customer');
+    res.json({ success: true, token, customer });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/customer/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required.' });
+    }
+    const result = await pool.query('SELECT * FROM customers WHERE email = $1', [email]);
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    const customer = result.rows[0];
+    const match = await bcrypt.compare(password, customer.password);
+    if (!match) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    const token = generateToken(customer.id, 'customer');
+    res.json({ success: true, token, customer: { id: customer.id, name: customer.name, email: customer.email } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ---- Shop Profile ----
@@ -224,7 +316,8 @@ app.get('/api/shop', async (req, res) => {
       return res.json({
         name: 'My Shop', location: 'Nairobi, Kenya', address: '',
         latitude: '', longitude: '', description: '', mission: '', vision: '',
-        logo: '', heroImage: '', whatsapp: '', tiktok: '', instagram: '', facebook: '', phone: ''
+        logo: '', heroImage: '', whatsapp: '', tiktok: '', instagram: '', facebook: '', phone: '',
+        location_sharing_enabled: false, admin_lat: '', admin_lng: ''
       });
     }
     res.json(result.rows[0]);
@@ -356,7 +449,12 @@ app.delete('/api/products/:id', authMiddleware, async (req, res) => {
 // ---- Chat Messages ----
 app.get('/api/chat', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM chat_messages ORDER BY timestamp ASC');
+    const result = await pool.query(`
+      SELECT cm.*, c.name AS customer_name 
+      FROM chat_messages cm
+      LEFT JOIN customers c ON cm.customer_id = c.id
+      ORDER BY timestamp ASC
+    `);
     res.json(result.rows);
   } catch (err) {
     console.error(err);
@@ -364,29 +462,203 @@ app.get('/api/chat', async (req, res) => {
   }
 });
 
-// ---------- Socket.IO ----------
-io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
+// ---- LOCATION SHARING ----
 
+// Admin: Get pending location requests
+app.get('/api/admin/location/requests', authMiddleware, async (req, res) => {
+  if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  try {
+    const result = await pool.query(`
+      SELECT lr.*, c.name, c.email 
+      FROM location_requests lr
+      JOIN customers c ON lr.customer_id = c.id
+      WHERE lr.status = 'pending'
+      ORDER BY lr.created_at ASC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Approve a request
+app.post('/api/admin/location/requests/:id/approve', authMiddleware, async (req, res) => {
+  if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const id = parseInt(req.params.id);
+  try {
+    await pool.query('UPDATE location_requests SET status = $1, updated_at = NOW() WHERE id = $2', ['approved', id]);
+    // Get customer_id to notify them
+    const result = await pool.query('SELECT customer_id FROM location_requests WHERE id = $1', [id]);
+    const customerId = result.rows[0]?.customer_id;
+    if (customerId) {
+      // Emit socket event to notify customer (they will receive via socket)
+      io.to(`customer_${customerId}`).emit('location_request_approved');
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Reject a request
+app.post('/api/admin/location/requests/:id/reject', authMiddleware, async (req, res) => {
+  if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const id = parseInt(req.params.id);
+  try {
+    await pool.query('UPDATE location_requests SET status = $1, updated_at = NOW() WHERE id = $2', ['rejected', id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Customer: Request location sharing
+app.post('/api/customer/location/request', authMiddleware, async (req, res) => {
+  if (req.role !== 'customer') return res.status(403).json({ error: 'Customer only' });
+  const customerId = req.userId;
+  try {
+    // Check if already has a pending request
+    const existing = await pool.query(
+      'SELECT * FROM location_requests WHERE customer_id = $1 AND status = $2',
+      [customerId, 'pending']
+    );
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: 'You already have a pending request.' });
+    }
+    // Check if already approved
+    const approved = await pool.query(
+      'SELECT * FROM location_requests WHERE customer_id = $1 AND status = $2',
+      [customerId, 'approved']
+    );
+    if (approved.rows.length > 0) {
+      return res.json({ success: true, alreadyApproved: true });
+    }
+    await pool.query(
+      'INSERT INTO location_requests (customer_id, status) VALUES ($1, $2)',
+      [customerId, 'pending']
+    );
+    res.json({ success: true, message: 'Request sent. Awaiting admin approval.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Customer: Check if location sharing is approved
+app.get('/api/customer/location/status', authMiddleware, async (req, res) => {
+  if (req.role !== 'customer') return res.status(403).json({ error: 'Customer only' });
+  const customerId = req.userId;
+  try {
+    const result = await pool.query(
+      'SELECT status FROM location_requests WHERE customer_id = $1 ORDER BY updated_at DESC LIMIT 1',
+      [customerId]
+    );
+    const status = result.rows[0]?.status || 'none';
+    res.json({ status });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Update location sharing state (toggle on/off and update coordinates)
+app.post('/api/admin/location/toggle', authMiddleware, async (req, res) => {
+  if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { lat, lng, enabled } = req.body;
+  try {
+    await pool.query(
+      'UPDATE shop SET location_sharing_enabled = $1, admin_lat = $2, admin_lng = $3',
+      [enabled, lat || null, lng || null]
+    );
+    // If enabled, broadcast current location to all approved customers
+    if (enabled && lat && lng) {
+      // Get all approved customer IDs
+      const customers = await pool.query(
+        'SELECT customer_id FROM location_requests WHERE status = $1',
+        ['approved']
+      );
+      customers.rows.forEach(row => {
+        io.to(`customer_${row.customer_id}`).emit('admin_location', { lat, lng });
+      });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Update location (for continuous tracking)
+app.post('/api/admin/location/update', authMiddleware, async (req, res) => {
+  if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { lat, lng } = req.body;
+  if (!lat || !lng) return res.status(400).json({ error: 'Missing coordinates' });
+  try {
+    // Update shop table
+    await pool.query('UPDATE shop SET admin_lat = $1, admin_lng = $2', [lat, lng]);
+    // Broadcast to approved customers
+    const customers = await pool.query(
+      'SELECT customer_id FROM location_requests WHERE status = $1',
+      ['approved']
+    );
+    customers.rows.forEach(row => {
+      io.to(`customer_${row.customer_id}`).emit('admin_location', { lat, lng });
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------- Socket.IO ----------
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token;
+  if (!token) {
+    // Allow connection without token for public
+    socket.customerId = null;
+    return next();
+  }
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    socket.customerId = decoded.userId;
+    socket.role = decoded.role;
+    next();
+  } catch (err) {
+    next(new Error('Invalid token'));
+  }
+});
+
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id, 'Customer ID:', socket.customerId);
+  if (socket.customerId) {
+    socket.join(`customer_${socket.customerId}`);
+  }
+
+  // Chat message
   socket.on('chat-message', async (data) => {
     try {
-      const { from, message } = data;
+      const { message } = data;
+      if (!message || !socket.customerId) return;
       const result = await pool.query(
-        'INSERT INTO chat_messages (from_user, message) VALUES ($1, $2) RETURNING *',
-        [from, message]
+        `INSERT INTO chat_messages (customer_id, message, from_user) 
+         VALUES ($1, $2, $3) RETURNING *`,
+        [socket.customerId, message, 'Customer']
       );
-      io.emit('new-chat-message', result.rows[0]);
+      const newMsg = result.rows[0];
+      const customerResult = await pool.query('SELECT name FROM customers WHERE id = $1', [socket.customerId]);
+      const customerName = customerResult.rows[0]?.name || 'Customer';
+      io.emit('new-chat-message', { ...newMsg, customer_name: customerName });
     } catch (err) {
       console.error(err);
     }
   });
 
-  socket.on('customer-location', (data) => {
-    io.emit('customer-update', { socketId: socket.id, ...data });
-  });
-
   socket.on('disconnect', () => {
-    io.emit('customer-left', socket.id);
+    console.log('Client disconnected:', socket.id);
   });
 });
 

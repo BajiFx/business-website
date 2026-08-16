@@ -1,4 +1,4 @@
-// ===== TYPING EFFECT FOR HERO TITLE =====
+// ===== TYPING EFFECT =====
 document.addEventListener('DOMContentLoaded', () => {
   const heroTitle = document.getElementById('heroTitle');
   if (heroTitle) {
@@ -20,9 +20,16 @@ let allProducts = [];
 let currentSlide = 0;
 let slideInterval;
 let mapInstance = null;
+let liveMapInstance = null;
+let liveMarker = null;
+let liveRouteLine = null;
 let chatSocket = null;
 let chatOpen = false;
 let chatMessages = [];
+let customerToken = localStorage.getItem('customerToken');
+let customerName = '';
+let isLocationApproved = false;
+let requestStatus = 'none';
 
 // ---- LOAD SHOP PROFILE ----
 async function loadShopProfile() {
@@ -42,8 +49,11 @@ async function loadShopProfile() {
   else logo.style.display = 'none';
   
   const heroSection = document.getElementById('heroSection');
-  if (shop.heroImage) heroSection.style.backgroundImage = `url(${shop.heroImage})`;
-  else heroSection.style.backgroundImage = 'linear-gradient(135deg, #1e293b, #0f172a)';
+  if (shop.heroImage) {
+    heroSection.style.backgroundImage = `url(${shop.heroImage})`;
+  } else {
+    heroSection.style.backgroundImage = 'linear-gradient(135deg, #1e293b, #0f172a)';
+  }
 
   // Map
   const lat = parseFloat(shop.latitude);
@@ -167,14 +177,18 @@ function renderGrid() {
   }).join('');
 }
 
-// ---- CHAT ----
+// ---- CHAT FUNCTIONS (same as before, with customer auth) ----
 function openChatWithProduct(productName) {
-  const box = document.getElementById('chatBox');
-  if (!chatOpen) toggleChat();
-  const input = document.getElementById('chatInput');
-  if (input) {
-    input.value = `May we talk about this ${productName}?`;
-    input.focus();
+  if (!customerToken) {
+    toggleChat();
+    document.getElementById('chatProductName').value = productName;
+  } else {
+    toggleChat();
+    const input = document.getElementById('chatInput');
+    if (input) {
+      input.value = `May we talk about this ${productName}?`;
+      input.focus();
+    }
   }
 }
 
@@ -182,21 +196,52 @@ function toggleChat() {
   const box = document.getElementById('chatBox');
   chatOpen = !chatOpen;
   box.style.display = chatOpen ? 'flex' : 'none';
+
   if (chatOpen) {
-    if (!chatSocket) {
-      chatSocket = io();
+    if (!customerToken) {
+      showAuthPanel();
+    } else {
+      showChatPanel();
+    }
+  }
+}
+
+function showAuthPanel() {
+  document.getElementById('authPanel').style.display = 'block';
+  document.getElementById('chatMessages').style.display = 'none';
+  document.getElementById('chatInputArea').style.display = 'none';
+  document.getElementById('chatHeader').textContent = '💬 Login / Register';
+}
+
+function showChatPanel() {
+  document.getElementById('authPanel').style.display = 'none';
+  document.getElementById('chatMessages').style.display = 'flex';
+  document.getElementById('chatInputArea').style.display = 'flex';
+  document.getElementById('chatHeader').textContent = '💬 Live Chat';
+
+  if (!chatSocket) {
+    chatSocket = io({
+      auth: { token: customerToken }
+    });
+    chatSocket.on('connect', () => {
+      console.log('Chat connected');
       fetch('/api/chat')
         .then(res => res.json())
         .then(msgs => {
           chatMessages = msgs;
           renderChatMessages();
-        })
-        .catch(() => {});
-      chatSocket.on('new-chat-message', (msg) => {
-        chatMessages.push(msg);
-        renderChatMessages();
-      });
-    }
+        });
+    });
+    chatSocket.on('new-chat-message', (msg) => {
+      chatMessages.push(msg);
+      renderChatMessages();
+    });
+    chatSocket.on('connect_error', (err) => {
+      console.error('Socket connection error:', err);
+      localStorage.removeItem('customerToken');
+      customerToken = null;
+      showAuthPanel();
+    });
   }
 }
 
@@ -206,18 +251,26 @@ function renderChatMessages() {
     container.innerHTML = '<p style="color:#94a3b8; text-align:center;">No messages yet.</p>';
     return;
   }
-  container.innerHTML = chatMessages.map(msg => `
-    <div style="background: ${msg.from_user === 'Customer' ? '#2563eb' : '#e2e8f0'}; 
-                color: ${msg.from_user === 'Customer' ? 'white' : '#1e293b'}; 
-                padding: 8px 14px; border-radius: 18px; max-width: 80%; align-self: ${msg.from_user === 'Customer' ? 'flex-end' : 'flex-start'};">
-      <div style="font-size:0.75rem; opacity:0.7;">${msg.from_user} · ${new Date(msg.timestamp).toLocaleString()}</div>
-      <div>${msg.message}</div>
-    </div>
-  `).join('');
+  container.innerHTML = chatMessages.map(msg => {
+    const sender = msg.from_user === 'Customer' ? msg.customer_name || 'Customer' : 'Seller';
+    const isCustomer = msg.from_user === 'Customer';
+    return `
+      <div style="background: ${isCustomer ? '#2563eb' : '#e2e8f0'}; 
+                  color: ${isCustomer ? 'white' : '#1e293b'}; 
+                  padding: 8px 14px; border-radius: 18px; max-width: 80%; align-self: ${isCustomer ? 'flex-end' : 'flex-start'};">
+        <div style="font-size:0.65rem; opacity:0.7;">${sender} · ${new Date(msg.timestamp).toLocaleString()}</div>
+        <div>${msg.message}</div>
+      </div>
+    `;
+  }).join('');
   container.scrollTop = container.scrollHeight;
 }
 
 function sendChatMessage() {
+  if (!customerToken) {
+    showAuthPanel();
+    return;
+  }
   const input = document.getElementById('chatInput');
   const msg = input.value.trim();
   if (!msg) return;
@@ -225,10 +278,233 @@ function sendChatMessage() {
     alert('Connecting to chat... please try again.');
     return;
   }
-  chatSocket.emit('chat-message', { from: 'Customer', message: msg });
+  chatSocket.emit('chat-message', { message: msg });
   input.value = '';
+}
+
+// ---- CUSTOMER AUTH for Chat ----
+async function customerRegister() {
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPassword').value;
+  const confirm = document.getElementById('regConfirm').value;
+  const status = document.getElementById('authStatus');
+  status.textContent = '';
+  if (!name || !email || !password || !confirm) {
+    status.textContent = 'All fields are required.';
+    status.style.color = '#ef4444';
+    return;
+  }
+  if (password.length < 6) {
+    status.textContent = 'Password must be at least 6 characters.';
+    status.style.color = '#ef4444';
+    return;
+  }
+  if (password !== confirm) {
+    status.textContent = 'Passwords do not match.';
+    status.style.color = '#ef4444';
+    return;
+  }
+  status.textContent = 'Creating account...';
+  status.style.color = '#2563eb';
+  try {
+    const res = await fetch('/api/auth/customer/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      status.textContent = '✅ Registration successful! Logging in...';
+      status.style.color = '#16a34a';
+      localStorage.setItem('customerToken', data.token);
+      customerToken = data.token;
+      customerName = data.customer.name;
+      checkLocationStatus(); // check if already approved
+      setTimeout(() => showChatPanel(), 500);
+    } else {
+      status.textContent = '❌ ' + (data.error || 'Registration failed');
+      status.style.color = '#ef4444';
+    }
+  } catch (err) {
+    status.textContent = '❌ Network error. Please try again.';
+    status.style.color = '#ef4444';
+  }
+}
+
+async function customerLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const status = document.getElementById('authStatus');
+  status.textContent = '';
+  if (!email || !password) {
+    status.textContent = 'Email and password are required.';
+    status.style.color = '#ef4444';
+    return;
+  }
+  status.textContent = 'Logging in...';
+  status.style.color = '#2563eb';
+  try {
+    const res = await fetch('/api/auth/customer/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      status.textContent = '✅ Logged in!';
+      status.style.color = '#16a34a';
+      localStorage.setItem('customerToken', data.token);
+      customerToken = data.token;
+      customerName = data.customer.name;
+      checkLocationStatus();
+      setTimeout(() => showChatPanel(), 500);
+    } else {
+      status.textContent = '❌ ' + (data.error || 'Login failed');
+      status.style.color = '#ef4444';
+    }
+  } catch (err) {
+    status.textContent = '❌ Network error. Please try again.';
+    status.style.color = '#ef4444';
+  }
+}
+
+function logoutChat() {
+  localStorage.removeItem('customerToken');
+  customerToken = null;
+  if (chatSocket) {
+    chatSocket.disconnect();
+    chatSocket = null;
+  }
+  chatMessages = [];
+  showAuthPanel();
+}
+
+// ---- LOCATION REQUEST ----
+document.getElementById('requestLocationBtn').addEventListener('click', async function() {
+  const btn = this;
+  const statusElem = document.getElementById('locationRequestStatus');
+  if (!customerToken) {
+    statusElem.textContent = '❌ Please login or create an account first.';
+    statusElem.style.color = '#ef4444';
+    return;
+  }
+  btn.disabled = true;
+  statusElem.textContent = '⏳ Sending request...';
+  statusElem.style.color = '#2563eb';
+  try {
+    const res = await fetch('/api/customer/location/request', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${customerToken}` }
+    });
+    const data = await res.json();
+    if (res.ok && data.alreadyApproved) {
+      statusElem.textContent = '✅ You already have access to the seller\'s location!';
+      statusElem.style.color = '#16a34a';
+      isLocationApproved = true;
+      showLiveLocation();
+    } else if (res.ok) {
+      statusElem.textContent = '✅ Request sent! Waiting for admin approval.';
+      statusElem.style.color = '#16a34a';
+    } else {
+      statusElem.textContent = '❌ ' + (data.error || 'Request failed');
+      statusElem.style.color = '#ef4444';
+    }
+  } catch (err) {
+    statusElem.textContent = '❌ Network error. Please try again.';
+    statusElem.style.color = '#ef4444';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+async function checkLocationStatus() {
+  if (!customerToken) return;
+  try {
+    const res = await fetch('/api/customer/location/status', {
+      headers: { 'Authorization': `Bearer ${customerToken}` }
+    });
+    const data = await res.json();
+    if (data.status === 'approved') {
+      isLocationApproved = true;
+      document.getElementById('locationRequestStatus').textContent = '✅ Location sharing approved!';
+      document.getElementById('locationRequestStatus').style.color = '#16a34a';
+      showLiveLocation();
+    }
+  } catch (err) {
+    console.error('Error checking location status:', err);
+  }
+}
+
+function showLiveLocation() {
+  document.getElementById('liveLocationSection').style.display = 'block';
+  // Connect to socket to receive admin location updates
+  if (!liveMapInstance) {
+    const mapContainer = document.getElementById('liveMap');
+    // Set initial view to shop location (or admin's last location)
+    liveMapInstance = L.map(mapContainer).setView([-1.2921, 36.8219], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(liveMapInstance);
+    // Connect socket for location updates
+    const liveSocket = io({ auth: { token: customerToken } });
+    liveSocket.on('admin_location', (data) => {
+      const { lat, lng } = data;
+      updateLiveLocation(lat, lng);
+    });
+    liveSocket.on('location_request_approved', () => {
+      // This also triggers when admin approves
+      checkLocationStatus();
+    });
+    // Also request current admin location from shop
+    fetch('/api/shop').then(res => res.json()).then(shop => {
+      if (shop.admin_lat && shop.admin_lng) {
+        updateLiveLocation(parseFloat(shop.admin_lat), parseFloat(shop.admin_lng));
+      }
+    });
+  }
+}
+
+function updateLiveLocation(lat, lng) {
+  if (!liveMapInstance) return;
+  if (liveMarker) {
+    liveMarker.setLatLng([lat, lng]);
+  } else {
+    liveMarker = L.marker([lat, lng]).addTo(liveMapInstance);
+  }
+  liveMapInstance.setView([lat, lng], 15);
+
+  // Calculate distance from customer (if we have their location)
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const userLat = pos.coords.latitude;
+      const userLng = pos.coords.longitude;
+      const dist = getDistance(userLat, userLng, lat, lng);
+      const distText = dist < 1000 ? dist.toFixed(0) + ' m' : (dist/1000).toFixed(2) + ' km';
+      const time = (dist / 1.4).toFixed(0);
+      document.getElementById('liveDistance').textContent = `📍 Distance: ${distText} (about ${time} seconds walk)`;
+      // Draw route line
+      if (liveRouteLine) {
+        liveMapInstance.removeLayer(liveRouteLine);
+      }
+      liveRouteLine = L.polyline([[userLat, userLng], [lat, lng]], { color: 'blue', weight: 4 }).addTo(liveMapInstance);
+    });
+  }
+}
+
+function getDistance(lat1, lng1, lat2, lng2) {
+  const R = 6371e3;
+  const φ1 = lat1 * Math.PI/180;
+  const φ2 = lat2 * Math.PI/180;
+  const Δφ = (lat2-lat1) * Math.PI/180;
+  const Δλ = (lng2-lng1) * Math.PI/180;
+  const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
 // ---- START ----
 loadShopProfile();
 loadProducts();
+if (customerToken) {
+  checkLocationStatus();
+}

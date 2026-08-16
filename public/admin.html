@@ -57,11 +57,41 @@
     .badge-preview { background: #e2e8f0; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; margin-right: 4px; }
     .gps-btn { background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 30px; font-weight: 600; cursor: pointer; margin-bottom: 10px; }
     .gps-btn:hover { background: #1d4ed8; }
-    #adminMapPreview { height: 200px; border-radius: 12px; margin-top: 10px; border: 1px solid #e2e8f0; }
+    .gps-btn.active { background: #22c55e; }
+    .gps-btn.active:hover { background: #16a34a; }
+
+    #adminMapPreview {
+      width: 100%;
+      height: 220px;
+      border-radius: 12px;
+      margin-top: 10px;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      overflow: hidden;
+      position: relative;
+    }
+    #adminMapPreview .leaflet-container {
+      width: 100% !important;
+      height: 100% !important;
+    }
+    #adminMapPreview p {
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+      color: #94a3b8;
+    }
+
     .logout-btn { background: #ef4444; color: white; border: none; padding: 6px 16px; border-radius: 30px; cursor: pointer; font-weight: 600; }
     .logout-btn:hover { background: #dc2626; }
     .btn-success { background: #22c55e; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; }
     .btn-success:hover { background: #16a34a; }
+
+    /* Location requests list */
+    .request-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
+    .request-item .info { flex: 1; }
+    .request-item .actions button { margin-left: 8px; padding: 4px 12px; border-radius: 20px; border: none; font-weight: 600; cursor: pointer; }
+    .request-item .actions .approve { background: #22c55e; color: white; }
+    .request-item .actions .reject { background: #ef4444; color: white; }
   </style>
 </head>
 <body>
@@ -74,49 +104,27 @@
   </div>
 </div>
 
-<!-- ============ AUTH SECTION ============ -->
+<!-- AUTH SECTION (unchanged) -->
 <div id="authContainer" class="auth-container">
   <div class="auth-tabs">
     <button id="loginTab" class="active" onclick="showTab('login')">Login</button>
     <button id="registerTab" onclick="showTab('register')">Register</button>
   </div>
-
-  <!-- LOGIN FORM -->
   <div id="loginForm" class="auth-form active">
     <h2>Welcome Back</h2>
     <p class="sub">Login to manage your business.</p>
-    <div class="form-group">
-      <label>Email</label>
-      <input type="email" id="loginEmail" placeholder="your@email.com">
-    </div>
-    <div class="form-group">
-      <label>Password</label>
-      <input type="password" id="loginPassword" placeholder="Enter your password">
-      <button class="toggle-pwd" onclick="togglePassword('loginPassword', this)"><i class="fas fa-eye"></i></button>
-    </div>
-    <button class="btn-primary" id="loginBtn" onclick="handleLogin()">Login</button>
+    <div class="form-group"><label>Email</label><input type="email" id="loginEmail" placeholder="your@email.com"></div>
+    <div class="form-group"><label>Password</label><input type="password" id="loginPassword" placeholder="Enter your password"><button class="toggle-pwd" onclick="togglePassword('loginPassword', this)"><i class="fas fa-eye"></i></button></div>
+    <button class="btn-primary" id="loginBtn">Login</button>
     <div id="loginStatus" class="auth-status"></div>
   </div>
-
-  <!-- REGISTER FORM -->
   <div id="registerForm" class="auth-form">
     <h2>Create Admin Account</h2>
-    <p class="sub">This can only be done once. After registration, new accounts are blocked.</p>
-    <div class="form-group">
-      <label>Email</label>
-      <input type="email" id="regEmail" placeholder="your@email.com">
-    </div>
-    <div class="form-group">
-      <label>Password</label>
-      <input type="password" id="regPassword" placeholder="Min 6 characters">
-      <button class="toggle-pwd" onclick="togglePassword('regPassword', this)"><i class="fas fa-eye"></i></button>
-    </div>
-    <div class="form-group">
-      <label>Confirm Password</label>
-      <input type="password" id="regConfirm" placeholder="Re-enter your password">
-      <button class="toggle-pwd" onclick="togglePassword('regConfirm', this)"><i class="fas fa-eye"></i></button>
-    </div>
-    <button class="btn-primary" id="registerBtn" onclick="handleRegister()">Create Account</button>
+    <p class="sub">This can only be done once.</p>
+    <div class="form-group"><label>Email</label><input type="email" id="regEmail" placeholder="your@email.com"></div>
+    <div class="form-group"><label>Password</label><input type="password" id="regPassword" placeholder="Min 6 characters"><button class="toggle-pwd" onclick="togglePassword('regPassword', this)"><i class="fas fa-eye"></i></button></div>
+    <div class="form-group"><label>Confirm Password</label><input type="password" id="regConfirm" placeholder="Re-enter your password"><button class="toggle-pwd" onclick="togglePassword('regConfirm', this)"><i class="fas fa-eye"></i></button></div>
+    <button class="btn-primary" id="registerBtn">Create Account</button>
     <div id="registerStatus" class="auth-status"></div>
   </div>
 </div>
@@ -124,7 +132,7 @@
 <!-- ============ DASHBOARD ============ -->
 <div id="dashboardContainer" class="hidden dashboard-container">
 
-  <!-- SHOP PROFILE -->
+  <!-- SHOP PROFILE (unchanged) -->
   <div class="dashboard-section">
     <h2>🏪 Shop Profile</h2>
     <form id="shopForm" enctype="multipart/form-data">
@@ -135,12 +143,12 @@
         <div class="full">
           <label>GPS Coordinates</label>
           <button type="button" class="gps-btn" id="getLocationBtn">📍 Get Current Location</button>
-          <span id="locationStatus" style="font-size:0.9rem; color:#16a34a;"></span>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <span id="locationStatus" style="font-size:0.9rem; color:#16a34a; display:block; margin-top:4px;"></span>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px; margin-top:6px;">
             <input type="text" id="shopLatitude" name="latitude" placeholder="Latitude" readonly style="background:#f1f5f9;">
             <input type="text" id="shopLongitude" name="longitude" placeholder="Longitude" readonly style="background:#f1f5f9;">
           </div>
-          <div id="adminMapPreview"></div>
+          <div id="adminMapPreview"><p>No location set. Click "Get Current Location" to see map.</p></div>
         </div>
         <div><label><i class="fab fa-whatsapp"></i> WhatsApp</label><input type="text" id="shopWhatsapp" name="whatsapp" placeholder="254712345678"></div>
         <div><label><i class="fab fa-tiktok"></i> TikTok</label><input type="text" id="shopTiktok" name="tiktok" placeholder="@myshop"></div>
@@ -155,6 +163,22 @@
       </div>
       <button type="submit" class="btn-success">💾 Update Shop Profile</button>
     </form>
+  </div>
+
+  <!-- LOCATION SHARING -->
+  <div class="dashboard-section">
+    <h2>📍 Live Location Sharing</h2>
+    <p style="color:#64748b; margin-bottom:10px;">Share your live GPS location with customers who request it.</p>
+    <div style="display:flex; align-items:center; gap:15px;">
+      <button id="shareLocationBtn" class="gps-btn">📍 Start Sharing</button>
+      <span id="shareStatus" style="font-weight:600; color:#64748b;">Not sharing</span>
+    </div>
+    <div style="margin-top:15px;">
+      <h3>Pending Location Requests</h3>
+      <div id="locationRequestsList">
+        <p style="color:#94a3b8;">No pending requests.</p>
+      </div>
+    </div>
   </div>
 
   <!-- ADD PRODUCT -->
@@ -191,6 +215,11 @@
 <script>
 let token = localStorage.getItem('token');
 let adminMap = null;
+let locationSocket = null;
+let isSharing = false;
+let shareInterval = null;
+
+console.log('✅ admin.html loaded');
 
 // ============ TAB SWITCHING ============
 function showTab(tab) {
@@ -213,7 +242,7 @@ function togglePassword(inputId, btn) {
   }
 }
 
-// ============ CHECK IF ADMIN EXISTS ============
+// ============ AUTH ============
 async function checkAdminExists() {
   try {
     const res = await fetch('/api/auth/admin-exists');
@@ -227,57 +256,33 @@ async function checkAdminExists() {
       document.getElementById('registerTab').style.display = 'block';
     }
   } catch (err) {
-    console.error('Error checking admin:', err);
+    console.error(err);
+    document.getElementById('registerTab').style.display = 'block';
   }
 }
 
-// ============ REGISTER ============
 async function handleRegister() {
   const email = document.getElementById('regEmail').value.trim();
   const password = document.getElementById('regPassword').value;
   const confirm = document.getElementById('regConfirm').value;
   const status = document.getElementById('registerStatus');
-
   status.className = 'auth-status';
-  status.textContent = '';
-
-  if (!email || !password || !confirm) {
-    status.textContent = '❌ All fields are required.';
-    status.className = 'auth-status error';
-    return;
-  }
-  if (password.length < 6) {
-    status.textContent = '❌ Password must be at least 6 characters.';
-    status.className = 'auth-status error';
-    return;
-  }
-  if (password !== confirm) {
-    status.textContent = '❌ Passwords do not match.';
-    status.className = 'auth-status error';
-    return;
-  }
-
+  if (!email || !password || !confirm) { status.textContent = '❌ All fields are required.'; status.className += ' error'; return; }
+  if (password.length < 6) { status.textContent = '❌ Password must be at least 6 characters.'; status.className += ' error'; return; }
+  if (password !== confirm) { status.textContent = '❌ Passwords do not match.'; status.className += ' error'; return; }
   status.textContent = '⏳ Creating account...';
-  status.className = 'auth-status';
   document.getElementById('registerBtn').disabled = true;
-
   try {
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
+    const res = await fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
     const data = await res.json();
     if (res.ok) {
       status.textContent = '✅ ' + data.message;
       status.className = 'auth-status success';
       localStorage.setItem('token', data.token);
       token = data.token;
-      setTimeout(() => {
-        showDashboard();
-      }, 500);
+      setTimeout(() => showDashboard(), 500);
     } else {
-      status.textContent = '❌ ' + data.error;
+      status.textContent = '❌ ' + (data.error || 'Registration failed');
       status.className = 'auth-status error';
       document.getElementById('registerBtn').disabled = false;
     }
@@ -288,42 +293,25 @@ async function handleRegister() {
   }
 }
 
-// ============ LOGIN ============
 async function handleLogin() {
   const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
   const status = document.getElementById('loginStatus');
-
   status.className = 'auth-status';
-  status.textContent = '';
-
-  if (!email || !password) {
-    status.textContent = '❌ Email and password are required.';
-    status.className = 'auth-status error';
-    return;
-  }
-
+  if (!email || !password) { status.textContent = '❌ Email and password are required.'; status.className += ' error'; return; }
   status.textContent = '⏳ Logging in...';
-  status.className = 'auth-status';
   document.getElementById('loginBtn').disabled = true;
-
   try {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
+    const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
     const data = await res.json();
     if (res.ok) {
       status.textContent = '✅ Welcome back!';
       status.className = 'auth-status success';
       localStorage.setItem('token', data.token);
       token = data.token;
-      setTimeout(() => {
-        showDashboard();
-      }, 500);
+      setTimeout(() => showDashboard(), 500);
     } else {
-      status.textContent = '❌ ' + data.error;
+      status.textContent = '❌ ' + (data.error || 'Login failed');
       status.className = 'auth-status error';
       document.getElementById('loginBtn').disabled = false;
     }
@@ -334,31 +322,30 @@ async function handleLogin() {
   }
 }
 
-// ============ LOGOUT ============
 function logout() {
   localStorage.removeItem('token');
   token = null;
+  if (shareInterval) clearInterval(shareInterval);
   document.getElementById('authContainer').style.display = 'block';
   document.getElementById('dashboardContainer').classList.add('hidden');
   document.getElementById('logoutBtn').classList.add('hidden');
-  document.getElementById('loginBtn').disabled = false;
-  document.getElementById('registerBtn').disabled = false;
+  if (adminMap) { adminMap.remove(); adminMap = null; }
+  console.log('👋 Logged out');
 }
 
-// ============ SHOW DASHBOARD ============
 function showDashboard() {
   document.getElementById('authContainer').style.display = 'none';
   document.getElementById('dashboardContainer').classList.remove('hidden');
   document.getElementById('logoutBtn').classList.remove('hidden');
   loadShopProfile();
   loadAdminProducts();
+  loadLocationRequests();
+  checkSharingStatus();
 }
 
 // ============ SHOP PROFILE ============
 async function loadShopProfile() {
-  const res = await fetch('/api/shop', {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
+  const res = await fetch('/api/shop', { headers: { 'Authorization': `Bearer ${token}` } });
   if (res.status === 401) { logout(); return; }
   const shop = await res.json();
   document.getElementById('shopName').value = shop.name || '';
@@ -379,21 +366,21 @@ async function loadShopProfile() {
 
 function updateAdminMap(lat, lng) {
   const mapContainer = document.getElementById('adminMapPreview');
+  if (adminMap) { adminMap.remove(); adminMap = null; }
+  mapContainer.innerHTML = '';
   const latNum = parseFloat(lat);
   const lngNum = parseFloat(lng);
   if (latNum && lngNum && !isNaN(latNum) && !isNaN(lngNum)) {
-    if (adminMap) adminMap.remove();
-    adminMap = L.map('adminMapPreview').setView([latNum, lngNum], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap'
-    }).addTo(adminMap);
+    adminMap = L.map(mapContainer).setView([latNum, lngNum], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(adminMap);
     L.marker([latNum, lngNum]).addTo(adminMap);
+    setTimeout(() => { if (adminMap) adminMap.invalidateSize(); }, 100);
   } else {
-    mapContainer.innerHTML = '<p style="padding:10px;color:#94a3b8;text-align:center;">No location set.</p>';
-    if (adminMap) { adminMap.remove(); adminMap = null; }
+    mapContainer.innerHTML = '<p>No location set. Click "Get Current Location" to see map.</p>';
   }
 }
 
+// ============ GPS ============
 document.getElementById('getLocationBtn').addEventListener('click', function() {
   if (!navigator.geolocation) {
     document.getElementById('locationStatus').textContent = '❌ Not supported';
@@ -420,6 +407,145 @@ document.getElementById('getLocationBtn').addEventListener('click', function() {
   );
 });
 
+// ============ LOCATION SHARING ============
+async function checkSharingStatus() {
+  try {
+    const res = await fetch('/api/shop', { headers: { 'Authorization': `Bearer ${token}` } });
+    if (res.status === 401) { logout(); return; }
+    const shop = await res.json();
+    isSharing = shop.location_sharing_enabled || false;
+    updateShareUI();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function updateShareUI() {
+  const btn = document.getElementById('shareLocationBtn');
+  const status = document.getElementById('shareStatus');
+  if (isSharing) {
+    btn.textContent = '🛑 Stop Sharing';
+    btn.classList.add('active');
+    status.textContent = '🔴 Sharing live location';
+    status.style.color = '#ef4444';
+  } else {
+    btn.textContent = '📍 Start Sharing';
+    btn.classList.remove('active');
+    status.textContent = 'Not sharing';
+    status.style.color = '#64748b';
+  }
+}
+
+document.getElementById('shareLocationBtn').addEventListener('click', function() {
+  if (!navigator.geolocation) {
+    alert('Geolocation not supported.');
+    return;
+  }
+  if (isSharing) {
+    // Stop sharing
+    toggleSharing(false);
+    return;
+  }
+  // Start sharing: get current location then toggle
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      toggleSharing(true, lat, lng);
+    },
+    (err) => {
+      alert('Could not get location: ' + err.message);
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+});
+
+async function toggleSharing(enabled, lat, lng) {
+  try {
+    const res = await fetch('/api/admin/location/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ enabled, lat, lng })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      isSharing = enabled;
+      updateShareUI();
+      if (enabled) {
+        // Start continuous location updates every 5 seconds
+        if (shareInterval) clearInterval(shareInterval);
+        shareInterval = setInterval(() => {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              fetch('/api/admin/location/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+              });
+            },
+            (err) => console.error('Update location error:', err),
+            { enableHighAccuracy: true, timeout: 5000 }
+          );
+        }, 5000);
+      } else {
+        if (shareInterval) clearInterval(shareInterval);
+        shareInterval = null;
+      }
+    } else {
+      alert(data.error || 'Failed to toggle sharing');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Network error');
+  }
+}
+
+// ============ LOCATION REQUESTS ============
+async function loadLocationRequests() {
+  try {
+    const res = await fetch('/api/admin/location/requests', { headers: { 'Authorization': `Bearer ${token}` } });
+    if (res.status === 401) { logout(); return; }
+    const requests = await res.json();
+    const list = document.getElementById('locationRequestsList');
+    if (requests.length === 0) {
+      list.innerHTML = '<p style="color:#94a3b8;">No pending requests.</p>';
+    } else {
+      list.innerHTML = requests.map(req => `
+        <div class="request-item">
+          <div class="info">
+            <strong>${req.name}</strong> (${req.email})<br>
+            <span style="font-size:0.8rem; color:#64748b;">Requested: ${new Date(req.created_at).toLocaleString()}</span>
+          </div>
+          <div class="actions">
+            <button class="approve" onclick="handleRequest(${req.id}, 'approve')">✅ Approve</button>
+            <button class="reject" onclick="handleRequest(${req.id}, 'reject')">❌ Reject</button>
+          </div>
+        </div>
+      `).join('');
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function handleRequest(id, action) {
+  try {
+    const res = await fetch(`/api/admin/location/requests/${id}/${action}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.ok) {
+      loadLocationRequests(); // refresh list
+    } else {
+      alert('Failed to ' + action + ' request.');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Network error');
+  }
+}
+
+// ============ SHOP FORM ============
 document.getElementById('shopForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const formData = new FormData(e.target);
@@ -428,11 +554,7 @@ document.getElementById('shopForm').addEventListener('submit', async (e) => {
   if (logo) formData.append('logo', logo);
   if (hero) formData.append('heroImage', hero);
   try {
-    const res = await fetch('/api/shop', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` },
-      body: formData
-    });
+    const res = await fetch('/api/shop', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData });
     const data = await res.json();
     if (res.ok) {
       alert('✅ Shop Profile Updated!');
@@ -445,6 +567,7 @@ document.getElementById('shopForm').addEventListener('submit', async (e) => {
   }
 });
 
+// ============ PRODUCTS ============
 document.getElementById('productForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const formData = new FormData(e.target);
@@ -457,11 +580,7 @@ document.getElementById('productForm').addEventListener('submit', async (e) => {
   if (image) formData.append('image', image);
   if (video) formData.append('video', video);
   try {
-    const res = await fetch('/api/products', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` },
-      body: formData
-    });
+    const res = await fetch('/api/products', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData });
     const data = await res.json();
     if (res.ok) {
       alert('✅ Product added!');
@@ -476,20 +595,13 @@ document.getElementById('productForm').addEventListener('submit', async (e) => {
 });
 
 async function loadAdminProducts() {
-  const res = await fetch('/api/products', {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
+  const res = await fetch('/api/products', { headers: { 'Authorization': `Bearer ${token}` } });
   if (res.status === 401) { logout(); return; }
   const products = await res.json();
   const list = document.getElementById('adminProductList');
   list.innerHTML = products.map(p => `
     <div class="product-item">
-      <span>
-        <strong>${p.name}</strong> - ${p.price}
-        ${p.rating ? `⭐(${p.rating})` : ''}
-        ${p.badge1 ? `<span class="badge-preview">${p.badge1}</span>` : ''}
-        ${p.isFlashSale ? '🔥' : ''} ${p.isNewArrival ? '🆕' : ''}
-      </span>
+      <span><strong>${p.name}</strong> - ${p.price} ${p.rating ? `⭐(${p.rating})` : ''} ${p.badge1 ? `<span class="badge-preview">${p.badge1}</span>` : ''} ${p.isFlashSale ? '🔥' : ''} ${p.isNewArrival ? '🆕' : ''}</span>
       <button class="delete-btn" onclick="deleteProduct(${p.id})">Delete</button>
     </div>
   `).join('');
@@ -497,30 +609,22 @@ async function loadAdminProducts() {
 
 async function deleteProduct(id) {
   if (!confirm('Delete this product?')) return;
-  await fetch(`/api/products/${id}`, {
-    method: 'DELETE',
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
+  await fetch(`/api/products/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
   loadAdminProducts();
 }
 
-// ============ AUTO-LOGIN CHECK ============
+// ============ AUTO-LOGIN ============
 if (token) {
-  // Verify token is still valid
-  fetch('/api/auth/verify', {
-    headers: { 'Authorization': `Bearer ${token}` }
-  }).then(res => {
-    if (res.ok) {
-      showDashboard();
-    } else {
-      logout();
-    }
-  }).catch(() => {
-    logout();
-  });
+  fetch('/api/auth/verify', { headers: { 'Authorization': `Bearer ${token}` } })
+    .then(res => res.ok ? showDashboard() : logout())
+    .catch(() => logout());
 } else {
   checkAdminExists();
 }
+
+// EVENT LISTENERS
+document.getElementById('registerBtn').addEventListener('click', handleRegister);
+document.getElementById('loginBtn').addEventListener('click', handleLogin);
 </script>
 </body>
 </html>
