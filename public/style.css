@@ -1,5 +1,5 @@
 /* ===== GOOGLE FONTS ===== */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800;900&display=swap');
 
 * {
   margin: 0;
@@ -9,20 +9,28 @@
 }
 
 body {
-  background: #f4f6f9;
+  background: #f0f4ff;
   color: #1e293b;
 }
 
 /* ===== ANNOUNCEMENT MARQUEE ===== */
 .announcement-bar {
-  background: linear-gradient(90deg, #2563eb, #7c3aed);
-  color: white;
+  background: linear-gradient(90deg, #ff6b6b, #feca57, #48dbfb);
+  background-size: 300% 100%;
+  animation: gradientMove 4s ease infinite;
+  color: #fff;
   padding: 6px 0;
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 0.9rem;
+  font-weight: 700;
   overflow: hidden;
   white-space: nowrap;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+@keyframes gradientMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 .announcement-bar marquee {
   display: block;
@@ -46,16 +54,18 @@ body {
 
 /* ===== HEADER ===== */
 .header {
-  background: linear-gradient(135deg, #0f172a, #1e293b);
+  background: linear-gradient(135deg, #0f172a, #1e3a5f);
   color: white;
   padding: 18px 20px;
   text-align: center;
-  border-bottom: 3px solid #2563eb;
+  border-bottom: 4px solid #ff6b6b;
+  position: relative;
 }
 .header h1 {
-  font-weight: 800;
+  font-weight: 900;
   letter-spacing: -0.5px;
   font-size: 2rem;
+  text-shadow: 0 0 20px rgba(255,107,107,0.3);
 }
 .header a {
   color: #94a3b8;
@@ -64,21 +74,40 @@ body {
   font-weight: 600;
   transition: color 0.2s;
 }
-.header a:hover { color: #60a5fa; }
+.header a:hover { color: #feca57; }
+
+/* ===== SAVE MORE BANNER (Blinking) ===== */
+.save-more-banner {
+  background: linear-gradient(135deg, #f093fb, #f5576c);
+  padding: 12px 20px;
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  animation: blinkSaveMore 1.2s infinite alternate;
+  letter-spacing: 1px;
+  margin: 10px 0;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(245,87,108,0.5);
+}
+@keyframes blinkSaveMore {
+  0% { background: linear-gradient(135deg, #f093fb, #f5576c); box-shadow: 0 4px 20px rgba(245,87,108,0.5); }
+  50% { background: linear-gradient(135deg, #ffecd2, #fcb69f); color: #1e293b; box-shadow: 0 4px 40px rgba(252,182,159,0.8); }
+  100% { background: linear-gradient(135deg, #a8edea, #fed6e3); color: #0f172a; box-shadow: 0 4px 20px rgba(254,214,227,0.5); }
+}
 
 /* ===== HERO / COVER SECTION ===== */
 .hero-section {
   background: #0f172a;
   background-size: cover;
   background-position: center;
-  min-height: 320px;
+  background-repeat: no-repeat;
+  min-height: 380px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  text-align: center;
   position: relative;
-  overflow: hidden;
 }
 .hero-section::before {
   content: '';
@@ -96,6 +125,9 @@ body {
 .hero-content {
   max-width: 800px;
   margin: 0 auto;
+  color: white;
+  text-align: center;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.6);
 }
 .hero-logo {
   width: 120px;
@@ -103,31 +135,31 @@ body {
   border-radius: 50%;
   object-fit: cover;
   border: 4px solid rgba(255,255,255,0.9);
-  box-shadow: 0 0 30px rgba(37,99,235,0.4);
+  box-shadow: 0 0 30px rgba(255,107,107,0.4);
   margin-bottom: 18px;
   transition: transform 0.3s;
 }
 .hero-logo:hover { transform: scale(1.05) rotate(-2deg); }
 .hero-content h1 {
   font-size: 3rem;
-  font-weight: 800;
+  font-weight: 900;
   letter-spacing: -0.02em;
   text-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
 .hero-content p {
   font-size: 1.15rem;
-  opacity: 0.9;
+  opacity: 0.95;
   margin: 6px 0;
 }
 
 /* ===== ABOUT CARD (Mission & Vision) ===== */
 .about-card {
-  background: white;
+  background: linear-gradient(135deg, #ffffff, #f8faff);
   border-radius: 20px;
   padding: 30px 20px;
   margin: 30px 0;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
-  border: 1px solid rgba(0,0,0,0.04);
+  box-shadow: 0 8px 30px rgba(37,99,235,0.1);
+  border: 1px solid rgba(37,99,235,0.1);
 }
 .about-grid {
   display: grid;
@@ -140,15 +172,18 @@ body {
   text-align: center;
   padding: 16px;
   border-radius: 16px;
-  background: #f8fafc;
+  background: rgba(255,255,255,0.7);
   transition: 0.3s;
 }
 .about-item:hover {
-  background: #f1f5f9;
-  transform: translateY(-2px);
+  background: #fff;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(37,99,235,0.1);
 }
 .about-item i {
   margin-bottom: 10px;
+  font-size: 2rem;
+  color: #2563eb;
 }
 .about-item h3 {
   font-weight: 700;
@@ -169,7 +204,7 @@ body {
   position: relative;
   overflow: hidden;
   border-radius: 20px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+  box-shadow: 0 12px 40px rgba(37,99,235,0.2);
 }
 .slider-wrapper {
   display: flex;
@@ -194,7 +229,7 @@ body {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.6);
   color: white;
   border: none;
   padding: 14px 20px;
@@ -205,7 +240,7 @@ body {
   transition: 0.3s;
 }
 .slider-btn:hover {
-  background: rgba(37,99,235,0.8);
+  background: rgba(255,107,107,0.9);
   transform: translateY(-50%) scale(1.05);
 }
 .prev { left: 16px; }
@@ -235,7 +270,7 @@ body {
 }
 .product-card:hover {
   transform: translateY(-8px) scale(1.01);
-  box-shadow: 0 16px 48px rgba(37,99,235,0.15);
+  box-shadow: 0 16px 48px rgba(37,99,235,0.2);
   border-color: #2563eb;
 }
 .product-card .media-wrap {
@@ -320,20 +355,41 @@ body {
   background: #f1f5f9;
   color: #334155;
 }
+
+/* ===== FLASH SALE BLINK ===== */
 .tag-flash {
-  background: #ef4444;
+  background: #ff6b6b;
   color: white;
-  animation: pulseTag 1.2s infinite;
+  animation: blinkFlash 0.8s infinite alternate;
+  font-weight: 800;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 0 20px rgba(255,107,107,0.5);
 }
+@keyframes blinkFlash {
+  0% { background: #ff6b6b; transform: scale(1); box-shadow: 0 0 20px rgba(255,107,107,0.5); }
+  100% { background: #ee5a24; transform: scale(1.1); box-shadow: 0 0 40px rgba(238,90,36,0.9); }
+}
+
+/* ===== NEW ARRIVAL BLINK ===== */
 .tag-new {
-  background: #3b82f6;
-  color: white;
-  animation: pulseTag 1.2s infinite 0.3s;
+  background: #48dbfb;
+  color: #0f172a;
+  animation: blinkNew 1.2s infinite alternate;
+  font-weight: 800;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 0 20px rgba(72,219,251,0.4);
 }
-@keyframes pulseTag {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.06); }
-  100% { transform: scale(1); }
+@keyframes blinkNew {
+  0% { background: #48dbfb; transform: scale(1); box-shadow: 0 0 20px rgba(72,219,251,0.4); }
+  100% { background: #0abde3; transform: scale(1.05); box-shadow: 0 0 40px rgba(10,189,227,0.8); }
 }
 
 .product-card .shipping {
@@ -360,22 +416,22 @@ body {
   transition: all 0.25s;
 }
 .btn-primary {
-  background: #2563eb;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
   color: white;
-}
-.btn-primary:hover {
-  background: #1d4ed8;
-  transform: scale(1.03);
   box-shadow: 0 4px 16px rgba(37,99,235,0.3);
 }
+.btn-primary:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 24px rgba(37,99,235,0.5);
+}
 .btn-success {
-  background: #22c55e;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
   color: white;
+  box-shadow: 0 4px 16px rgba(34,197,94,0.3);
 }
 .btn-success:hover {
-  background: #16a34a;
   transform: scale(1.03);
-  box-shadow: 0 4px 16px rgba(34,197,94,0.3);
+  box-shadow: 0 4px 24px rgba(34,197,94,0.5);
 }
 .btn-whatsapp { background: #25D366; color: white; }
 .btn-whatsapp:hover { background: #128C7E; transform: scale(1.08); }
@@ -418,7 +474,7 @@ body {
   height: 400px;
   border-radius: 20px;
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.08);
 }
 #mapAddress, #liveDistance {
   font-size: 1rem;
