@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shopping Cart</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .cart-page { max-width: 900px; margin: 40px auto; padding: 0 20px; }
+    .cart-page h1 { font-size: 2rem; font-weight: 800; color: #0f172a; margin-bottom: 10px; }
+    .cart-page .sub { color: #64748b; margin-bottom: 30px; }
+    .cart-empty { text-align: center; padding: 60px 20px; }
+    .cart-empty i { font-size: 4rem; color: #94a3b8; margin-bottom: 16px; }
+    .cart-empty h2 { font-size: 1.5rem; color: #1e293b; }
+    .cart-empty p { color: #64748b; margin: 10px 0 20px; }
+    .cart-empty .btn { padding: 12px 30px; }
+
+    .cart-item {
+      display: flex;
+      gap: 20px;
+      padding: 16px 0;
+      border-bottom: 1px solid #e2e8f0;
+      align-items: center;
+    }
+    .cart-item img {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+    .cart-item .details { flex: 1; }
+    .cart-item .details .name { font-weight: 600; font-size: 1rem; }
+    .cart-item .details .price { font-weight: 700; color: #0f172a; }
+    .cart-item .qty-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .cart-item .qty-control button {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: none;
+      background: #e2e8f0;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .cart-item .qty-control button:hover { background: #2563eb; color: white; }
+    .cart-item .qty-control span { font-weight: 700; min-width: 24px; text-align: center; }
+    .cart-item .remove-btn {
+      background: none;
+      border: none;
+      color: #ef4444;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: 0.2s;
+      padding: 4px 8px;
+    }
+    .cart-item .remove-btn:hover { transform: scale(1.2); }
+    .cart-item .subtotal { font-weight: 700; min-width: 80px; text-align: right; }
+
+    .cart-summary {
+      margin-top: 30px;
+      padding: 20px;
+      background: #f8fafc;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .cart-summary .total { font-size: 1.4rem; font-weight: 800; color: #0f172a; }
+    .cart-summary .total span { color: #2563eb; }
+    .cart-summary .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .cart-summary .btn { padding: 12px 30px; font-size: 1rem; }
+    .btn-danger { background: #ef4444; color: white; }
+    .btn-danger:hover { background: #dc2626; }
+
+    .back-link { display: inline-block; margin-bottom: 20px; color: #2563eb; text-decoration: none; font-weight: 600; }
+    .back-link:hover { text-decoration: underline; }
+
+    /* Remove reason modal */
+    .reason-modal .modal-box { max-width: 400px; }
+    .reason-modal textarea { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; min-height: 80px; margin-top: 10px; font-family: inherit; }
+    .reason-modal .btn-row { display: flex; gap: 10px; margin-top: 12px; justify-content: flex-end; }
+  </style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div class="header">
+  <h1>🛍️ <span id="shopNameHeader">Our Business</span></h1>
+  <a href="/">Home</a>
+  <a href="/track.html" style="color:#feca57;">📍 Track</a>
+  <a href="/cart.html" style="color:#feca57; position:relative;">
+    🛒 <span id="cartBadge" style="background:#ef4444; color:white; border-radius:50%; padding:0 6px; font-size:0.7rem; position:absolute; top:-8px; right:-10px; display:none;">0</span>
+  </a>
+</div>
+
+<!-- ===== CART PAGE ===== -->
+<div class="cart-page">
+  <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Continue Shopping</a>
+  <h1>🛒 Your Cart</h1>
+  <p class="sub">Review and manage your items before checkout.</p>
+
+  <div id="cartItemsContainer">
+    <!-- Cart items will be rendered here -->
+  </div>
+
+  <div id="cartSummary" class="cart-summary" style="display:none;">
+    <div>
+      <div style="font-size:0.9rem; color:#64748b;">Total</div>
+      <div class="total">Ksh <span id="cartTotal">0</span></div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-danger" onclick="clearCartWithConfirm()"><i class="fas fa-trash"></i> Clear Cart</button>
+      <button class="btn btn-success" onclick="checkout()">
+        <i class="fas fa-check-circle"></i> Proceed to Checkout
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== REMOVE REASON MODAL ===== -->
+<div class="modal-overlay reason-modal" id="reasonModal">
+  <div class="modal-box">
+    <h3>Why are you removing this item?</h3>
+    <p style="color:#64748b; font-size:0.9rem;">(Optional) Let us know so we can improve.</p>
+    <textarea id="removeReason" placeholder="e.g. Found a better price, changed my mind..."></textarea>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeReasonModal()">Cancel</button>
+      <button class="btn btn-danger" id="confirmRemoveBtn">Remove Item</button>
+    </div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+<script>
+  let pendingRemoveId = null;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadShopProfile();
+    renderCartPage();
+    updateCartBadge();
+  });
+
+  function renderCartPage() {
+    const cart = getCart();
+    const container = document.getElementById('cartItemsContainer');
+    const summary = document.getElementById('cartSummary');
+    
+    if (!cart || cart.length === 0) {
+      container.innerHTML = `
+        <div class="cart-empty">
+          <i class="fas fa-shopping-cart"></i>
+          <h2>Your cart is empty</h2>
+          <p>Looks like you haven't added any items yet.</p>
+          <a href="/" class="btn btn-primary">Start Shopping</a>
+        </div>
+      `;
+      summary.style.display = 'none';
+      return;
+    }
+
+    let html = '';
+    let total = 0;
+    cart.forEach(item => {
+      const priceNum = parseFloat(item.price.replace(/[^0-9.]/g, '')) || 0;
+      const subtotal = priceNum * item.quantity;
+      total += subtotal;
+      html += `
+        <div class="cart-item" data-id="${item.id}">
+          <img src="${item.image || ''}" alt="${item.name}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22 viewBox=%220 0 80 80%22%3E%3Crect width=%2280%22 height=%2280%22 fill=%22%23e2e8f0%22/%3E%3Ctext x=%2240%22 y=%2245%22 font-family=%22sans-serif%22 font-size=%2220%22 text-anchor=%22middle%22 fill=%22%2394a3b8%22%3E📦%3C/text%3E%3C/svg%3E'">
+          <div class="details">
+            <div class="name">${item.name}</div>
+            <div class="price">${item.price}</div>
+          </div>
+          <div class="qty-control">
+            <button onclick="updateCartQty(${item.id}, -1)">−</button>
+            <span>${item.quantity}</span>
+            <button onclick="updateCartQty(${item.id}, 1)">+</button>
+          </div>
+          <div class="subtotal">Ksh ${subtotal.toFixed(2)}</div>
+          <button class="remove-btn" onclick="openRemoveReason(${item.id})"><i class="fas fa-trash"></i></button>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+    summary.style.display = 'flex';
+    document.getElementById('cartTotal').textContent = total.toFixed(2);
+    updateCartBadge();
+  }
+
+  function updateCartQty(id, delta) {
+    const cart = getCart();
+    const item = cart.find(i => i.id === id);
+    if (!item) return;
+    item.quantity = Math.max(1, item.quantity + delta);
+    saveCart(cart);
+    renderCartPage();
+    updateCartBadge();
+  }
+
+  function openRemoveReason(id) {
+    pendingRemoveId = id;
+    document.getElementById('reasonModal').classList.add('active');
+    document.getElementById('removeReason').value = '';
+    document.getElementById('confirmRemoveBtn').onclick = function() {
+      const reason = document.getElementById('removeReason').value.trim();
+      if (reason) {
+        console.log(`Item ${id} removed. Reason: ${reason}`);
+        // You can send this to analytics or server if needed
+      }
+      removeItemFromCart(id);
+      closeReasonModal();
+    };
+  }
+
+  function closeReasonModal() {
+    document.getElementById('reasonModal').classList.remove('active');
+    pendingRemoveId = null;
+  }
+
+  function removeItemFromCart(id) {
+    let cart = getCart();
+    cart = cart.filter(i => i.id !== id);
+    saveCart(cart);
+    renderCartPage();
+    updateCartBadge();
+  }
+
+  function clearCartWithConfirm() {
+    if (confirm('Are you sure you want to clear your entire cart?')) {
+      saveCart([]);
+      renderCartPage();
+      updateCartBadge();
+    }
+  }
+
+  function checkout() {
+    alert('🛒 Checkout feature coming soon! Your total is Ksh ' + document.getElementById('cartTotal').textContent);
+  }
+
+  // Close reason modal on overlay click
+  document.getElementById('reasonModal').addEventListener('click', function(e) {
+    if (e.target === this) closeReasonModal();
+  });
+
+  // Expose functions to global scope
+  window.renderCartPage = renderCartPage;
+  window.updateCartQty = updateCartQty;
+  window.openRemoveReason = openRemoveReason;
+  window.removeItemFromCart = removeItemFromCart;
+  window.clearCartWithConfirm = clearCartWithConfirm;
+  window.checkout = checkout;
+</script>
+</body>
+</html>

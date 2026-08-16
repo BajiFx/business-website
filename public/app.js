@@ -1,4 +1,4 @@
-// ===== TYPING EFFECT FOR HERO TITLE =====
+// ===== TYPING EFFECT =====
 document.addEventListener('DOMContentLoaded', () => {
   const heroTitle = document.getElementById('heroTitle');
   if (heroTitle) {
@@ -14,9 +14,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }, 60);
   }
+  updateCartBadge();
 });
 
 let allProducts = [];
+let rotatedProducts = [];
 let currentSlide = 0;
 let slideInterval;
 let mapInstance = null;
@@ -32,29 +34,182 @@ let isLocationApproved = false;
 let heroImages = [];
 let heroImageIndex = 0;
 let heroImageInterval = null;
+let currentModalProductId = null;
+let modalQty = 1;
 
-// ---- LOAD SHOP PROFILE (FIXED) ----
+// ============================================================
+//  CART FUNCTIONS
+// ============================================================
+function getCart() {
+  try {
+    return JSON.parse(localStorage.getItem('cart')) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCart(cart) {
+  localStorage.setItem('cart', JSON.stringify(cart));
+  updateCartBadge();
+}
+
+function getCartCount() {
+  const cart = getCart();
+  return cart.reduce((sum, item) => sum + item.quantity, 0);
+}
+
+function updateCartBadge() {
+  const badge = document.getElementById('cartBadge');
+  if (badge) {
+    const count = getCartCount();
+    if (count > 0) {
+      badge.textContent = count;
+      badge.style.display = 'inline';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+  const floatBadge = document.getElementById('cartBadgeFloat');
+  if (floatBadge) {
+    const count = getCartCount();
+    if (count > 0) {
+      floatBadge.textContent = count;
+      floatBadge.style.display = 'inline';
+    } else {
+      floatBadge.style.display = 'none';
+    }
+  }
+}
+
+function addToCart(productId, quantity = 1) {
+  const product = allProducts.find(p => p.id === productId);
+  if (!product) {
+    alert('Product not found!');
+    return;
+  }
+  const cart = getCart();
+  const existing = cart.find(item => item.id === productId);
+  if (existing) {
+    existing.quantity += quantity;
+  } else {
+    cart.push({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image || '',
+      quantity: quantity
+    });
+  }
+  saveCart(cart);
+  alert(`✅ Added ${quantity} "${product.name}" to cart!`);
+  updateCartBadge();
+  updateModalCartButton(productId);
+  renderGrid();
+}
+
+function addToCartFromModal() {
+  if (currentModalProductId) {
+    addToCart(currentModalProductId, modalQty);
+    modalQty = 1;
+    document.getElementById('modalQty').textContent = '1';
+  }
+}
+
+function removeFromCart(productId) {
+  let cart = getCart();
+  cart = cart.filter(item => item.id !== productId);
+  saveCart(cart);
+  updateCartBadge();
+  renderGrid();
+  if (window.renderCartPage) window.renderCartPage();
+}
+
+function updateCartQuantity(productId, delta) {
+  const cart = getCart();
+  const item = cart.find(i => i.id === productId);
+  if (!item) return;
+  item.quantity = Math.max(1, item.quantity + delta);
+  saveCart(cart);
+  updateCartBadge();
+  renderGrid();
+  if (window.renderCartPage) window.renderCartPage();
+}
+
+function clearCart() {
+  saveCart([]);
+  updateCartBadge();
+  renderGrid();
+  if (window.renderCartPage) window.renderCartPage();
+}
+
+// ============================================================
+//  MODAL QUANTITY CONTROLS
+// ============================================================
+function changeQty(delta) {
+  const newQty = modalQty + delta;
+  if (newQty < 1) return;
+  modalQty = newQty;
+  document.getElementById('modalQty').textContent = modalQty;
+}
+
+function updateModalCartButton(productId) {
+  const cart = getCart();
+  const inCart = cart.some(item => item.id === productId);
+  const modalBtn = document.getElementById('modalAddToCart');
+  if (!modalBtn) return;
+  if (inCart) {
+    modalBtn.textContent = '➕ Add More';
+    modalBtn.style.background = '#22c55e';
+    modalBtn.onclick = addToCartFromModal;
+  } else {
+    modalBtn.textContent = '🛒 Add to Cart';
+    modalBtn.style.background = '';
+    modalBtn.onclick = addToCartFromModal;
+  }
+}
+
+// ============================================================
+//  CARD QUANTITY SELECTOR
+// ============================================================
+function changeCardQty(productId, delta) {
+  const qtySpan = document.getElementById(`qty-${productId}`);
+  if (!qtySpan) return;
+  let current = parseInt(qtySpan.textContent) || 1;
+  current = Math.max(1, current + delta);
+  qtySpan.textContent = current;
+}
+
+function addCardToCart(productId) {
+  const qtySpan = document.getElementById(`qty-${productId}`);
+  const qty = qtySpan ? parseInt(qtySpan.textContent) || 1 : 1;
+  addToCart(productId, qty);
+  if (qtySpan) qtySpan.textContent = '1';
+}
+
+// ============================================================
+//  HELPER: rotate products every 12 hours
+// ============================================================
+function getRotatedProducts(products) {
+  if (!products || products.length === 0) return products;
+  const seed = Math.floor(Date.now() / (12 * 60 * 60 * 1000));
+  const offset = seed % products.length;
+  return products.slice(offset).concat(products.slice(0, offset));
+}
+
+// ---- LOAD SHOP PROFILE ----
 async function loadShopProfile() {
   try {
     const res = await fetch('/api/shop');
     const shop = await res.json();
     
-    console.log('📦 Shop data:', shop); // Debug: see full shop object
-
-    // Header shop name
     document.getElementById('shopNameHeader').textContent = shop.name || 'Our Business';
-    
-    // Hero section text
     document.getElementById('heroTitle').textContent = shop.name || 'Welcome';
     document.getElementById('heroLocation').textContent = shop.location ? `📍 ${shop.location}` : '';
     document.getElementById('heroAddress').textContent = shop.address ? `🏠 ${shop.address}` : '';
     document.getElementById('heroDesc').textContent = shop.description || '';
-    
-    // Mission & Vision
-    document.getElementById('heroMission').textContent = shop.mission || '-';
-    document.getElementById('heroVision').textContent = shop.vision || '-';
-    
-    // Logo
+    document.getElementById('heroMission').textContent = shop.mission || 'To provide quality products with care.';
+    document.getElementById('heroVision').textContent = shop.vision || 'To be the most trusted shop in the community.';
+
     const logo = document.getElementById('heroLogo');
     if (shop.logo && shop.logo !== '') {
       logo.src = shop.logo;
@@ -63,23 +218,20 @@ async function loadShopProfile() {
       logo.style.display = 'none';
     }
     
-    // *** COVER PHOTO (Hero Image) - FIXED ***
     const heroSection = document.getElementById('heroSection');
     if (shop.heroImage && shop.heroImage !== '') {
       console.log('✅ Hero image found:', shop.heroImage);
-      // Apply the image as background
       heroSection.style.backgroundImage = `url(${shop.heroImage})`;
       heroSection.style.backgroundSize = 'cover';
       heroSection.style.backgroundPosition = 'center';
       heroSection.style.backgroundRepeat = 'no-repeat';
-      // Remove any inline style that might override it
       heroSection.style.backgroundColor = 'transparent';
     } else {
-      console.warn('⚠️ No hero image found in shop data. Using gradient fallback.');
+      console.warn('⚠️ No hero image, using gradient fallback');
       heroSection.style.backgroundImage = 'linear-gradient(135deg, #1e293b, #0f172a)';
     }
 
-    // ---- Static Map ----
+    // Static Map
     const lat = parseFloat(shop.latitude);
     const lng = parseFloat(shop.longitude);
     const address = shop.address || '';
@@ -98,12 +250,14 @@ async function loadShopProfile() {
       document.getElementById('mapAddress').textContent = '';
     }
 
-    // ---- Contact Icons ----
+    // Contact Icons
     document.getElementById('iconWhatsapp').href = shop.whatsapp ? `https://wa.me/${shop.whatsapp}` : '#';
     document.getElementById('iconTiktok').href = shop.tiktok ? `https://tiktok.com/@${shop.tiktok.replace('@','')}` : '#';
     document.getElementById('iconInstagram').href = shop.instagram ? `https://instagram.com/${shop.instagram.replace('@','')}` : '#';
     document.getElementById('iconFacebook').href = shop.facebook ? `https://facebook.com/messages/t/${shop.facebook.replace('@','')}` : '#';
     document.getElementById('iconPhone').href = shop.phone ? `tel:${shop.phone}` : '#';
+    
+    updateCartBadge();
   } catch (err) {
     console.error('Error loading shop profile:', err);
   }
@@ -137,26 +291,30 @@ async function loadProducts() {
   try {
     const res = await fetch('/api/products');
     allProducts = await res.json();
+    console.log('📦 Products loaded:', allProducts);
+    rotatedProducts = getRotatedProducts(allProducts);
     allProducts.forEach(p => {
       if (p.image) addImageToSlideshow(p.image);
     });
     renderSlider();
     renderGrid();
+    updateCartBadge();
   } catch (err) {
     console.error('Error loading products:', err);
   }
 }
 
+// ---- SLIDER ----
 function renderSlider() {
   const wrapper = document.getElementById('sliderWrapper');
-  if (!allProducts.length) {
+  if (!rotatedProducts.length) {
     wrapper.innerHTML = `<div class="slide">✨ No products yet. Admin please add!</div>`;
     return;
   }
-  wrapper.innerHTML = allProducts.map(p => `
+  wrapper.innerHTML = rotatedProducts.map(p => `
     <div class="slide">
       ${p.video ? `<video src="${p.video}" controls></video>` : 
-       p.image ? `<img src="${p.image}" alt="${p.name}">` : 
+       p.image ? `<img src="${p.image}" alt="${p.name}" onerror="this.parentElement.innerHTML='<div>📦</div>'">` : 
        `<div>📦 ${p.name}</div>`}
     </div>
   `).join('');
@@ -169,70 +327,165 @@ function renderSlider() {
 function updateSlider() {
   const wrapper = document.getElementById('sliderWrapper');
   if (!wrapper) return;
-  const total = allProducts.length || 1;
+  const total = rotatedProducts.length || 1;
   wrapper.style.transform = `translateX(-${currentSlide * 100}%)`;
 }
 
 function changeSlide(direction) {
-  const total = allProducts.length || 1;
+  const total = rotatedProducts.length || 1;
   currentSlide = (currentSlide + direction + total) % total;
   updateSlider();
 }
 
+// ---- PRODUCT GRID (with image fallback) ----
 function renderGrid() {
   const grid = document.getElementById('productGrid');
-  if (!allProducts.length) {
+  if (!rotatedProducts.length) {
     grid.innerHTML = `<p style="text-align:center;padding:40px;">No products available yet.</p>`;
     return;
   }
 
-  const baseUrl = window.location.origin;
-
-  grid.innerHTML = allProducts.map(p => {
-    const productName = encodeURIComponent(p.name);
-    const whatsappLink = `https://wa.me/?text=May%20we%20talk%20about%20this%20${productName}%3F%20View%20here%3A%20${baseUrl}`;
-    const tiktokLink = `https://tiktok.com`;
-    const instagramLink = `https://instagram.com`;
-    const facebookLink = `https://facebook.com`;
-    const phoneLink = `#`;
-
-    let badgesHtml = '';
-    if (p.badge1) badgesHtml += `<span class="badge badge-green">${p.badge1}</span>`;
-    if (p.badge2) badgesHtml += `<span class="badge badge-blue">${p.badge2}</span>`;
-    let tagsHtml = '';
-    if (p.isFlashSale) tagsHtml += `<span class="tag tag-flash">🔥 Flash Sale</span>`;
-    if (p.isNewArrival) tagsHtml += `<span class="tag tag-new">🆕 New Arrival</span>`;
+  grid.innerHTML = rotatedProducts.map(p => {
+    const cart = getCart();
+    const inCart = cart.some(item => item.id === p.id);
+    const btnText = inCart ? '➕ Add More' : '🛒 Add to Cart';
+    const btnClass = inCart ? 'btn btn-success' : 'btn btn-primary';
+    const tickHtml = inCart ? '<span style="color:#22c55e; font-weight:700; margin-left:6px;">✔</span>' : '';
+    const qtyId = `qty-${p.id}`;
+    
+    // Handle image: if p.image is present, use it; else show placeholder
+    let imageHtml = '';
+    if (p.image) {
+      imageHtml = `<img src="${p.image}" alt="${p.name}" loading="lazy" onerror="this.style.display='none';this.parentElement.innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;height:100%;background:#e2e8f0;font-size:2rem;\'>📦</div>'">`;
+    } else {
+      imageHtml = `<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#e2e8f0;font-size:2rem;">📦</div>`;
+    }
 
     return `
       <div class="product-card">
         <div class="media-wrap">
-          ${p.video ? `<video src="${p.video}" controls></video>` : 
-           p.image ? `<img src="${p.image}" alt="${p.name}" loading="lazy">` : 
-           `<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#e2e8f0;">📦</div>`}
+          ${p.video ? `<video src="${p.video}" controls></video>` : imageHtml}
+          ${p.isFlashSale ? `<div class="flash-badge">🔥</div>` : ''}
+          ${p.isNewArrival ? `<div class="new-badge">🆕</div>` : ''}
         </div>
         <div class="info">
-          <div class="name">${p.name}</div>
+          <div class="name">${p.name} ${tickHtml}</div>
           <div class="price">${p.price}</div>
           ${p.rating ? `<div class="rating"><span>⭐</span>(${p.rating})</div>` : ''}
-          ${badgesHtml ? `<div class="badges">${badgesHtml}</div>` : ''}
-          ${tagsHtml ? `<div class="product-tags">${tagsHtml}</div>` : ''}
-          ${p.shipping ? `<div class="shipping">🚚 ${p.shipping}</div>` : ''}
-          
-          <div class="actions">
-            <button class="btn btn-success" onclick="openChatWithProduct('${p.name.replace(/'/g, "\\'")}')">
-              <i class="fas fa-comment-dots"></i> Let's Talk
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:nowrap; margin-top:6px;">
+            <button class="btn btn-details" onclick="openDetails(${p.id})">See Details</button>
+            <div style="display:flex; align-items:center; gap:4px; background:#f1f5f9; border-radius:30px; padding:2px 6px; flex-shrink:0;">
+              <button onclick="changeCardQty(${p.id}, -1)" style="width:24px; height:24px; border-radius:50%; border:1px solid #d1d5db; background:white; font-size:1rem; cursor:pointer; line-height:1;">−</button>
+              <span id="${qtyId}" style="font-weight:700; min-width:20px; text-align:center;">1</span>
+              <button onclick="changeCardQty(${p.id}, 1)" style="width:24px; height:24px; border-radius:50%; border:1px solid #d1d5db; background:white; font-size:1rem; cursor:pointer; line-height:1;">+</button>
+            </div>
+            <button class="${btnClass}" style="font-size:0.75rem; padding:4px 12px; white-space:nowrap;" onclick="addCardToCart(${p.id})">
+              <i class="fas fa-cart-plus"></i> ${btnText}
             </button>
-            <a href="${whatsappLink}" target="_blank" class="btn btn-whatsapp" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
-            <a href="${tiktokLink}" target="_blank" class="btn btn-tiktok" title="TikTok"><i class="fab fa-tiktok"></i></a>
-            <a href="${instagramLink}" target="_blank" class="btn btn-instagram" title="Instagram"><i class="fab fa-instagram"></i></a>
-            <a href="${facebookLink}" target="_blank" class="btn btn-facebook" title="Facebook"><i class="fab fa-facebook-messenger"></i></a>
-            <a href="${phoneLink}" class="btn btn-phone" title="Call"><i class="fas fa-phone"></i></a>
           </div>
         </div>
       </div>
     `;
   }).join('');
 }
+
+// ---- OPEN DETAILS MODAL (with related products) ----
+function openDetails(productId) {
+  const product = allProducts.find(p => p.id === productId);
+  if (!product) return;
+  currentModalProductId = productId;
+  modalQty = 1;
+  document.getElementById('modalQty').textContent = '1';
+
+  // ---- Populate main product ----
+  const img = document.getElementById('detailImage');
+  const vid = document.getElementById('detailVideo');
+  if (product.image) {
+    img.src = product.image;
+    img.style.display = 'block';
+    vid.style.display = 'none';
+    // If image fails, hide it and show video fallback or placeholder
+    img.onerror = function() {
+      this.style.display = 'none';
+    };
+  } else if (product.video) {
+    vid.src = product.video;
+    vid.style.display = 'block';
+    img.style.display = 'none';
+  } else {
+    img.style.display = 'none';
+    vid.style.display = 'none';
+  }
+
+  document.getElementById('detailName').textContent = product.name;
+  document.getElementById('detailPrice').textContent = product.price;
+  document.getElementById('detailRating').textContent = product.rating ? `⭐ ${product.rating}` : '';
+  document.getElementById('detailDescription').textContent = product.description || 'No description available.';
+  document.getElementById('detailContact').textContent = product.contact || 'Contact seller';
+  document.getElementById('detailShipping').textContent = product.shipping || '';
+
+  document.getElementById('detailBadges').innerHTML = `
+    ${product.badge1 ? `<span class="badge badge-green">${product.badge1}</span>` : ''}
+    ${product.badge2 ? `<span class="badge badge-blue">${product.badge2}</span>` : ''}
+    ${product.isFlashSale ? `<span class="tag tag-flash">🔥 Flash Sale</span>` : ''}
+    ${product.isNewArrival ? `<span class="tag tag-new">🆕 New Arrival</span>` : ''}
+  `;
+
+  const baseUrl = window.location.origin;
+  const productName = encodeURIComponent(product.name);
+  const whatsappLink = `https://wa.me/?text=May%20we%20talk%20about%20this%20${productName}%3F%20View%20here%3A%20${baseUrl}`;
+  document.getElementById('detailActions').innerHTML = `
+    <button class="btn btn-success" onclick="openChatWithProduct('${product.name.replace(/'/g, "\\'")}')">
+      <i class="fas fa-comment-dots"></i> Let's Talk
+    </button>
+    <a href="${whatsappLink}" target="_blank" class="btn btn-whatsapp" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+    <a href="https://tiktok.com" target="_blank" class="btn btn-tiktok" title="TikTok"><i class="fab fa-tiktok"></i></a>
+    <a href="https://instagram.com" target="_blank" class="btn btn-instagram" title="Instagram"><i class="fab fa-instagram"></i></a>
+    <a href="https://facebook.com" target="_blank" class="btn btn-facebook" title="Facebook"><i class="fab fa-facebook-messenger"></i></a>
+    <a href="#" class="btn btn-phone" title="Call"><i class="fas fa-phone"></i></a>
+  `;
+
+  updateModalCartButton(productId);
+
+  // ---- Fetch and display related products ----
+  const container = document.getElementById('relatedProductsContainer');
+  container.innerHTML = '<p style="color:#94a3b8;">Loading related products...</p>';
+
+  fetch(`/api/products/${productId}/related`)
+    .then(res => res.json())
+    .then(related => {
+      if (!related || related.length === 0) {
+        container.innerHTML = '<p style="color:#94a3b8;">No related products found.</p>';
+        return;
+      }
+      container.innerHTML = related.map(p => `
+        <div class="related-item" onclick="openDetails(${p.id})">
+          ${p.image ? `<img src="${p.image}" alt="${p.name}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'no-image\\'>📦</div>'">` : `<div class="no-image">📦</div>`}
+          <div class="related-info">
+            <div class="related-name">${p.name}</div>
+            <div class="related-price">${p.price}</div>
+            <button class="btn btn-details" onclick="event.stopPropagation(); openDetails(${p.id})">See Details</button>
+          </div>
+        </div>
+      `).join('');
+    })
+    .catch(err => {
+      console.error('Error fetching related products:', err);
+      container.innerHTML = '<p style="color:#94a3b8;">Could not load related products.</p>';
+    });
+
+  document.getElementById('detailModal').classList.add('active');
+}
+
+function closeDetails() {
+  document.getElementById('detailModal').classList.remove('active');
+  currentModalProductId = null;
+}
+
+// Close on overlay click
+document.getElementById('detailModal').addEventListener('click', function(e) {
+  if (e.target === this) closeDetails();
+});
 
 // ---- CHAT FUNCTIONS ----
 function openChatWithProduct(productName) {
@@ -253,7 +506,6 @@ function toggleChat() {
   const box = document.getElementById('chatBox');
   chatOpen = !chatOpen;
   box.style.display = chatOpen ? 'flex' : 'none';
-
   if (chatOpen) {
     if (!customerToken) {
       showAuthPanel();
@@ -275,13 +527,9 @@ function showChatPanel() {
   document.getElementById('chatMessages').style.display = 'flex';
   document.getElementById('chatInputArea').style.display = 'flex';
   document.getElementById('chatHeader').textContent = '💬 Live Chat';
-
   if (!chatSocket) {
-    chatSocket = io({
-      auth: { token: customerToken }
-    });
+    chatSocket = io({ auth: { token: customerToken } });
     chatSocket.on('connect', () => {
-      console.log('Chat connected');
       fetch('/api/chat')
         .then(res => res.json())
         .then(msgs => {
@@ -294,7 +542,6 @@ function showChatPanel() {
       renderChatMessages();
     });
     chatSocket.on('connect_error', (err) => {
-      console.error('Socket connection error:', err);
       localStorage.removeItem('customerToken');
       customerToken = null;
       showAuthPanel();
@@ -339,7 +586,7 @@ function sendChatMessage() {
   input.value = '';
 }
 
-// ---- CUSTOMER AUTH for Chat ----
+// ---- CUSTOMER AUTH ----
 async function customerRegister() {
   const name = document.getElementById('regName').value.trim();
   const email = document.getElementById('regEmail').value.trim();
@@ -524,15 +771,10 @@ function updateLiveLocation(lat, lng) {
     liveMarker.setLatLng([lat, lng]);
   } else {
     liveMarker = L.marker([lat, lng], {
-      icon: L.divIcon({
-        className: 'admin-live-marker',
-        html: '📍',
-        iconSize: [30, 30]
-      })
+      icon: L.divIcon({ className: 'admin-live-marker', html: '📍', iconSize: [30, 30] })
     }).addTo(liveMapInstance);
   }
   liveMapInstance.setView([lat, lng], 15);
-
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition((pos) => {
       const userLat = pos.coords.latitude;

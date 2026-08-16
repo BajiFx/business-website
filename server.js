@@ -146,7 +146,7 @@ app.use((err, req, res, next) => {
   next();
 });
 
-// ---------- Upload to Cloudinary (with local fallback) ----------
+// ---------- Upload to Cloudinary ----------
 async function uploadToCloudinary(filePath, options = {}) {
   try {
     const defaultOptions = {
@@ -168,7 +168,6 @@ async function uploadToCloudinary(filePath, options = {}) {
   }
 }
 
-// ---------- Helper: extract hero image (case-insensitive) ----------
 function getHeroImage(row) {
   if (!row) return null;
   return row.heroImage || row.heroimage || null;
@@ -419,9 +418,62 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
+app.get('/api/products/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const result = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- NEW: Get related products ----
+app.get('/api/products/:id/related', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    // First, get the product name to extract keywords
+    const productResult = await pool.query('SELECT name FROM products WHERE id = $1', [id]);
+    if (productResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    const productName = productResult.rows[0].name;
+    // Split name into words, filter common words
+    const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'for', 'on', 'at', 'to', 'by', 'in', 'of', 'with', 'without'];
+    const words = productName.toLowerCase().split(/\s+/).filter(w => w.length > 2 && !commonWords.includes(w));
+    let query = 'SELECT * FROM products WHERE id != $1';
+    const params = [id];
+    let paramIndex = 2;
+    if (words.length > 0) {
+      const conditions = words.map((w, i) => `LOWER(name) LIKE $${paramIndex + i}`);
+      query += ' AND (' + conditions.join(' OR ') + ')';
+      params.push(...words.map(w => `%${w}%`));
+      paramIndex += words.length;
+    }
+    query += ' ORDER BY created_at DESC LIMIT 6';
+    const result = await pool.query(query, params);
+    // If no related products, return latest 6 products (excluding current)
+    if (result.rows.length === 0) {
+      const fallback = await pool.query(
+        'SELECT * FROM products WHERE id != $1 ORDER BY created_at DESC LIMIT 6',
+        [id]
+      );
+      return res.json(fallback.rows);
+    }
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/products', authMiddleware, upload.fields([{ name: 'image' }, { name: 'video' }]), async (req, res) => {
   try {
-    const { name, price, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival } = req.body;
+    const { name, price, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival, description } = req.body;
     let image = null, video = null;
 
     if (req.files['image']) {
@@ -450,9 +502,9 @@ app.post('/api/products', authMiddleware, upload.fields([{ name: 'image' }, { na
     }
 
     const result = await pool.query(`
-      INSERT INTO products (name, price, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival, image, video)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *
-    `, [name, price, contact, rating, badge1, badge2, shipping, isFlashSale === 'true', isNewArrival === 'true', image, video]);
+      INSERT INTO products (name, price, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival, image, video, description)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *
+    `, [name, price, contact, rating, badge1, badge2, shipping, isFlashSale === 'true', isNewArrival === 'true', image, video, description]);
     res.json({ success: true, product: result.rows[0] });
   } catch (err) {
     console.error(err);
@@ -460,13 +512,11 @@ app.post('/api/products', authMiddleware, upload.fields([{ name: 'image' }, { na
   }
 });
 
-// PUT: Update a product
 app.put('/api/products/:id', authMiddleware, upload.fields([{ name: 'image' }, { name: 'video' }]), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { name, price, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival } = req.body;
+    const { name, price, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival, description } = req.body;
     
-    // Fetch existing product to keep old image/video if not replaced
     const existing = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
     if (existing.rows.length === 0) {
       return res.status(404).json({ error: 'Product not found' });
@@ -475,7 +525,6 @@ app.put('/api/products/:id', authMiddleware, upload.fields([{ name: 'image' }, {
     let image = oldProduct.image;
     let video = oldProduct.video;
 
-    // Upload new image if provided
     if (req.files['image']) {
       const file = req.files['image'][0];
       image = await uploadToCloudinary(file.path);
@@ -503,10 +552,10 @@ app.put('/api/products/:id', authMiddleware, upload.fields([{ name: 'image' }, {
     const result = await pool.query(`
       UPDATE products 
       SET name = $1, price = $2, contact = $3, rating = $4, badge1 = $5, badge2 = $6, 
-          shipping = $7, isFlashSale = $8, isNewArrival = $9, image = $10, video = $11
-      WHERE id = $12
+          shipping = $7, isFlashSale = $8, isNewArrival = $9, image = $10, video = $11, description = $12
+      WHERE id = $13
       RETURNING *
-    `, [name, price, contact, rating, badge1, badge2, shipping, isFlashSale === 'true', isNewArrival === 'true', image, video, id]);
+    `, [name, price, contact, rating, badge1, badge2, shipping, isFlashSale === 'true', isNewArrival === 'true', image, video, description, id]);
     res.json({ success: true, product: result.rows[0] });
   } catch (err) {
     console.error(err);
@@ -541,7 +590,7 @@ app.get('/api/chat', async (req, res) => {
   }
 });
 
-// ---- Location Sharing (unchanged) ----
+// ---- Location Sharing ----
 app.get('/api/admin/location/requests', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   try {
