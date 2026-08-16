@@ -22,10 +22,36 @@
 
 <!-- ===== HEADER ===== -->
 <div class="header">
-  <h1>🛍️ <span id="shopNameHeader">Our Business</span></h1>
-  <a href="/">Home</a>
-  <a href="/track.html" style="color:#feca57;">📍 Track</a>
-  <!-- Cart link removed from header – now floating -->
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; max-width:1200px; margin:0 auto; width:100%;">
+    <!-- Left: Shop Name -->
+    <h1 style="font-weight:900; letter-spacing:-0.5px; font-size:2rem; text-shadow:0 0 20px rgba(255,107,107,0.3); margin:0;">
+      🛍️ <span id="shopNameHeader">Our Business</span>
+    </h1>
+    <!-- Right: Navigation + Profile -->
+    <div style="display:flex; align-items:center; gap:15px;">
+      <a href="/" style="color:#94a3b8; text-decoration:none; font-weight:600;">Home</a>
+      <a href="/track.html" style="color:#feca57; text-decoration:none; font-weight:600;">📍 Track</a>
+      <!-- Profile Button / Dropdown -->
+      <div style="position:relative; display:inline-block;">
+        <button id="profileBtn" onclick="toggleProfileMenu()" style="background:transparent; border:none; color:#feca57; font-size:1.5rem; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <i class="fas fa-user-circle"></i>
+          <span id="profileLabel" style="font-size:0.9rem; font-weight:600;">Profile</span>
+        </button>
+        <!-- Dropdown Menu -->
+        <div id="profileDropdown" style="display:none; position:absolute; right:0; top:40px; background:white; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.15); min-width:180px; z-index:1000; overflow:hidden;">
+          <div id="dropdownGuest" style="padding:12px 16px;">
+            <div style="padding:8px 0; cursor:pointer; color:#1e293b; font-weight:600;" onclick="openAuthModal('login')">Login</div>
+            <div style="padding:8px 0; cursor:pointer; color:#1e293b; font-weight:600; border-top:1px solid #e2e8f0;" onclick="openAuthModal('register')">Register</div>
+          </div>
+          <div id="dropdownUser" style="display:none; padding:12px 16px;">
+            <div style="padding:4px 0; color:#64748b; font-size:0.9rem;" id="dropdownUserName">User</div>
+            <div style="padding:8px 0; cursor:pointer; color:#1e293b; font-weight:600; border-top:1px solid #e2e8f0;" onclick="location.href='/account.html'">My Account</div>
+            <div style="padding:8px 0; cursor:pointer; color:#ef4444; font-weight:600; border-top:1px solid #e2e8f0;" onclick="logout()">Logout</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ===== HERO / COVER SECTION ===== -->
@@ -116,7 +142,7 @@
   <p id="mapAddress" style="margin-top:8px; color:#475569;"></p>
 </div>
 
-<!-- ===== DETAILS MODAL (with Quantity Selector) ===== -->
+<!-- ===== DETAILS MODAL ===== -->
 <div class="modal-overlay" id="detailModal">
   <div class="modal-box modal-detail">
     <span class="close-modal" onclick="closeDetails()">&times;</span>
@@ -134,7 +160,6 @@
         <div class="detail-contact"><strong>Contact:</strong> <span id="detailContact"></span></div>
         <div class="detail-shipping"><strong>Shipping:</strong> <span id="detailShipping"></span></div>
         <div class="detail-actions" id="detailActions"></div>
-        <!-- Quantity Selector & Add to Cart -->
         <div style="display:flex; align-items:center; gap:12px; margin-top:12px; flex-wrap:wrap;">
           <div style="display:flex; align-items:center; gap:6px;">
             <button onclick="changeQty(-1)" style="width:32px; height:32px; border-radius:50%; border:1px solid #d1d5db; background:white; font-size:1.2rem; cursor:pointer;">−</button>
@@ -147,7 +172,6 @@
         </div>
       </div>
     </div>
-    <!-- Related Products Section -->
     <div class="related-products">
       <h3>🔄 You may also like</h3>
       <div id="relatedProductsContainer" class="related-grid"></div>
@@ -155,54 +179,88 @@
   </div>
 </div>
 
-<!-- ===== FLOATING CHAT & CART WIDGETS ===== -->
-<div id="floatingWidgets" style="position:fixed; bottom:24px; right:24px; z-index:1000; display:flex; flex-direction:column; gap:12px; align-items:flex-end;">
-  <!-- Cart Button -->
+<!-- ===== AUTH MODAL ===== -->
+<div class="modal-overlay" id="authModal">
+  <div class="modal-box" style="max-width:450px;">
+    <span class="close-modal" onclick="closeAuthModal()">&times;</span>
+    <h2 id="authModalTitle">Login</h2>
+    <div style="margin-top:15px;">
+      <!-- Login Form -->
+      <div id="authLoginForm">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="authLoginEmail" placeholder="your@email.com">
+        </div>
+        <div class="form-group" style="position:relative;">
+          <label>Password</label>
+          <input type="password" id="authLoginPassword" placeholder="Enter password">
+          <button class="toggle-pwd" onclick="toggleAuthPwd('authLoginPassword', this)"><i class="fas fa-eye"></i></button>
+        </div>
+        <button class="btn btn-primary" style="width:100%;" onclick="handleAuthLogin()">Login</button>
+        <div id="authLoginStatus" class="auth-status" style="margin-top:8px;"></div>
+        <p style="margin-top:12px; text-align:center; font-size:0.9rem;">
+          Don't have an account? <a href="#" onclick="switchAuthTab('register')">Register</a>
+        </p>
+      </div>
+      <!-- Register Form -->
+      <div id="authRegisterForm" style="display:none;">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="authRegName" placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="authRegEmail" placeholder="your@email.com">
+        </div>
+        <div class="form-group" style="position:relative;">
+          <label>Password</label>
+          <input type="password" id="authRegPassword" placeholder="Min 6 characters">
+          <button class="toggle-pwd" onclick="toggleAuthPwd('authRegPassword', this)"><i class="fas fa-eye"></i></button>
+        </div>
+        <div class="form-group" style="position:relative;">
+          <label>Confirm Password</label>
+          <input type="password" id="authRegConfirm" placeholder="Re-enter password">
+          <button class="toggle-pwd" onclick="toggleAuthPwd('authRegConfirm', this)"><i class="fas fa-eye"></i></button>
+        </div>
+        <button class="btn btn-success" style="width:100%;" onclick="handleAuthRegister()">Create Account</button>
+        <div id="authRegisterStatus" class="auth-status" style="margin-top:8px;"></div>
+        <p style="margin-top:12px; text-align:center; font-size:0.9rem;">
+          Already have an account? <a href="#" onclick="switchAuthTab('login')">Login</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== FLOATING WIDGETS (only shown when logged in) ===== -->
+<div id="floatingWidgets" style="position:fixed; bottom:24px; right:24px; z-index:1000; display:flex; flex-direction:column; gap:12px; align-items:flex-end; display:none;">
   <a href="/cart.html" id="cartFloatingBtn" style="background:linear-gradient(135deg, #2563eb, #7c3aed); color:white; border:none; border-radius:50%; width:60px; height:60px; font-size:2rem; cursor:pointer; box-shadow:0 8px 24px rgba(37,99,235,0.4); display:flex; align-items:center; justify-content:center; text-decoration:none; position:relative;">
     🛒
     <span id="cartBadgeFloat" style="position:absolute; top:-6px; right:-6px; background:#ef4444; color:white; border-radius:50%; padding:0 6px; font-size:0.7rem; min-width:20px; text-align:center; font-weight:700; display:none;">0</span>
   </a>
-  <!-- Chat Button -->
   <button id="chatToggle" onclick="toggleChat()" style="background:linear-gradient(135deg, #2563eb, #7c3aed); color:white; border:none; border-radius:50%; width:60px; height:60px; font-size:2rem; cursor:pointer; box-shadow:0 8px 24px rgba(37,99,235,0.4);">
     <i class="fas fa-comment"></i>
   </button>
 </div>
 
-<!-- ===== CHAT BOX (as before) ===== -->
+<!-- ===== CHAT BOX ===== -->
 <div id="chatBox" style="display:none; position:fixed; bottom:160px; right:24px; width:340px; max-width:85vw; height:460px; background:white; border-radius:20px; box-shadow:0 12px 48px rgba(0,0,0,0.15); overflow:hidden; flex-direction:column; z-index:1001;">
   <div style="background:#1e293b; color:white; padding:12px 16px; font-weight:bold; display:flex; justify-content:space-between; align-items:center;">
     <span id="chatHeader">💬 Live Chat</span>
     <span onclick="toggleChat()" style="cursor:pointer; font-size:1.4rem;">&times;</span>
   </div>
-  <!-- Auth Panel -->
-  <div id="authPanel" style="padding:20px; overflow-y:auto; flex:1; background:#f8fafc; display:none;">
-    <h3 style="margin:0 0 8px;">Welcome</h3>
-    <p style="font-size:0.85rem; color:#64748b; margin-bottom:15px;">Login or create an account to chat with the seller.</p>
-    <div style="margin-bottom:12px;">
-      <input type="text" id="loginEmail" placeholder="Email" style="width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:8px; margin-bottom:8px;">
-      <input type="password" id="loginPassword" placeholder="Password" style="width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:8px; margin-bottom:8px;">
-      <button onclick="customerLogin()" style="width:100%; background:#2563eb; color:white; border:none; padding:8px; border-radius:8px; font-weight:600; cursor:pointer;">Login</button>
-    </div>
-    <hr style="margin:12px 0; border:none; border-top:1px solid #e2e8f0;">
-    <div>
-      <input type="text" id="regName" placeholder="Full Name" style="width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:8px; margin-bottom:8px;">
-      <input type="email" id="regEmail" placeholder="Email" style="width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:8px; margin-bottom:8px;">
-      <input type="password" id="regPassword" placeholder="Password (min 6)" style="width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:8px; margin-bottom:8px;">
-      <input type="password" id="regConfirm" placeholder="Confirm Password" style="width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:8px; margin-bottom:8px;">
-      <button onclick="customerRegister()" style="width:100%; background:#22c55e; color:white; border:none; padding:8px; border-radius:8px; font-weight:600; cursor:pointer;">Create Account</button>
-    </div>
-    <div id="authStatus" style="margin-top:10px; font-size:0.9rem; text-align:center;"></div>
-  </div>
-  <!-- Chat Messages -->
   <div id="chatMessages" style="flex:1; padding:14px; overflow-y:auto; background:#f8fafc; display:flex; flex-direction:column; gap:8px;">
     <p style="color:#94a3b8; text-align:center;">Loading messages...</p>
   </div>
-  <!-- Chat Input -->
   <div id="chatInputArea" style="display:none; padding:10px; border-top:1px solid #e2e8f0; background:white;">
     <input id="chatInput" type="text" placeholder="Type a message..." style="flex:1; padding:8px 12px; border:1px solid #d1d5db; border-radius:30px; outline:none;">
     <button onclick="sendChatMessage()" style="margin-left:8px; background:#2563eb; color:white; border:none; border-radius:50%; width:40px; height:40px; font-size:1.2rem; cursor:pointer;">
       <i class="fas fa-paper-plane"></i>
     </button>
+  </div>
+  <div id="chatLoginPrompt" style="display:flex; justify-content:center; align-items:center; padding:20px; background:#f8fafc; flex-direction:column; gap:8px;">
+    <p style="color:#64748b; font-size:0.9rem;">Please login to send messages</p>
+    <button class="btn btn-primary" onclick="openAuthModal()">Login / Register</button>
   </div>
   <input type="hidden" id="chatProductName">
 </div>

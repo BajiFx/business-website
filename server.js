@@ -174,7 +174,7 @@ function getHeroImage(row) {
 }
 
 // ---------- JWT Auth ----------
-function generateToken(userId, role = 'admin') {
+function generateToken(userId, role = 'customer') {
   return jwt.sign({ userId, role }, JWT_SECRET, { expiresIn: '7d' });
 }
 
@@ -187,7 +187,7 @@ function authMiddleware(req, res, next) {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.userId = decoded.userId;
-    req.role = decoded.role;
+    req.role = decoded.role || 'customer';
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Invalid token' });
@@ -313,6 +313,19 @@ app.post('/api/auth/customer/login', async (req, res) => {
   }
 });
 
+app.get('/api/auth/customer/verify', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT id, name, email, created_at FROM customers WHERE id = $1', [req.userId]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({ user: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ---- Shop Profile ----
 app.get('/api/shop', async (req, res) => {
   try {
@@ -432,17 +445,15 @@ app.get('/api/products/:id', async (req, res) => {
   }
 });
 
-// ---- NEW: Get related products ----
+// Related products
 app.get('/api/products/:id/related', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    // First, get the product name to extract keywords
     const productResult = await pool.query('SELECT name FROM products WHERE id = $1', [id]);
     if (productResult.rows.length === 0) {
       return res.status(404).json({ error: 'Product not found' });
     }
     const productName = productResult.rows[0].name;
-    // Split name into words, filter common words
     const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'for', 'on', 'at', 'to', 'by', 'in', 'of', 'with', 'without'];
     const words = productName.toLowerCase().split(/\s+/).filter(w => w.length > 2 && !commonWords.includes(w));
     let query = 'SELECT * FROM products WHERE id != $1';
@@ -456,7 +467,6 @@ app.get('/api/products/:id/related', async (req, res) => {
     }
     query += ' ORDER BY created_at DESC LIMIT 6';
     const result = await pool.query(query, params);
-    // If no related products, return latest 6 products (excluding current)
     if (result.rows.length === 0) {
       const fallback = await pool.query(
         'SELECT * FROM products WHERE id != $1 ORDER BY created_at DESC LIMIT 6',
@@ -574,7 +584,7 @@ app.delete('/api/products/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// ---- Chat Messages ----
+// ---- General Chat (Public) ----
 app.get('/api/chat', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -590,7 +600,26 @@ app.get('/api/chat', async (req, res) => {
   }
 });
 
-// ---- Location Sharing ----
+// ---- Customer's own chat messages ----
+app.get('/api/customer/chat', authMiddleware, async (req, res) => {
+  if (req.role !== 'customer') return res.status(403).json({ error: 'Customer only' });
+  try {
+    const result = await pool.query(
+      `SELECT cm.*, c.name AS customer_name 
+       FROM chat_messages cm
+       LEFT JOIN customers c ON cm.customer_id = c.id
+       WHERE cm.customer_id = $1
+       ORDER BY timestamp DESC LIMIT 20`,
+      [req.userId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Location Sharing (unchanged) ----
 app.get('/api/admin/location/requests', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   try {
@@ -726,7 +755,291 @@ app.post('/api/admin/location/update', authMiddleware, async (req, res) => {
   }
 });
 
-// ---------- Socket.IO ----------
+// ============================================================
+//  ORDERS (unchanged)
+// ============================================================
+
+// Create an order (customer only)
+app.post('/api/orders', authMiddleware, async (req, res) => {
+  if (req.role !== 'customer') {
+    return res.status(403).json({ error: 'Only customers can place orders.' });
+  }
+  const customerId = req.userId;
+  const { items, total } = req.body;
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: 'Order must contain at least one item.' });
+  }
+  if (!total || isNaN(total) || total <= 0) {
+    return res.status(400).json({ error: 'Invalid total amount.' });
+  }
+
+  try {
+    await pool.query('BEGIN');
+    const orderResult = await pool.query(
+      `INSERT INTO orders (customer_id, total, status) VALUES ($1, $2, 'pending') RETURNING *`,
+      [customerId, total]
+    );
+    const order = orderResult.rows[0];
+    for (const item of items) {
+      await pool.query(
+        `INSERT INTO order_items (order_id, product_id, product_name, price, quantity, image)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [order.id, item.productId || 0, item.name, item.price, item.quantity, item.image || '']
+      );
+    }
+    await pool.query('COMMIT');
+    res.status(201).json({ success: true, order });
+  } catch (err) {
+    await pool.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get orders (admin sees all, customer sees their own)
+app.get('/api/orders', authMiddleware, async (req, res) => {
+  try {
+    let query = `
+      SELECT o.*, c.name AS customer_name, c.email AS customer_email
+      FROM orders o
+      JOIN customers c ON o.customer_id = c.id
+    `;
+    const params = [];
+    if (req.role === 'customer') {
+      query += ' WHERE o.customer_id = $1';
+      params.push(req.userId);
+    }
+    query += ' ORDER BY o.created_at DESC';
+    const result = await pool.query(query, params);
+    const ordersWithItems = await Promise.all(result.rows.map(async (order) => {
+      const itemsResult = await pool.query('SELECT * FROM order_items WHERE order_id = $1', [order.id]);
+      return { ...order, items: itemsResult.rows };
+    }));
+    res.json(ordersWithItems);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get a specific order (admin or owner)
+app.get('/api/orders/:id', authMiddleware, async (req, res) => {
+  const orderId = parseInt(req.params.id);
+  try {
+    const result = await pool.query(
+      `SELECT o.*, c.name AS customer_name, c.email AS customer_email
+       FROM orders o
+       JOIN customers c ON o.customer_id = c.id
+       WHERE o.id = $1`,
+      [orderId]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    const order = result.rows[0];
+    if (req.role !== 'admin' && order.customer_id !== req.userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const itemsResult = await pool.query('SELECT * FROM order_items WHERE order_id = $1', [orderId]);
+    res.json({ ...order, items: itemsResult.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Confirm an order
+app.put('/api/orders/:id/confirm', authMiddleware, async (req, res) => {
+  if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
+  const orderId = parseInt(req.params.id);
+  try {
+    const orderResult = await pool.query(
+      `SELECT o.*, c.name AS customer_name 
+       FROM orders o
+       JOIN customers c ON o.customer_id = c.id
+       WHERE o.id = $1`,
+      [orderId]
+    );
+    if (orderResult.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
+    const order = orderResult.rows[0];
+    if (order.status !== 'pending') return res.status(400).json({ error: 'Order already processed.' });
+
+    await pool.query(`UPDATE orders SET status = 'confirmed', updated_at = NOW() WHERE id = $1`, [orderId]);
+
+    const itemsResult = await pool.query('SELECT * FROM order_items WHERE order_id = $1', [orderId]);
+    const items = itemsResult.rows;
+
+    let message = `✅ Order #${order.id} Confirmed!\n\n`;
+    message += `Dear ${order.customer_name},\n\n`;
+    message += `Your order has been confirmed. Here are the details:\n\n`;
+    message += `--------------------------------------------------\n`;
+    message += `Product                Qty    Price      Subtotal\n`;
+    message += `--------------------------------------------------\n`;
+    let total = 0;
+    items.forEach(item => {
+      const priceNum = parseFloat(item.price.replace(/[^0-9.]/g, '')) || 0;
+      const subtotal = priceNum * item.quantity;
+      total += subtotal;
+      const namePad = (item.product_name.length > 20) ? item.product_name.slice(0, 18) + '..' : item.product_name.padEnd(20);
+      message += `${namePad}  ${item.quantity.toString().padStart(4)}  ${priceNum.toFixed(2).padStart(8)}  ${subtotal.toFixed(2).padStart(10)}\n`;
+    });
+    message += `--------------------------------------------------\n`;
+    message += `Total: Ksh ${order.total.toFixed(2)}\n`;
+    message += `--------------------------------------------------\n\n`;
+    message += `Thank you for shopping with us!`;
+
+    const chatResult = await pool.query(
+      `INSERT INTO order_chat_messages (order_id, from_user, message)
+       VALUES ($1, 'Seller', $2) RETURNING *`,
+      [orderId, message]
+    );
+    const newMsg = chatResult.rows[0];
+    io.to(`order_${orderId}`).emit('new-order-chat-message', {
+      ...newMsg,
+      from_user: 'Seller'
+    });
+
+    res.json({ success: true, message: 'Order confirmed.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Update order status (shipped, delivered)
+app.put('/api/orders/:id/status', authMiddleware, async (req, res) => {
+  if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
+  const orderId = parseInt(req.params.id);
+  const { status, tracking_number } = req.body;
+  const allowedStatuses = ['shipped', 'delivered'];
+  if (!allowedStatuses.includes(status)) {
+    return res.status(400).json({ error: 'Invalid status. Allowed: shipped, delivered' });
+  }
+  try {
+    const current = await pool.query('SELECT status FROM orders WHERE id = $1', [orderId]);
+    if (current.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
+    const currentStatus = current.rows[0].status;
+    if (currentStatus === 'pending') return res.status(400).json({ error: 'Order must be confirmed first.' });
+    if (currentStatus === 'received') return res.status(400).json({ error: 'Order already received.' });
+
+    const updates = { status };
+    if (status === 'shipped') {
+      updates.shipped_at = new Date();
+      if (tracking_number) updates.tracking_number = tracking_number;
+    } else if (status === 'delivered') {
+      updates.delivered_at = new Date();
+    }
+    await pool.query(
+      `UPDATE orders SET status = $1, shipped_at = $2, delivered_at = $3, tracking_number = $4, updated_at = NOW() WHERE id = $5`,
+      [updates.status, updates.shipped_at || null, updates.delivered_at || null, updates.tracking_number || null, orderId]
+    );
+
+    const orderResult = await pool.query(`SELECT customer_id FROM orders WHERE id = $1`, [orderId]);
+    const customerId = orderResult.rows[0].customer_id;
+
+    const msg = `📦 Order #${orderId} status updated to: ${status.toUpperCase()}`;
+    const chatResult = await pool.query(
+      `INSERT INTO order_chat_messages (order_id, from_user, message)
+       VALUES ($1, 'Seller', $2) RETURNING *`,
+      [orderId, msg]
+    );
+    io.to(`order_${orderId}`).emit('new-order-chat-message', chatResult.rows[0]);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Customer: Mark order as received
+app.put('/api/orders/:id/receive', authMiddleware, async (req, res) => {
+  if (req.role !== 'customer') return res.status(403).json({ error: 'Customer only.' });
+  const orderId = parseInt(req.params.id);
+  try {
+    const orderResult = await pool.query(
+      `SELECT customer_id, status FROM orders WHERE id = $1`,
+      [orderId]
+    );
+    if (orderResult.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
+    const order = orderResult.rows[0];
+    if (order.customer_id !== req.userId) return res.status(403).json({ error: 'Not your order.' });
+    if (order.status !== 'delivered') {
+      return res.status(400).json({ error: 'Order must be delivered before you can mark it as received.' });
+    }
+    await pool.query(
+      `UPDATE orders SET status = 'received', received_at = NOW(), updated_at = NOW() WHERE id = $1`,
+      [orderId]
+    );
+    const msg = `✅ Order #${orderId} has been received by the customer.`;
+    const chatResult = await pool.query(
+      `INSERT INTO order_chat_messages (order_id, from_user, message)
+       VALUES ($1, 'Customer', $2) RETURNING *`,
+      [orderId, msg]
+    );
+    io.to(`order_${orderId}`).emit('new-order-chat-message', chatResult.rows[0]);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Order chat: Get messages
+app.get('/api/orders/:id/chat', authMiddleware, async (req, res) => {
+  const orderId = parseInt(req.params.id);
+  try {
+    const orderResult = await pool.query(
+      `SELECT customer_id FROM orders WHERE id = $1`,
+      [orderId]
+    );
+    if (orderResult.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
+    const order = orderResult.rows[0];
+    if (req.role !== 'admin' && order.customer_id !== req.userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const result = await pool.query(
+      `SELECT * FROM order_chat_messages WHERE order_id = $1 ORDER BY timestamp ASC`,
+      [orderId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Order chat: Send message
+app.post('/api/orders/:id/chat', authMiddleware, async (req, res) => {
+  const orderId = parseInt(req.params.id);
+  const { message } = req.body;
+  if (!message) return res.status(400).json({ error: 'Message is required.' });
+  try {
+    const orderResult = await pool.query(
+      `SELECT customer_id FROM orders WHERE id = $1`,
+      [orderId]
+    );
+    if (orderResult.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
+    const order = orderResult.rows[0];
+    const from = (req.role === 'admin') ? 'Seller' : 'Customer';
+    if (req.role !== 'admin' && order.customer_id !== req.userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const result = await pool.query(
+      `INSERT INTO order_chat_messages (order_id, from_user, message)
+       VALUES ($1, $2, $3) RETURNING *`,
+      [orderId, from, message]
+    );
+    io.to(`order_${orderId}`).emit('new-order-chat-message', result.rows[0]);
+    res.json({ success: true, msg: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------- Socket.IO (with order chat rooms) ----------
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
   if (!token) {
@@ -749,6 +1062,7 @@ io.on('connection', (socket) => {
     socket.join(`customer_${socket.customerId}`);
   }
 
+  // General chat
   socket.on('chat-message', async (data) => {
     try {
       const { message } = data;
@@ -765,6 +1079,14 @@ io.on('connection', (socket) => {
     } catch (err) {
       console.error(err);
     }
+  });
+
+  // Order chat rooms
+  socket.on('join-order-room', (orderId) => {
+    socket.join(`order_${orderId}`);
+  });
+  socket.on('leave-order-room', (orderId) => {
+    socket.leave(`order_${orderId}`);
   });
 
   socket.on('disconnect', () => {

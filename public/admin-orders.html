@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Orders</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    .orders-page { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+    .orders-page h1 { font-size: 2rem; font-weight: 800; color: #0f172a; margin-bottom: 10px; }
+    .order-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .order-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 10px; }
+    .order-header .id { font-weight: 700; }
+    .order-header .status { padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-confirmed { background: #d1fae5; color: #065f46; }
+    .status-shipped { background: #dbeafe; color: #1e40af; }
+    .status-delivered { background: #e0e7ff; color: #3730a3; }
+    .status-received { background: #dcfce7; color: #166534; }
+    .order-items { margin: 10px 0; }
+    .order-item { display: flex; justify-content: space-between; padding: 4px 0; font-size: 0.9rem; border-bottom: 1px solid #f1f5f9; }
+    .order-total { font-weight: 700; font-size: 1.1rem; margin-top: 10px; }
+    .order-actions { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .btn-confirm { background: #22c55e; color: white; border: none; padding: 8px 20px; border-radius: 30px; cursor: pointer; font-weight: 600; }
+    .btn-confirm:hover { background: #16a34a; }
+    .btn { padding: 8px 16px; border-radius: 30px; border: none; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-sm { padding: 4px 12px; font-size: 0.8rem; }
+    .back-link { display: inline-block; margin-bottom: 20px; color: #2563eb; text-decoration: none; font-weight: 600; }
+    .back-link:hover { text-decoration: underline; }
+    .refresh-btn { background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 30px; cursor: pointer; font-weight: 600; margin-bottom: 20px; }
+    .refresh-btn:hover { background: #1d4ed8; }
+    .error-msg { color: #ef4444; padding: 20px; text-align: center; }
+    .loading { text-align: center; padding: 40px; color: #94a3b8; }
+
+    /* Order detail */
+    .order-detail { display: none; margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 12px; }
+    .order-detail.active { display: block; }
+    .chat-box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; max-height: 200px; overflow-y: auto; background: white; }
+    .chat-msg { padding: 4px 8px; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
+    .chat-msg.seller { background: #e2e8f0; border-radius: 4px; margin: 2px 0; }
+    .chat-msg.customer { background: #dbeafe; border-radius: 4px; margin: 2px 0; }
+    .status-update { margin: 10px 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .status-update select { padding: 6px 12px; border-radius: 8px; border: 1px solid #d1d5db; }
+    .status-update input[type="text"] { padding: 6px 12px; border-radius: 8px; border: 1px solid #d1d5db; }
+    .status-update button { padding: 6px 16px; border-radius: 8px; border: none; background: #2563eb; color: white; cursor: pointer; }
+    .status-update button:hover { background: #1d4ed8; }
+  </style>
+</head>
+<body>
+
+<div class="admin-header" style="background: #1e293b; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+  <h1>🔐 Admin Panel</h1>
+  <div style="display:flex; gap:15px; flex-wrap:wrap;">
+    <a href="/admin.html" style="color:#94a3b8; text-decoration:none; font-weight:600;">Dashboard</a>
+    <a href="/admin-orders.html" style="color:#feca57; text-decoration:none; font-weight:600;">Orders</a>
+    <a href="/" style="color:#94a3b8; text-decoration:none; font-weight:600;">Public Shop</a>
+    <a href="#" onclick="logoutAdmin()" style="color:#ef4444; text-decoration:none; font-weight:600;">Logout</a>
+  </div>
+</div>
+
+<div class="orders-page">
+  <a href="/admin.html" class="back-link"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+    <h1>📦 Orders</h1>
+    <button class="refresh-btn" onclick="loadOrders()"><i class="fas fa-sync"></i> Refresh</button>
+  </div>
+  <div id="ordersContainer">
+    <p class="loading">Loading orders...</p>
+  </div>
+</div>
+
+<script>
+  const adminToken = localStorage.getItem('token');
+  if (!adminToken) {
+    alert('Please login as admin.');
+    window.location.href = '/admin.html';
+  }
+  let socket = null;
+
+  function logoutAdmin() {
+    localStorage.removeItem('token');
+    window.location.href = '/admin.html';
+  }
+
+  function loadOrders() {
+    const container = document.getElementById('ordersContainer');
+    container.innerHTML = '<p class="loading">Loading orders...</p>';
+    fetch('/api/orders', {
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    })
+    .then(res => {
+      if (!res.ok) {
+        if (res.status === 401) { localStorage.removeItem('token'); window.location.href = '/admin.html'; }
+        throw new Error(`HTTP ${res.status} - ${res.statusText}`);
+      }
+      return res.json();
+    })
+    .then(orders => {
+      if (!orders || orders.length === 0) {
+        container.innerHTML = '<p style="color:#94a3b8; text-align:center;">No orders yet.</p>';
+        return;
+      }
+      orders.sort((a, b) => (a.status === 'pending' ? -1 : 1));
+      container.innerHTML = orders.map(order => `
+        <div class="order-card">
+          <div class="order-header">
+            <span class="id">Order #${order.id}</span>
+            <span>${order.customer_name} (${order.customer_email})</span>
+            <span class="status status-${order.status}">${order.status.toUpperCase()}</span>
+            <span>${new Date(order.created_at).toLocaleString()}</span>
+            <button class="btn btn-primary btn-sm" onclick="toggleDetails(${order.id})">Details</button>
+          </div>
+          <div class="order-detail" id="detail-${order.id}">
+            <div><strong>Order Items:</strong></div>
+            ${order.items && order.items.length > 0 ? order.items.map(item => `
+              <div class="order-item"><span>${item.product_name} (ID: ${item.product_id}) x ${item.quantity}</span><span>${item.price}</span></div>
+            `).join('') : '<div>No items</div>'}
+            <div class="order-total">Total: Ksh ${parseFloat(order.total).toFixed(2)}</div>
+            <div class="status-update">
+              <strong>Update Status:</strong>
+              <select id="statusSelect-${order.id}">
+                ${order.status === 'pending' ? `<option value="pending" selected>Pending</option><option value="shipped">Ship</option>` : ''}
+                ${order.status === 'confirmed' ? `<option value="confirmed" selected>Confirmed</option><option value="shipped">Ship</option>` : ''}
+                ${order.status === 'shipped' ? `<option value="shipped" selected>Shipped</option><option value="delivered">Deliver</option>` : ''}
+                ${order.status === 'delivered' ? `<option value="delivered" selected>Delivered</option>` : ''}
+                ${order.status === 'received' ? `<option value="received" selected>Received</option>` : ''}
+              </select>
+              <input type="text" id="trackingInput-${order.id}" placeholder="Tracking # (optional)" style="width:150px;">
+              <button onclick="updateOrderStatus(${order.id})">Update</button>
+              ${order.status === 'pending' ? `<button onclick="confirmOrder(${order.id})" style="background:#22c55e;">Confirm</button>` : ''}
+              ${order.status === 'delivered' ? `<button onclick="markReceived(${order.id})" style="background:#7c3aed;">Mark Received (Customer)</button>` : ''}
+            </div>
+            <div style="margin-top:10px;">
+              <strong>Order Chat:</strong>
+              <div class="chat-box" id="chatMessages-${order.id}">Loading messages...</div>
+              <div style="display:flex; margin-top:6px;">
+                <input type="text" id="chatInput-${order.id}" placeholder="Type a message..." style="flex:1; padding:6px 12px; border:1px solid #d1d5db; border-radius:6px;">
+                <button onclick="sendOrderChat(${order.id})" style="margin-left:6px; padding:6px 16px; background:#2563eb; color:white; border:none; border-radius:6px; cursor:pointer;">Send</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      if (!socket) {
+        socket = io({ auth: { token: adminToken } });
+        socket.on('new-order-chat-message', (msg) => {
+          const chatBox = document.getElementById(`chatMessages-${msg.order_id}`);
+          if (chatBox) {
+            const div = document.createElement('div');
+            div.className = `chat-msg ${msg.from_user === 'Seller' ? 'seller' : 'customer'}`;
+            div.innerHTML = `<strong>${msg.from_user}:</strong> ${msg.message} <span style="float:right; font-size:0.7rem; opacity:0.6;">${new Date(msg.timestamp).toLocaleTimeString()}</span>`;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+          }
+        });
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      container.innerHTML = `<p class="error-msg">❌ Error loading orders: ${err.message}</p>`;
+    });
+  }
+
+  function toggleDetails(orderId) {
+    const detail = document.getElementById(`detail-${orderId}`);
+    if (!detail) return;
+    const isActive = detail.classList.contains('active');
+    detail.classList.toggle('active');
+    if (!isActive) {
+      loadOrderChat(orderId);
+      socket.emit('join-order-room', orderId);
+    } else {
+      socket.emit('leave-order-room', orderId);
+    }
+  }
+
+  function loadOrderChat(orderId) {
+    const chatBox = document.getElementById(`chatMessages-${orderId}`);
+    chatBox.innerHTML = 'Loading...';
+    fetch(`/api/orders/${orderId}/chat`, {
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    })
+    .then(res => res.json())
+    .then(messages => {
+      chatBox.innerHTML = '';
+      if (!messages || messages.length === 0) {
+        chatBox.innerHTML = '<div style="color:#94a3b8;">No messages yet.</div>';
+        return;
+      }
+      messages.forEach(msg => {
+        const div = document.createElement('div');
+        div.className = `chat-msg ${msg.from_user === 'Seller' ? 'seller' : 'customer'}`;
+        div.innerHTML = `<strong>${msg.from_user}:</strong> ${msg.message} <span style="float:right; font-size:0.7rem; opacity:0.6;">${new Date(msg.timestamp).toLocaleTimeString()}</span>`;
+        chatBox.appendChild(div);
+      });
+      chatBox.scrollTop = chatBox.scrollHeight;
+    })
+    .catch(err => {
+      chatBox.innerHTML = 'Error loading messages.';
+    });
+  }
+
+  function sendOrderChat(orderId) {
+    const input = document.getElementById(`chatInput-${orderId}`);
+    const msg = input.value.trim();
+    if (!msg) return;
+    fetch(`/api/orders/${orderId}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+      body: JSON.stringify({ message: msg })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        input.value = '';
+        const chatBox = document.getElementById(`chatMessages-${orderId}`);
+        const div = document.createElement('div');
+        div.className = 'chat-msg seller';
+        div.innerHTML = `<strong>Seller:</strong> ${msg} <span style="float:right; font-size:0.7rem; opacity:0.6;">Just now</span>`;
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+      } else {
+        alert('Failed to send message.');
+      }
+    })
+    .catch(err => alert('Network error.'));
+  }
+
+  function updateOrderStatus(orderId) {
+    const select = document.getElementById(`statusSelect-${orderId}`);
+    const status = select.value;
+    const tracking = document.getElementById(`trackingInput-${orderId}`).value.trim();
+    fetch(`/api/orders/${orderId}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+      body: JSON.stringify({ status, tracking_number: tracking })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert('Status updated!');
+        loadOrders();
+      } else {
+        alert('Failed: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(err => alert('Network error.'));
+  }
+
+  function confirmOrder(orderId) {
+    if (!confirm('Confirm this order?')) return;
+    fetch(`/api/orders/${orderId}/confirm`, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert('Order confirmed!');
+        loadOrders();
+      } else {
+        alert('Failed: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(err => alert('Network error.'));
+  }
+
+  function markReceived(orderId) {
+    if (!confirm('Mark this order as received by customer?')) return;
+    fetch(`/api/orders/${orderId}/receive`, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert('Order marked as received!');
+        loadOrders();
+      } else {
+        alert('Failed: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(err => alert('Network error.'));
+  }
+
+  document.addEventListener('DOMContentLoaded', loadOrders);
+</script>
+</body>
+</html>

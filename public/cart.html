@@ -94,18 +94,19 @@
 <!-- ===== HEADER ===== -->
 <div class="header">
   <h1>🛍️ <span id="shopNameHeader">Our Business</span></h1>
-  <a href="/">Home</a>
-  <a href="/track.html" style="color:#feca57;">📍 Track</a>
-  <a href="/cart.html" style="color:#feca57; position:relative;">
-    🛒 <span id="cartBadge" style="background:#ef4444; color:white; border-radius:50%; padding:0 6px; font-size:0.7rem; position:absolute; top:-8px; right:-10px; display:none;">0</span>
-  </a>
+  <div style="display:flex; justify-content:center; align-items:center; gap:15px; flex-wrap:wrap; margin-top:8px;">
+    <a href="/">Home</a>
+    <a href="/track.html" style="color:#feca57;">📍 Track</a>
+    <a href="/account.html" style="color:#60a5fa;">My Account</a>
+    <a href="#" onclick="logout()" style="color:#ef4444; font-size:0.9rem;">Logout</a>
+  </div>
 </div>
 
 <!-- ===== CART PAGE ===== -->
 <div class="cart-page">
   <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Continue Shopping</a>
   <h1>🛒 Your Cart</h1>
-  <p class="sub">Review and manage your items before checkout.</p>
+  <p class="sub">Review your items and place your order.</p>
 
   <div id="cartItemsContainer">
     <!-- Cart items will be rendered here -->
@@ -118,8 +119,8 @@
     </div>
     <div class="actions">
       <button class="btn btn-danger" onclick="clearCartWithConfirm()"><i class="fas fa-trash"></i> Clear Cart</button>
-      <button class="btn btn-success" onclick="checkout()">
-        <i class="fas fa-check-circle"></i> Proceed to Checkout
+      <button class="btn btn-success" id="placeOrderBtn" onclick="placeOrder()">
+        <i class="fas fa-check-circle"></i> Place Order
       </button>
     </div>
   </div>
@@ -214,7 +215,6 @@
       const reason = document.getElementById('removeReason').value.trim();
       if (reason) {
         console.log(`Item ${id} removed. Reason: ${reason}`);
-        // You can send this to analytics or server if needed
       }
       removeItemFromCart(id);
       closeReasonModal();
@@ -242,22 +242,66 @@
     }
   }
 
-  function checkout() {
-    alert('🛒 Checkout feature coming soon! Your total is Ksh ' + document.getElementById('cartTotal').textContent);
+  function placeOrder() {
+    if (!isLoggedIn()) {
+      alert('Please login to place an order.');
+      openAuthModal('login');
+      return;
+    }
+    const cart = getCart();
+    if (!cart || cart.length === 0) {
+      alert('Your cart is empty.');
+      return;
+    }
+    // Calculate total
+    let total = 0;
+    const items = cart.map(item => {
+      const priceNum = parseFloat(item.price.replace(/[^0-9.]/g, '')) || 0;
+      total += priceNum * item.quantity;
+      return {
+        productId: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        image: item.image || ''
+      };
+    });
+    if (!confirm(`Place order for Ksh ${total.toFixed(2)}?`)) return;
+
+    const token = localStorage.getItem('customerToken');
+    fetch('/api/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ items, total })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert('✅ Order placed successfully!');
+        saveCart([]);
+        renderCartPage();
+        updateCartBadge();
+        // Optionally redirect to account page
+        window.location.href = '/account.html';
+      } else {
+        alert('❌ Failed to place order: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(err => {
+      alert('❌ Network error: ' + err.message);
+    });
   }
 
-  // Close reason modal on overlay click
-  document.getElementById('reasonModal').addEventListener('click', function(e) {
-    if (e.target === this) closeReasonModal();
-  });
-
-  // Expose functions to global scope
+  // Expose functions globally
   window.renderCartPage = renderCartPage;
   window.updateCartQty = updateCartQty;
   window.openRemoveReason = openRemoveReason;
   window.removeItemFromCart = removeItemFromCart;
   window.clearCartWithConfirm = clearCartWithConfirm;
-  window.checkout = checkout;
+  window.placeOrder = placeOrder;
 </script>
 </body>
 </html>
