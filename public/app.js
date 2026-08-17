@@ -22,7 +22,6 @@ let modalQty = 1;
 window.customerToken = localStorage.getItem('customerToken');
 window.currentUser = null;
 
-// Re-usable setter to keep window in sync
 function setCustomerToken(token) {
   window.customerToken = token;
   if (token) {
@@ -53,7 +52,70 @@ if (window.customerToken) {
 }
 
 // ============================================================
-//  TYPING EFFECT
+//  CART SYNC FUNCTIONS (NEW)
+// ============================================================
+async function syncCartToServer() {
+  if (!isLoggedIn()) return;
+  const cart = getCart();
+  try {
+    const res = await fetch('/api/cart', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${window.customerToken}`
+      },
+      body: JSON.stringify({ items: cart })
+    });
+    if (!res.ok) console.error('Cart sync failed');
+  } catch (err) {
+    console.error('Cart sync error:', err);
+  }
+}
+
+async function loadCartFromServer() {
+  if (!isLoggedIn()) return;
+  try {
+    const res = await fetch('/api/cart', {
+      headers: { 'Authorization': `Bearer ${window.customerToken}` }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.items && data.items.length > 0) {
+        saveCart(data.items);
+        renderGrid();
+        updateCartBadge();
+        if (window.renderCartPage) window.renderCartPage();
+      }
+    }
+  } catch (err) {
+    console.error('Load cart error:', err);
+  }
+}
+
+// ---- Override saveCart to sync ----
+const originalSaveCart = window.saveCart || function(cart) { localStorage.setItem('cart', JSON.stringify(cart)); updateCartBadge(); };
+window.saveCart = function(cart) {
+  localStorage.setItem('cart', JSON.stringify(cart));
+  updateCartBadge();
+  syncCartToServer();
+  if (window.renderCartPage) window.renderCartPage();
+};
+
+// ---- Override login/register to load cart ----
+const originalLogin = window.handleAuthLogin;
+window.handleAuthLogin = async function() {
+  await originalLogin.apply(this, arguments);
+  await loadCartFromServer();
+};
+
+const originalRegister = window.handleAuthRegister;
+window.handleAuthRegister = async function() {
+  await originalRegister.apply(this, arguments);
+  await loadCartFromServer();
+};
+
+// ============================================================
+//  TYPING EFFECT & DOM READY
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
   const heroTitle = document.getElementById('heroTitle');
@@ -71,6 +133,76 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 60);
   }
   updateCartBadge();
+
+  // ---- MAP TOGGLE ON PUBLIC PAGE ----
+  const showMapBtn = document.getElementById('showMapBtn');
+  const mapSection = document.getElementById('staticMapSection');
+  const liveSection = document.getElementById('liveLocationSection');
+  if (showMapBtn) {
+    showMapBtn.addEventListener('click', function() {
+      if (!isLoggedIn()) {
+        openAuthModal('login');
+        return;
+      }
+      checkLocationStatus().then(approved => {
+        if (approved) {
+          if (mapSection) mapSection.style.display = 'block';
+          if (liveSection) liveSection.style.display = 'block';
+          showMapBtn.textContent = '📍 Hide Shop Location';
+          if (window.mapInstance) setTimeout(() => mapInstance.invalidateSize(), 100);
+          if (liveMapInstance) setTimeout(() => liveMapInstance.invalidateSize(), 100);
+          fetch('/api/shop').then(res => res.json()).then(shop => {
+            if (shop.admin_lat && shop.admin_lng) {
+              updateLiveLocation(parseFloat(shop.admin_lat), parseFloat(shop.admin_lng));
+            }
+          });
+        } else {
+          const statusElem = document.getElementById('locationRequestStatus');
+          statusElem.textContent = '⏳ Requesting location access...';
+          fetch('/api/customer/location/request', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${window.customerToken}` }
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (res.ok && data.alreadyApproved) {
+              statusElem.textContent = '✅ You already have access!';
+              statusElem.style.color = '#16a34a';
+              if (mapSection) mapSection.style.display = 'block';
+              if (liveSection) liveSection.style.display = 'block';
+              showMapBtn.textContent = '📍 Hide Shop Location';
+              if (window.mapInstance) setTimeout(() => mapInstance.invalidateSize(), 100);
+              if (liveMapInstance) setTimeout(() => liveMapInstance.invalidateSize(), 100);
+            } else if (res.ok) {
+              statusElem.textContent = '✅ Request sent! Waiting for admin approval.';
+              statusElem.style.color = '#16a34a';
+              if (mapSection) mapSection.style.display = 'block';
+              showMapBtn.textContent = '📍 Hide Shop Location';
+              if (window.mapInstance) setTimeout(() => mapInstance.invalidateSize(), 100);
+              const poll = setInterval(() => {
+                checkLocationStatus().then(approved => {
+                  if (approved) {
+                    clearInterval(poll);
+                    if (liveSection) liveSection.style.display = 'block';
+                    if (liveMapInstance) setTimeout(() => liveMapInstance.invalidateSize(), 100);
+                    statusElem.textContent = '✅ Location approved! Live map active.';
+                    statusElem.style.color = '#16a34a';
+                  }
+                });
+              }, 3000);
+            } else {
+              statusElem.textContent = '❌ ' + (data.error || 'Request failed');
+              statusElem.style.color = '#ef4444';
+            }
+          })
+          .catch(err => {
+            statusElem.textContent = '❌ Network error. Please try again.';
+            statusElem.style.color = '#ef4444';
+          });
+        }
+      });
+    });
+  }
 });
 
 // ============================================================
@@ -128,7 +260,6 @@ function toggleProfileMenu() {
   }
 }
 
-// Close dropdown on outside click
 document.addEventListener('click', function(e) {
   const dropdown = document.getElementById('profileDropdown');
   const btn = document.getElementById('profileBtn');
@@ -147,6 +278,7 @@ async function fetchCurrentUser() {
       const data = await res.json();
       setCurrentUser(data.user);
       updateUserUI();
+      await loadCartFromServer();
     } else {
       setCustomerToken(null);
       setCurrentUser(null);
@@ -259,6 +391,7 @@ async function handleAuthLogin() {
       setCurrentUser(data.customer);
       updateUserUI();
       closeAuthModal();
+      await loadCartFromServer();
       renderGrid();
       updateCartBadge();
       if (chatOpen) {
@@ -314,6 +447,7 @@ async function handleAuthRegister() {
       setCurrentUser(data.customer);
       updateUserUI();
       closeAuthModal();
+      await loadCartFromServer();
       renderGrid();
       updateCartBadge();
       if (chatOpen) {
@@ -345,6 +479,8 @@ window.getCart = getCart;
 function saveCart(cart) {
   localStorage.setItem('cart', JSON.stringify(cart));
   updateCartBadge();
+  syncCartToServer();
+  if (window.renderCartPage) window.renderCartPage();
 }
 window.saveCart = saveCart;
 
@@ -503,16 +639,11 @@ function getRotatedProducts(products) {
 // ============================================================
 async function loadShopProfile() {
   try {
-    console.log('🔄 Fetching shop profile...');
     const res = await fetch('/api/shop');
     const shop = await res.json();
-    console.log('📦 Shop data received:', shop);
-
-    // Update header shop name
     const nameHeader = document.getElementById('shopNameHeader');
     if (nameHeader) nameHeader.textContent = shop.name || 'Our Business';
 
-    // Hero elements – only exist on index.html, so check for null
     const heroTitle = document.getElementById('heroTitle');
     const heroLocation = document.getElementById('heroLocation');
     const heroAddress = document.getElementById('heroAddress');
@@ -540,19 +671,16 @@ async function loadShopProfile() {
 
     if (heroSection) {
       if (shop.heroImage && shop.heroImage !== '') {
-        console.log('✅ Hero image found:', shop.heroImage);
         heroSection.style.backgroundImage = `url(${shop.heroImage})`;
         heroSection.style.backgroundSize = 'cover';
         heroSection.style.backgroundPosition = 'center';
         heroSection.style.backgroundRepeat = 'no-repeat';
         heroSection.style.backgroundColor = 'transparent';
       } else {
-        console.warn('⚠️ No hero image, using gradient fallback');
         heroSection.style.backgroundImage = 'linear-gradient(135deg, #1e293b, #0f172a)';
       }
     }
 
-    // Static Map
     const mapContainer = document.getElementById('shopMap');
     const lat = parseFloat(shop.latitude);
     const lng = parseFloat(shop.longitude);
@@ -568,6 +696,7 @@ async function loadShopProfile() {
           .bindPopup(`<strong>${shop.name}</strong><br>${address || shop.location || ''}`);
         const mapAddress = document.getElementById('mapAddress');
         if (mapAddress) mapAddress.textContent = address ? `📍 ${address}` : '';
+        window.mapInstance = mapInstance;
       } else {
         mapContainer.innerHTML = '<p style="padding:20px;text-align:center;color:#ef4444;">⚠️ No location set.</p>';
         const mapAddress = document.getElementById('mapAddress');
@@ -575,7 +704,6 @@ async function loadShopProfile() {
       }
     }
 
-    // Contact Icons
     const iconWhatsapp = document.getElementById('iconWhatsapp');
     const iconTiktok = document.getElementById('iconTiktok');
     const iconInstagram = document.getElementById('iconInstagram');
@@ -625,10 +753,8 @@ function addImageToSlideshow(imageUrl) {
 // ============================================================
 async function loadProducts() {
   try {
-    console.log('🔄 Fetching products...');
     const res = await fetch('/api/products');
     allProducts = await res.json();
-    console.log('📦 Products loaded:', allProducts.length, 'items');
     rotatedProducts = getRotatedProducts(allProducts);
     allProducts.forEach(p => {
       if (p.image) addImageToSlideshow(p.image);
@@ -950,95 +1076,46 @@ function sendChatMessage() {
 window.sendChatMessage = sendChatMessage;
 
 // ============================================================
-//  LOCATION REQUEST
+//  LOCATION REQUEST & STATUS
 // ============================================================
-document.getElementById('requestLocationBtn')?.addEventListener('click', async function() {
-  if (!isLoggedIn()) {
-    openAuthModal('login');
-    return;
-  }
-  const btn = this;
-  const statusElem = document.getElementById('locationRequestStatus');
-  btn.disabled = true;
-  if (statusElem) statusElem.textContent = '⏳ Sending request...';
-  try {
-    const res = await fetch('/api/customer/location/request', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${window.customerToken}` }
-    });
-    const data = await res.json();
-    if (res.ok && data.alreadyApproved) {
-      if (statusElem) {
-        statusElem.textContent = '✅ You already have access to the seller\'s location!';
-        statusElem.style.color = '#16a34a';
-      }
-      isLocationApproved = true;
-      showLiveLocation();
-    } else if (res.ok) {
-      if (statusElem) {
-        statusElem.textContent = '✅ Request sent! Waiting for admin approval.';
-        statusElem.style.color = '#16a34a';
-      }
-    } else {
-      if (statusElem) {
-        statusElem.textContent = '❌ ' + (data.error || 'Request failed');
-        statusElem.style.color = '#ef4444';
-      }
-    }
-  } catch (err) {
-    if (statusElem) {
-      statusElem.textContent = '❌ Network error. Please try again.';
-      statusElem.style.color = '#ef4444';
-    }
-  } finally {
-    btn.disabled = false;
-  }
-});
-
 async function checkLocationStatus() {
-  if (!isLoggedIn()) return;
+  if (!isLoggedIn()) return false;
   try {
     const res = await fetch('/api/customer/location/status', {
       headers: { 'Authorization': `Bearer ${window.customerToken}` }
     });
     const data = await res.json();
     if (data.status === 'approved') {
-      isLocationApproved = true;
-      const statusElem = document.getElementById('locationRequestStatus');
-      if (statusElem) {
-        statusElem.textContent = '✅ Location sharing approved!';
-        statusElem.style.color = '#16a34a';
+      const liveSection = document.getElementById('liveLocationSection');
+      if (liveSection) liveSection.style.display = 'block';
+      if (!liveMapInstance) {
+        const mapContainer = document.getElementById('liveMap');
+        if (mapContainer) {
+          liveMapInstance = L.map(mapContainer).setView([-1.2921, 36.8219], 14);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap'
+          }).addTo(liveMapInstance);
+          const liveSocket = io({ auth: { token: window.customerToken } });
+          liveSocket.on('admin_location', (data) => {
+            const { lat, lng } = data;
+            updateLiveLocation(lat, lng);
+          });
+          liveSocket.on('location_request_approved', () => {
+            checkLocationStatus();
+          });
+          fetch('/api/shop').then(res => res.json()).then(shop => {
+            if (shop.admin_lat && shop.admin_lng) {
+              updateLiveLocation(parseFloat(shop.admin_lat), parseFloat(shop.admin_lng));
+            }
+          });
+        }
       }
-      showLiveLocation();
+      return true;
     }
+    return false;
   } catch (err) {
     console.error('Error checking location status:', err);
-  }
-}
-
-function showLiveLocation() {
-  const section = document.getElementById('liveLocationSection');
-  if (section) section.style.display = 'block';
-  if (!liveMapInstance) {
-    const mapContainer = document.getElementById('liveMap');
-    if (!mapContainer) return;
-    liveMapInstance = L.map(mapContainer).setView([-1.2921, 36.8219], 14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap'
-    }).addTo(liveMapInstance);
-    const liveSocket = io({ auth: { token: window.customerToken } });
-    liveSocket.on('admin_location', (data) => {
-      const { lat, lng } = data;
-      updateLiveLocation(lat, lng);
-    });
-    liveSocket.on('location_request_approved', () => {
-      checkLocationStatus();
-    });
-    fetch('/api/shop').then(res => res.json()).then(shop => {
-      if (shop.admin_lat && shop.admin_lng) {
-        updateLiveLocation(parseFloat(shop.admin_lat), parseFloat(shop.admin_lng));
-      }
-    });
+    return false;
   }
 }
 
@@ -1084,27 +1161,10 @@ function getDistance(lat1, lng1, lat2, lng2) {
 }
 
 // ============================================================
-//  MODAL
-// ============================================================
-function openModal() {
-  const modal = document.getElementById('loginModal');
-  if (modal) modal.style.display = 'flex';
-}
-function closeModal() {
-  const modal = document.getElementById('loginModal');
-  if (modal) modal.style.display = 'none';
-}
-window.onclick = function(e) {
-  const modal = document.getElementById('loginModal');
-  if (modal && e.target === modal) closeModal();
-};
-
-// ============================================================
 //  START
 // ============================================================
 updateUserUI();
 fetchCurrentUser();
-
 loadShopProfile();
 loadProducts();
 if (window.customerToken) {
@@ -1112,7 +1172,7 @@ if (window.customerToken) {
 }
 
 // ============================================================
-//  EXPOSE FUNCTIONS GLOBALLY (for inline onclick events)
+//  EXPOSE FUNCTIONS GLOBALLY
 // ============================================================
 window.isLoggedIn = isLoggedIn;
 window.updateUserUI = updateUserUI;
@@ -1142,3 +1202,4 @@ window.toggleChat = toggleChat;
 window.sendChatMessage = sendChatMessage;
 window.changeSlide = changeSlide;
 window.renderGrid = renderGrid;
+window.checkLocationStatus = checkLocationStatus;

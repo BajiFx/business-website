@@ -23,11 +23,9 @@
 <!-- ===== HEADER ===== -->
 <div class="header">
   <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; max-width:1200px; margin:0 auto; width:100%;">
-    <!-- Left: Shop Name -->
     <h1 style="font-weight:900; letter-spacing:-0.5px; font-size:2rem; text-shadow:0 0 20px rgba(255,107,107,0.3); margin:0;">
       🛍️ <span id="shopNameHeader">Our Business</span>
     </h1>
-    <!-- Right: Navigation + Profile -->
     <div style="display:flex; align-items:center; gap:15px;">
       <a href="/" style="color:#94a3b8; text-decoration:none; font-weight:600;">Home</a>
       <a href="/track.html" style="color:#feca57; text-decoration:none; font-weight:600;">📍 Track</a>
@@ -104,14 +102,23 @@
   <h2 style="margin-bottom:20px; font-weight:800; color:#0f172a;">📦 Our Products</h2>
   <div class="products-grid" id="productGrid"></div>
 
-  <!-- ===== LOCATION REQUEST ===== -->
+  <!-- ===== LOCATION TRACKING BUTTON & MAPS ===== -->
   <div style="text-align:center; margin:30px 0;">
-    <button id="requestLocationBtn" class="btn btn-primary" style="font-size:1.1rem; padding:12px 30px;">📍 Request Location Sharing</button>
+    <button id="showMapBtn" class="btn btn-primary" style="font-size:1.1rem; padding:12px 30px;">
+      📍 Track My Shop Location
+    </button>
     <p id="locationRequestStatus" style="margin-top:8px; color:#64748b; font-size:0.9rem;"></p>
   </div>
 
-  <!-- ===== LIVE LOCATION MAP ===== -->
-  <div id="liveLocationSection" style="display:none; margin:30px 0;">
+  <!-- ===== STATIC MAP (hidden by default) ===== -->
+  <div id="staticMapSection" style="display:none; margin-top:20px;">
+    <h2>📍 Find Our Shop</h2>
+    <div id="shopMap" style="height:400px; border-radius:16px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
+    <p id="mapAddress" style="margin-top:8px; color:#475569;"></p>
+  </div>
+
+  <!-- ===== LIVE LOCATION MAP (hidden by default) ===== -->
+  <div id="liveLocationSection" style="display:none; margin-top:30px;">
     <h2>📍 Seller's Live Location</h2>
     <div id="liveMap" style="height:400px; border-radius:16px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
     <p id="liveDistance" style="margin-top:8px; font-weight:600; color:#2563eb;"></p>
@@ -133,13 +140,6 @@
     <a href="/track.html" class="btn btn-primary" style="font-size:1.2rem; padding:12px 30px;">📍 Live Track to Shop</a>
     <p style="color:#64748b; margin-top:10px;">Share your location live with the seller to get directions.</p>
   </div>
-</div>
-
-<!-- ===== STATIC MAP ===== -->
-<div class="container" style="margin-top:40px;">
-  <h2>📍 Find Our Shop</h2>
-  <div id="shopMap" style="height:400px; border-radius:16px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
-  <p id="mapAddress" style="margin-top:8px; color:#475569;"></p>
 </div>
 
 <!-- ===== DETAILS MODAL ===== -->
@@ -232,7 +232,7 @@
   </div>
 </div>
 
-<!-- ===== FLOATING WIDGETS (only shown when logged in) ===== -->
+<!-- ===== FLOATING WIDGETS ===== -->
 <div id="floatingWidgets" style="position:fixed; bottom:24px; right:24px; z-index:1000; display:flex; flex-direction:column; gap:12px; align-items:flex-end; display:none;">
   <a href="/cart.html" id="cartFloatingBtn" style="background:linear-gradient(135deg, #2563eb, #7c3aed); color:white; border:none; border-radius:50%; width:60px; height:60px; font-size:2rem; cursor:pointer; box-shadow:0 8px 24px rgba(37,99,235,0.4); display:flex; align-items:center; justify-content:center; text-decoration:none; position:relative;">
     🛒

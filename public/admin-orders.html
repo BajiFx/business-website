@@ -10,6 +10,11 @@
   <style>
     .orders-page { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
     .orders-page h1 { font-size: 2rem; font-weight: 800; color: #0f172a; margin-bottom: 10px; }
+    .filter-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); align-items: center; }
+    .filter-bar label { font-weight: 600; font-size: 0.9rem; color: #475569; }
+    .filter-bar input, .filter-bar select { padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.9rem; }
+    .filter-bar button { padding: 6px 16px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+    .filter-bar button:hover { background: #1d4ed8; }
     .order-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
     .order-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 10px; }
     .order-header .id { font-weight: 700; }
@@ -19,6 +24,7 @@
     .status-shipped { background: #dbeafe; color: #1e40af; }
     .status-delivered { background: #e0e7ff; color: #3730a3; }
     .status-received { background: #dcfce7; color: #166534; }
+    .status-cancelled { background: #fee2e2; color: #991b1b; }
     .order-items { margin: 10px 0; }
     .order-item { display: flex; justify-content: space-between; padding: 4px 0; font-size: 0.9rem; border-bottom: 1px solid #f1f5f9; }
     .order-total { font-weight: 700; font-size: 1.1rem; margin-top: 10px; }
@@ -29,25 +35,35 @@
     .btn-primary { background: #2563eb; color: white; }
     .btn-primary:hover { background: #1d4ed8; }
     .btn-sm { padding: 4px 12px; font-size: 0.8rem; }
+    .btn-success { background: #22c55e; color: white; }
+    .btn-success:hover { background: #16a34a; }
+    .btn-danger { background: #ef4444; color: white; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-warning { background: #f59e0b; color: white; }
+    .btn-warning:hover { background: #d97706; }
     .back-link { display: inline-block; margin-bottom: 20px; color: #2563eb; text-decoration: none; font-weight: 600; }
     .back-link:hover { text-decoration: underline; }
     .refresh-btn { background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 30px; cursor: pointer; font-weight: 600; margin-bottom: 20px; }
     .refresh-btn:hover { background: #1d4ed8; }
     .error-msg { color: #ef4444; padding: 20px; text-align: center; }
     .loading { text-align: center; padding: 40px; color: #94a3b8; }
-
-    /* Order detail */
     .order-detail { display: none; margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 12px; }
     .order-detail.active { display: block; }
+    .timeline { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; align-items: center; }
+    .timeline .step { display: flex; align-items: center; gap: 4px; background: #e2e8f0; padding: 3px 10px; border-radius: 16px; font-size: 0.7rem; color: #475569; }
+    .timeline .step.active { background: #2563eb; color: white; font-weight: 600; }
+    .timeline .step .time { font-size: 0.55rem; opacity: 0.7; margin-left: 3px; }
     .chat-box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; max-height: 200px; overflow-y: auto; background: white; }
     .chat-msg { padding: 4px 8px; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
     .chat-msg.seller { background: #e2e8f0; border-radius: 4px; margin: 2px 0; }
     .chat-msg.customer { background: #dbeafe; border-radius: 4px; margin: 2px 0; }
+    .chat-msg.system { background: #fef3c7; border-radius: 4px; margin: 2px 0; font-style: italic; }
     .status-update { margin: 10px 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .status-update select { padding: 6px 12px; border-radius: 8px; border: 1px solid #d1d5db; }
     .status-update input[type="text"] { padding: 6px 12px; border-radius: 8px; border: 1px solid #d1d5db; }
     .status-update button { padding: 6px 16px; border-radius: 8px; border: none; background: #2563eb; color: white; cursor: pointer; }
     .status-update button:hover { background: #1d4ed8; }
+    .location-tag { font-size: 0.8rem; color: #2563eb; background: #dbeafe; padding: 2px 10px; border-radius: 12px; display: inline-block; margin-top: 4px; }
   </style>
 </head>
 <body>
@@ -57,6 +73,7 @@
   <div style="display:flex; gap:15px; flex-wrap:wrap;">
     <a href="/admin.html" style="color:#94a3b8; text-decoration:none; font-weight:600;">Dashboard</a>
     <a href="/admin-orders.html" style="color:#feca57; text-decoration:none; font-weight:600;">Orders</a>
+    <a href="/admin-shipping.html" style="color:#94a3b8; text-decoration:none; font-weight:600;">Shipping Rules</a>
     <a href="/" style="color:#94a3b8; text-decoration:none; font-weight:600;">Public Shop</a>
     <a href="#" onclick="logoutAdmin()" style="color:#ef4444; text-decoration:none; font-weight:600;">Logout</a>
   </div>
@@ -68,6 +85,28 @@
     <h1>📦 Orders</h1>
     <button class="refresh-btn" onclick="loadOrders()"><i class="fas fa-sync"></i> Refresh</button>
   </div>
+
+  <div class="filter-bar">
+    <label>Status:</label>
+    <select id="filterStatus">
+      <option value="all">All</option>
+      <option value="pending">Pending</option>
+      <option value="confirmed">Confirmed</option>
+      <option value="shipped">Shipped</option>
+      <option value="delivered">Delivered</option>
+      <option value="received">Received</option>
+      <option value="cancelled">Cancelled</option>
+    </select>
+    <label>Search:</label>
+    <input type="text" id="filterSearch" placeholder="Name, email, order ref...">
+    <label>From:</label>
+    <input type="date" id="filterStart">
+    <label>To:</label>
+    <input type="date" id="filterEnd">
+    <button onclick="applyFilters()">Apply Filters</button>
+    <button onclick="resetFilters()" style="background:#64748b;">Reset</button>
+  </div>
+
   <div id="ordersContainer">
     <p class="loading">Loading orders...</p>
   </div>
@@ -86,10 +125,37 @@
     window.location.href = '/admin.html';
   }
 
+  function getFilters() {
+    return {
+      status: document.getElementById('filterStatus').value,
+      search: document.getElementById('filterSearch').value.trim(),
+      startDate: document.getElementById('filterStart').value,
+      endDate: document.getElementById('filterEnd').value
+    };
+  }
+
+  function applyFilters() { loadOrders(); }
+  function resetFilters() {
+    document.getElementById('filterStatus').value = 'all';
+    document.getElementById('filterSearch').value = '';
+    document.getElementById('filterStart').value = '';
+    document.getElementById('filterEnd').value = '';
+    loadOrders();
+  }
+
   function loadOrders() {
     const container = document.getElementById('ordersContainer');
     container.innerHTML = '<p class="loading">Loading orders...</p>';
-    fetch('/api/orders', {
+    const filters = getFilters();
+    let url = '/api/orders?';
+    const params = new URLSearchParams();
+    if (filters.status && filters.status !== 'all') params.append('status', filters.status);
+    if (filters.search) params.append('search', filters.search);
+    if (filters.startDate) params.append('startDate', filters.startDate);
+    if (filters.endDate) params.append('endDate', filters.endDate);
+    url += params.toString();
+
+    fetch(url, {
       headers: { 'Authorization': `Bearer ${adminToken}` }
     })
     .then(res => {
@@ -101,39 +167,109 @@
     })
     .then(orders => {
       if (!orders || orders.length === 0) {
-        container.innerHTML = '<p style="color:#94a3b8; text-align:center;">No orders yet.</p>';
+        container.innerHTML = '<p style="color:#94a3b8; text-align:center;">No orders match your filters.</p>';
         return;
       }
       orders.sort((a, b) => (a.status === 'pending' ? -1 : 1));
-      container.innerHTML = orders.map(order => `
+      container.innerHTML = orders.map(order => {
+        const displayRef = order.order_ref || `#${order.id}`;
+        let history = order.status_history || [];
+        if (typeof history === 'string') history = JSON.parse(history);
+        const statusesList = ['pending', 'confirmed', 'shipped', 'delivered', 'received', 'cancelled'];
+        let timelineHtml = '<div class="timeline">';
+        statusesList.forEach(s => {
+          const entry = history.find(h => h.status === s);
+          const active = order.status === s ? 'active' : '';
+          const time = entry ? new Date(entry.timestamp).toLocaleString() : '';
+          const icon = s === 'pending' ? '🕐' : s === 'confirmed' ? '✅' : s === 'shipped' ? '🚚' : s === 'delivered' ? '📦' : s === 'received' ? '✔️' : '❌';
+          if (entry || order.status === s) {
+            timelineHtml += `<div class="step ${active}"><i>${icon}</i> ${s.charAt(0).toUpperCase()+s.slice(1)} ${time ? `<span class="time">${time}</span>` : ''}</div>`;
+          }
+        });
+        timelineHtml += '</div>';
+
+        let refundStatus = '';
+        if (order.refund_status && order.refund_status !== 'none') {
+          refundStatus = `<span style="font-size:0.8rem; color:#f59e0b;">💰 Refund: ${order.refund_status}</span>`;
+        }
+        let replacementStatus = '';
+        if (order.replacement_status && order.replacement_status !== 'none') {
+          replacementStatus = `<span style="font-size:0.8rem; color:#f59e0b;">🔄 Replacement: ${order.replacement_status}</span>`;
+        }
+
+        // Delivery location display
+        let locationHtml = '';
+        if (order.delivery_location_name) {
+          locationHtml = `<div class="location-tag"><i class="fas fa-map-marker-alt"></i> ${order.delivery_location_name}</div>`;
+        }
+
+        return `
         <div class="order-card">
           <div class="order-header">
-            <span class="id">Order #${order.id}</span>
+            <span class="id">Order ${displayRef}</span>
             <span>${order.customer_name} (${order.customer_email})</span>
             <span class="status status-${order.status}">${order.status.toUpperCase()}</span>
             <span>${new Date(order.created_at).toLocaleString()}</span>
+            ${order.shipping_tier ? `<span style="font-size:0.8rem;">🚚 ${order.shipping_tier}</span>` : ''}
             <button class="btn btn-primary btn-sm" onclick="toggleDetails(${order.id})">Details</button>
+          </div>
+          ${locationHtml}
+          ${timelineHtml}
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:4px;">
+            ${refundStatus}
+            ${replacementStatus}
           </div>
           <div class="order-detail" id="detail-${order.id}">
             <div><strong>Order Items:</strong></div>
             ${order.items && order.items.length > 0 ? order.items.map(item => `
-              <div class="order-item"><span>${item.product_name} (ID: ${item.product_id}) x ${item.quantity}</span><span>${item.price}</span></div>
+              <div class="order-item">
+                <span>${item.product_name} (ID: ${item.product_id}) x ${item.quantity}</span>
+                <span>${item.price} ${item.unique_id ? `<span style="font-family:monospace; font-size:0.7rem;">ID: ${item.unique_id}</span>` : ''}</span>
+              </div>
             `).join('') : '<div>No items</div>'}
             <div class="order-total">Total: Ksh ${parseFloat(order.total).toFixed(2)}</div>
             <div class="status-update">
               <strong>Update Status:</strong>
               <select id="statusSelect-${order.id}">
-                ${order.status === 'pending' ? `<option value="pending" selected>Pending</option><option value="shipped">Ship</option>` : ''}
-                ${order.status === 'confirmed' ? `<option value="confirmed" selected>Confirmed</option><option value="shipped">Ship</option>` : ''}
-                ${order.status === 'shipped' ? `<option value="shipped" selected>Shipped</option><option value="delivered">Deliver</option>` : ''}
-                ${order.status === 'delivered' ? `<option value="delivered" selected>Delivered</option>` : ''}
-                ${order.status === 'received' ? `<option value="received" selected>Received</option>` : ''}
+                ${order.status === 'pending' ? `
+                  <option value="confirmed">Confirm</option>
+                  <option value="shipped">Ship</option>
+                ` : ''}
+                ${order.status === 'confirmed' ? `
+                  <option value="shipped">Ship</option>
+                ` : ''}
+                ${order.status === 'shipped' ? `
+                  <option value="delivered">Deliver</option>
+                ` : ''}
+                ${order.status === 'delivered' ? `
+                  <option value="received">Mark Received</option>
+                ` : ''}
+                ${order.status === 'received' ? `
+                  <option value="received" selected>Received</option>
+                ` : ''}
               </select>
               <input type="text" id="trackingInput-${order.id}" placeholder="Tracking # (optional)" style="width:150px;">
               <button onclick="updateOrderStatus(${order.id})">Update</button>
               ${order.status === 'pending' ? `<button onclick="confirmOrder(${order.id})" style="background:#22c55e;">Confirm</button>` : ''}
               ${order.status === 'delivered' ? `<button onclick="markReceived(${order.id})" style="background:#7c3aed;">Mark Received (Customer)</button>` : ''}
             </div>
+
+            ${order.refund_status === 'pending' ? `
+              <div style="margin-top:10px;">
+                <strong>Refund Request:</strong> ${order.refund_request || 'No reason provided.'}
+                <button class="btn btn-success btn-sm" onclick="handleRefund(${order.id}, 'approve')">Approve Refund</button>
+                <button class="btn btn-danger btn-sm" onclick="handleRefund(${order.id}, 'reject')">Reject Refund</button>
+              </div>
+            ` : ''}
+
+            ${order.replacement_status === 'pending' || order.replacement_status === 'pending_payment' || order.replacement_status === 'pending_refund' ? `
+              <div style="margin-top:10px;">
+                <strong>Replacement Request:</strong>
+                <button class="btn btn-success btn-sm" onclick="handleReplacement(${order.id}, 'approve')">Approve Replacement</button>
+                <button class="btn btn-danger btn-sm" onclick="handleReplacement(${order.id}, 'reject')">Reject Replacement</button>
+              </div>
+            ` : ''}
+
             <div style="margin-top:10px;">
               <strong>Order Chat:</strong>
               <div class="chat-box" id="chatMessages-${order.id}">Loading messages...</div>
@@ -144,7 +280,7 @@
             </div>
           </div>
         </div>
-      `).join('');
+      `}).join('');
 
       if (!socket) {
         socket = io({ auth: { token: adminToken } });
@@ -152,7 +288,7 @@
           const chatBox = document.getElementById(`chatMessages-${msg.order_id}`);
           if (chatBox) {
             const div = document.createElement('div');
-            div.className = `chat-msg ${msg.from_user === 'Seller' ? 'seller' : 'customer'}`;
+            div.className = `chat-msg ${msg.from_user === 'Seller' ? 'seller' : msg.from_user === 'System' ? 'system' : 'customer'}`;
             div.innerHTML = `<strong>${msg.from_user}:</strong> ${msg.message} <span style="float:right; font-size:0.7rem; opacity:0.6;">${new Date(msg.timestamp).toLocaleTimeString()}</span>`;
             chatBox.appendChild(div);
             chatBox.scrollTop = chatBox.scrollHeight;
@@ -194,13 +330,13 @@
       }
       messages.forEach(msg => {
         const div = document.createElement('div');
-        div.className = `chat-msg ${msg.from_user === 'Seller' ? 'seller' : 'customer'}`;
+        div.className = `chat-msg ${msg.from_user === 'Seller' ? 'seller' : msg.from_user === 'System' ? 'system' : 'customer'}`;
         div.innerHTML = `<strong>${msg.from_user}:</strong> ${msg.message} <span style="float:right; font-size:0.7rem; opacity:0.6;">${new Date(msg.timestamp).toLocaleTimeString()}</span>`;
         chatBox.appendChild(div);
       });
       chatBox.scrollTop = chatBox.scrollHeight;
     })
-    .catch(err => {
+    .catch(() => {
       chatBox.innerHTML = 'Error loading messages.';
     });
   }
@@ -228,7 +364,7 @@
         alert('Failed to send message.');
       }
     })
-    .catch(err => alert('Network error.'));
+    .catch(() => alert('Network error.'));
   }
 
   function updateOrderStatus(orderId) {
@@ -249,7 +385,7 @@
         alert('Failed: ' + (data.error || 'Unknown error'));
       }
     })
-    .catch(err => alert('Network error.'));
+    .catch(() => alert('Network error.'));
   }
 
   function confirmOrder(orderId) {
@@ -267,7 +403,7 @@
         alert('Failed: ' + (data.error || 'Unknown error'));
       }
     })
-    .catch(err => alert('Network error.'));
+    .catch(() => alert('Network error.'));
   }
 
   function markReceived(orderId) {
@@ -285,7 +421,45 @@
         alert('Failed: ' + (data.error || 'Unknown error'));
       }
     })
-    .catch(err => alert('Network error.'));
+    .catch(() => alert('Network error.'));
+  }
+
+  function handleRefund(orderId, action) {
+    if (!confirm(`Are you sure you want to ${action} this refund?`)) return;
+    fetch(`/api/admin/orders/${orderId}/refund`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+      body: JSON.stringify({ action })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert(`Refund ${action}d!`);
+        loadOrders();
+      } else {
+        alert('Failed: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(() => alert('Network error.'));
+  }
+
+  function handleReplacement(orderId, action) {
+    if (!confirm(`Are you sure you want to ${action} this replacement?`)) return;
+    fetch(`/api/admin/orders/${orderId}/replace`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+      body: JSON.stringify({ action })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert(`Replacement ${action}d!`);
+        loadOrders();
+      } else {
+        alert('Failed: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(() => alert('Network error.'));
   }
 
   document.addEventListener('DOMContentLoaded', loadOrders);

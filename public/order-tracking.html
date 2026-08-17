@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Tracking</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .track-page { max-width: 900px; margin: 40px auto; padding: 0 20px; }
+    .track-card { background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+    .track-card h2 { font-size: 1.8rem; font-weight: 800; color: #0f172a; margin-bottom: 10px; }
+    .track-ref { font-size: 1.2rem; color: #2563eb; font-weight: 600; }
+    .track-status { display: inline-block; padding: 4px 16px; border-radius: 30px; font-weight: 600; margin: 10px 0; }
+    .track-status.pending { background: #fef3c7; color: #92400e; }
+    .track-status.confirmed { background: #d1fae5; color: #065f46; }
+    .track-status.shipped { background: #dbeafe; color: #1e40af; }
+    .track-status.delivered { background: #e0e7ff; color: #3730a3; }
+    .track-status.received { background: #dcfce7; color: #166534; }
+    .track-status.cancelled { background: #fee2e2; color: #991b1b; }
+    .status-message { background: #f1f5f9; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #2563eb; font-weight: 500; }
+    .timeline-large { display: flex; flex-direction: column; gap: 12px; margin: 20px 0; }
+    .timeline-item { display: flex; gap: 16px; align-items: center; }
+    .timeline-item .icon { width: 40px; height: 40px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+    .timeline-item .icon.active { background: #2563eb; color: white; }
+    .timeline-item .content { flex: 1; }
+    .timeline-item .content .status { font-weight: 600; }
+    .timeline-item .content .time { font-size: 0.85rem; color: #94a3b8; }
+    .timeline-item .connector { width: 2px; height: 20px; background: #e2e8f0; margin-left: 19px; }
+    .timeline-item:last-child .connector { display: none; }
+    .order-items-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+    .order-items-table th { background: #f1f5f9; padding: 8px; text-align: left; }
+    .order-items-table td { padding: 8px; border-bottom: 1px solid #e2e8f0; }
+    .order-total { font-weight: 700; font-size: 1.2rem; margin-top: 10px; }
+    .chat-box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; max-height: 200px; overflow-y: auto; background: white; }
+    .chat-msg { padding: 4px 8px; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
+    .chat-msg.seller { background: #e2e8f0; border-radius: 4px; margin: 2px 0; }
+    .chat-msg.customer { background: #dbeafe; border-radius: 4px; margin: 2px 0; }
+    .chat-msg.system { background: #fef3c7; border-radius: 4px; margin: 2px 0; font-style: italic; }
+    .actions { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn { padding: 8px 18px; border-radius: 30px; border: none; font-weight: 600; cursor: pointer; }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-danger { background: #ef4444; color: white; }
+    .btn-success { background: #22c55e; color: white; }
+    .btn-secondary { background: #e2e8f0; color: #1e293b; }
+    .btn-warning { background: #f59e0b; color: white; }
+    .btn-info { background: #0ea5e9; color: white; }
+    .back-link { display: inline-block; margin-bottom: 20px; color: #2563eb; text-decoration: none; font-weight: 600; }
+    .back-link:hover { text-decoration: underline; }
+    .receipt-area { background: #f8fafc; padding: 20px; border-radius: 12px; margin-top: 20px; }
+    .receipt-area .print-btn { margin-top: 10px; }
+    @media print { .no-print { display: none; } }
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 9999; }
+    .modal-overlay.active { display: flex; }
+    .modal-box { background: white; max-width: 600px; width: 90%; padding: 25px; border-radius: 16px; max-height: 80vh; overflow-y: auto; }
+    .modal-box h3 { margin-top: 0; }
+    .modal-box .btn-row { display: flex; gap: 10px; margin-top: 10px; justify-content: flex-end; }
+    .modal-box .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-height: 300px; overflow-y: auto; }
+    .modal-box .product-grid .product-item { border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; cursor: pointer; transition: 0.2s; }
+    .modal-box .product-grid .product-item:hover { background: #f1f5f9; }
+    .modal-box .product-grid .product-item.selected { border-color: #2563eb; background: #eff6ff; }
+    .modal-box .product-grid .product-item img { width: 100%; height: 100px; object-fit: cover; border-radius: 4px; }
+    .modal-box .product-grid .product-item .name { font-weight: 600; }
+    .modal-box .product-grid .product-item .price { font-size: 0.9rem; color: #475569; }
+    .modal-box .order-item-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #e2e8f0; }
+    .modal-box .order-item-row input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+    .modal-box select { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; }
+    .modal-box textarea { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; min-height: 60px; }
+  </style>
+</head>
+<body>
+
+<div class="header no-print">
+  <h1>🛍️ <span id="shopNameHeader">Our Business</span></h1>
+  <div style="display:flex; justify-content:center; align-items:center; gap:15px; flex-wrap:wrap; margin-top:8px;">
+    <a href="/">Home</a>
+    <a href="/account.html">My Account</a>
+    <a href="#" onclick="logout()" style="color:#ef4444; font-size:0.9rem;">Logout</a>
+  </div>
+</div>
+
+<div class="track-page" id="trackPage">
+  <a href="/account.html" class="back-link no-print"><i class="fas fa-arrow-left"></i> Back to Orders</a>
+  <div class="track-card" id="trackCard">
+    <div style="text-align:center; padding:20px;">
+      <div style="font-size:3rem; color:#2563eb; margin-bottom:10px;">📦</div>
+      <h2 id="trackTitle">Order Details</h2>
+      <div class="track-ref" id="trackRef">Loading...</div>
+      <div class="track-status" id="trackStatus">Loading...</div>
+      <div id="trackStatusMessage" class="status-message"></div>
+      <div id="trackDeliveryEstimate" style="font-size:0.9rem; color:#475569;"></div>
+    </div>
+
+    <div id="trackTimeline"></div>
+
+    <div id="trackItems">
+      <h3>Order Items</h3>
+      <table class="order-items-table">
+        <thead><tr><th>Product</th><th>Qty</th><th>Price</th><th>Subtotal</th><th>Unique ID</th><th>Status</th></tr></thead>
+        <tbody id="trackItemsBody"></tbody>
+      </table>
+      <div class="order-total" id="trackTotal">Total: Ksh 0</div>
+    </div>
+
+    <div id="trackInfo" style="margin-top:15px;"></div>
+
+    <div class="actions no-print" id="trackActions"></div>
+
+    <div style="margin-top:20px;">
+      <h3>Order Chat</h3>
+      <div class="chat-box" id="trackChat">Loading messages...</div>
+      <div style="display:flex; margin-top:6px;">
+        <input type="text" id="trackChatInput" placeholder="Type a message..." style="flex:1; padding:6px 12px; border:1px solid #d1d5db; border-radius:6px;">
+        <button onclick="sendTrackChat()" style="margin-left:6px; padding:6px 16px; background:#2563eb; color:white; border:none; border-radius:6px; cursor:pointer;">Send</button>
+      </div>
+    </div>
+
+    <div class="receipt-area no-print">
+      <button class="btn btn-primary print-btn" onclick="window.print()"><i class="fas fa-print"></i> Download Receipt</button>
+    </div>
+  </div>
+</div>
+
+<!-- Action Modal (for cancellation, refund, replacement, return) -->
+<div class="modal-overlay" id="actionModal">
+  <div class="modal-box">
+    <h3 id="modalTitle">Action</h3>
+    <div id="modalBody"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="modalConfirmBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/app.js"></script>
+<script>
+  const token = localStorage.getItem('customerToken');
+  if (!token) {
+    alert('Please login first.');
+    window.location.href = '/';
+  }
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const orderId = urlParams.get('id');
+  if (!orderId) {
+    document.getElementById('trackCard').innerHTML = '<p style="color:#ef4444;">No order ID provided.</p>';
+  }
+
+  let socket = null;
+  let currentOrder = null;
+
+  async function loadOrder() {
+    try {
+      const res = await fetch(`/api/orders/${orderId}/tracking`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to load order');
+      const order = await res.json();
+      currentOrder = order;
+      renderOrder(order);
+      loadChat(order.id);
+      if (!socket) {
+        socket = io({ auth: { token } });
+        socket.on('new-order-chat-message', (msg) => {
+          if (msg.order_id == order.id) {
+            appendChatMessage(msg);
+          }
+        });
+      }
+      socket.emit('join-order-room', order.id);
+    } catch (err) {
+      console.error(err);
+      document.getElementById('trackCard').innerHTML = `<p style="color:#ef4444;">Error loading order: ${err.message}</p>`;
+    }
+  }
+
+  function renderOrder(order) {
+    document.getElementById('trackTitle').textContent = 'Order Details';
+    document.getElementById('trackRef').textContent = order.order_ref || `#${order.id}`;
+    const statusClass = order.status || 'pending';
+    document.getElementById('trackStatus').textContent = statusClass.toUpperCase();
+    document.getElementById('trackStatus').className = `track-status ${statusClass}`;
+    document.getElementById('trackStatusMessage').textContent = order.statusMessage || '';
+
+    if (order.estimated_delivery_days) {
+      document.getElementById('trackDeliveryEstimate').textContent = `🚚 Estimated delivery: ${order.estimated_delivery_days} days`;
+    } else {
+      document.getElementById('trackDeliveryEstimate').textContent = '';
+    }
+
+    let history = order.status_history || [];
+    if (typeof history === 'string') history = JSON.parse(history);
+    const statuses = ['pending', 'confirmed', 'shipped', 'delivered', 'received', 'cancelled'];
+    let timelineHtml = '<div class="timeline-large">';
+    statuses.forEach(s => {
+      const entry = history.find(h => h.status === s);
+      const active = order.status === s ? 'active' : '';
+      const time = entry ? new Date(entry.timestamp).toLocaleString() : '';
+      const icon = s === 'pending' ? '🕐' : s === 'confirmed' ? '✅' : s === 'shipped' ? '🚚' : s === 'delivered' ? '📦' : s === 'received' ? '✔️' : '❌';
+      if (entry || order.status === s) {
+        timelineHtml += `
+          <div class="timeline-item">
+            <div class="icon ${active}">${icon}</div>
+            <div class="content">
+              <div class="status">${s.charAt(0).toUpperCase()+s.slice(1)}</div>
+              <div class="time">${time || '—'}</div>
+            </div>
+          </div>
+          <div class="connector"></div>
+        `;
+      }
+    });
+    timelineHtml += '</div>';
+    document.getElementById('trackTimeline').innerHTML = timelineHtml;
+
+    const tbody = document.getElementById('trackItemsBody');
+    let total = 0;
+    if (order.items && order.items.length > 0) {
+      tbody.innerHTML = order.items.map(item => {
+        const priceNum = parseFloat(item.price.replace(/[^0-9.]/g, '')) || 0;
+        const subtotal = priceNum * item.quantity;
+        total += subtotal;
+        const isReceived = order.status === 'received';
+        const uniqueId = item.unique_id || '—';
+        return `
+          <tr>
+            <td>${item.product_name}</td>
+            <td>${item.quantity}</td>
+            <td>${item.price}</td>
+            <td>Ksh ${subtotal.toFixed(2)}</td>
+            <td style="font-family:monospace; font-size:0.75rem;">${uniqueId}</td>
+            <td>${isReceived ? '✔ Received' : '-'}</td>
+          </tr>
+        `;
+      }).join('');
+    } else {
+      tbody.innerHTML = '<tr><td colspan="6">No items</td></tr>';
+    }
+    document.getElementById('trackTotal').textContent = `Total: Ksh ${Number(order.total).toFixed(2)}`;
+
+    let infoHtml = `<div style="font-size:0.9rem; color:#475569;">`;
+    infoHtml += `<span>Order Date: ${new Date(order.created_at).toLocaleString()}</span>`;
+    if (order.shipped_at) infoHtml += ` <span style="margin-left:15px;">Shipped: ${new Date(order.shipped_at).toLocaleString()}</span>`;
+    if (order.delivered_at) infoHtml += ` <span style="margin-left:15px;">Delivered: ${new Date(order.delivered_at).toLocaleString()}</span>`;
+    if (order.received_at) infoHtml += ` <span style="margin-left:15px;">Received: ${new Date(order.received_at).toLocaleString()}</span>`;
+    if (order.cancelled_at) infoHtml += ` <span style="margin-left:15px;">Cancelled: ${new Date(order.cancelled_at).toLocaleString()}</span>`;
+    if (order.tracking_number) infoHtml += ` <span style="margin-left:15px;">Tracking: ${order.tracking_number}</span>`;
+    if (order.delivery_location) {
+      const loc = typeof order.delivery_location === 'string' ? JSON.parse(order.delivery_location) : order.delivery_location;
+      if (loc && loc.address) infoHtml += ` <span style="margin-left:15px;">📍 ${loc.address}`;
+    }
+    infoHtml += '</div>';
+    document.getElementById('trackInfo').innerHTML = infoHtml;
+
+    const actions = document.getElementById('trackActions');
+    actions.innerHTML = '';
+
+    if (order.replacement_status === 'pending_payment') {
+      const payDiv = document.createElement('div');
+      payDiv.style.width = '100%';
+      payDiv.style.marginTop = '10px';
+      payDiv.style.padding = '8px';
+      payDiv.style.background = '#fef3c7';
+      payDiv.style.borderRadius = '8px';
+      payDiv.textContent = `⏳ Replacement pending payment. Please add Ksh ${order.replacement_diff ? Math.abs(order.replacement_diff).toFixed(2) : '0'} to complete.`;
+      actions.appendChild(payDiv);
+    } else if (order.replacement_status === 'pending_refund') {
+      const refundDiv = document.createElement('div');
+      refundDiv.style.width = '100%';
+      refundDiv.style.marginTop = '10px';
+      refundDiv.style.padding = '8px';
+      refundDiv.style.background = '#fef3c7';
+      refundDiv.textContent = `⏳ Replacement pending refund. You will receive Ksh ${order.replacement_diff ? Math.abs(order.replacement_diff).toFixed(2) : '0'} back.`;
+      actions.appendChild(refundDiv);
+    } else if (order.replacement_status === 'pending') {
+      const pendingDiv = document.createElement('div');
+      pendingDiv.style.width = '100%';
+      pendingDiv.style.marginTop = '10px';
+      pendingDiv.style.padding = '8px';
+      pendingDiv.style.background = '#fef3c7';
+      pendingDiv.textContent = '⏳ Replacement request is pending admin approval.';
+      actions.appendChild(pendingDiv);
+    } else if (order.replacement_status === 'approved') {
+      const approvedDiv = document.createElement('div');
+      approvedDiv.style.width = '100%';
+      approvedDiv.style.marginTop = '10px';
+      approvedDiv.style.padding = '8px';
+      approvedDiv.style.background = '#dcfce7';
+      approvedDiv.textContent = '✅ Replacement approved.';
+      actions.appendChild(approvedDiv);
+    } else if (order.replacement_status === 'rejected') {
+      const rejectedDiv = document.createElement('div');
+      rejectedDiv.style.width = '100%';
+      rejectedDiv.style.marginTop = '10px';
+      rejectedDiv.style.padding = '8px';
+      rejectedDiv.style.background = '#fee2e2';
+      rejectedDiv.textContent = '❌ Replacement rejected.';
+      actions.appendChild(rejectedDiv);
+    }
+
+    if (order.refund_status === 'pending') {
+      const pendingDiv = document.createElement('div');
+      pendingDiv.style.width = '100%';
+      pendingDiv.style.marginTop = '10px';
+      pendingDiv.style.padding = '8px';
+      pendingDiv.style.background = '#fef3c7';
+      pendingDiv.textContent = '⏳ Refund request is pending admin approval.';
+      actions.appendChild(pendingDiv);
+    }
+
+    if (!['cancelled', 'received'].includes(order.status) && !order.replacement_status || order.replacement_status === 'none') {
+      const replaceBtn = document.createElement('button');
+      replaceBtn.className = 'btn btn-info';
+      replaceBtn.innerHTML = '<i class="fas fa-exchange-alt"></i> Replace Products';
+      replaceBtn.onclick = () => openReplaceModal();
+      actions.appendChild(replaceBtn);
+    }
+
+    if (order.status === 'pending' || order.status === 'confirmed') {
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'btn btn-danger';
+      cancelBtn.innerHTML = '<i class="fas fa-times"></i> Cancel Order';
+      cancelBtn.onclick = () => openCancelModal();
+      actions.appendChild(cancelBtn);
+    }
+
+    if (!['cancelled', 'received'].includes(order.status) && order.refund_status !== 'pending') {
+      const refundBtn = document.createElement('button');
+      refundBtn.className = 'btn btn-warning';
+      refundBtn.innerHTML = '<i class="fas fa-hand-holding-usd"></i> Request Refund';
+      refundBtn.onclick = () => openRefundModal();
+      actions.appendChild(refundBtn);
+    }
+
+    if (order.status === 'delivered' || order.status === 'received') {
+      const returnBtn = document.createElement('button');
+      returnBtn.className = 'btn btn-info';
+      returnBtn.innerHTML = '<i class="fas fa-undo"></i> Request Return';
+      returnBtn.onclick = () => openReturnModal();
+      actions.appendChild(returnBtn);
+    }
+
+    const reorderBtn = document.createElement('button');
+    reorderBtn.className = 'btn btn-success';
+    reorderBtn.innerHTML = '<i class="fas fa-redo"></i> Reorder';
+    reorderBtn.onclick = () => reorder(order.id);
+    actions.appendChild(reorderBtn);
+
+    const backBtn = document.createElement('button');
+    backBtn.className = 'btn btn-secondary';
+    backBtn.innerHTML = '<i class="fas fa-arrow-left"></i> Back';
+    backBtn.onclick = () => window.location.href = '/account.html';
+    actions.appendChild(backBtn);
+  }
+
+  // ---- Modals ----
+  function openModal() { document.getElementById('actionModal').classList.add('active'); }
+  function closeModal() { document.getElementById('actionModal').classList.remove('active'); }
+
+  function openCancelModal() {
+    document.getElementById('modalTitle').textContent = 'Cancel Order';
+    document.getElementById('modalBody').innerHTML = `
+      <p>Please select a reason for cancellation:</p>
+      <select id="cancelReason">
+        <option value="Changed my mind">Changed my mind</option>
+        <option value="Found a better price">Found a better price</option>
+        <option value="Shipping too long">Shipping too long</option>
+        <option value="Ordered by mistake">Ordered by mistake</option>
+        <option value="Other">Other</option>
+      </select>
+    `;
+    document.getElementById('modalConfirmBtn').onclick = () => {
+      const reason = document.getElementById('cancelReason').value;
+      cancelOrder(orderId, reason);
+      closeModal();
+    };
+    openModal();
+  }
+
+  function openRefundModal() {
+    document.getElementById('modalTitle').textContent = 'Request Refund';
+    document.getElementById('modalBody').innerHTML = `
+      <p>Please provide a reason for refund:</p>
+      <textarea id="refundReason" placeholder="Why do you want a refund?"></textarea>
+    `;
+    document.getElementById('modalConfirmBtn').onclick = () => {
+      const reason = document.getElementById('refundReason').value.trim();
+      if (!reason) { alert('Please provide a reason.'); return; }
+      requestRefund(orderId, reason);
+      closeModal();
+    };
+    openModal();
+  }
+
+  function openReturnModal() {
+    document.getElementById('modalTitle').textContent = 'Request Return';
+    document.getElementById('modalBody').innerHTML = `
+      <p>Enter the product ID to return (from the order list above):</p>
+      <input type="number" id="returnProductId" placeholder="Product ID" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px;">
+      <p style="margin-top:10px;">Reason for return:</p>
+      <textarea id="returnReason" placeholder="Why are you returning?"></textarea>
+    `;
+    document.getElementById('modalConfirmBtn').onclick = () => {
+      const productId = document.getElementById('returnProductId').value.trim();
+      const reason = document.getElementById('returnReason').value.trim();
+      if (!productId) { alert('Please enter product ID.'); return; }
+      if (!reason) { alert('Please provide a reason.'); return; }
+      requestReturn(orderId, parseInt(productId), reason);
+      closeModal();
+    };
+    openModal();
+  }
+
+  function openReplaceModal() {
+    selectedOldIds = [];
+    selectedNewIds = [];
+    replacementStep = 1;
+    renderReplaceStep();
+    openModal();
+  }
+
+  let selectedOldIds = [];
+  let selectedNewIds = [];
+  let replacementStep = 1;
+
+  function renderReplaceStep() {
+    const title = document.getElementById('modalTitle');
+    const body = document.getElementById('modalBody');
+    const btn = document.getElementById('modalConfirmBtn');
+
+    if (replacementStep === 1) {
+      title.textContent = 'Step 1: Select Products to Replace';
+      if (!currentOrder || !currentOrder.items || currentOrder.items.length === 0) {
+        body.innerHTML = '<p>No items to replace.</p>';
+        btn.style.display = 'none';
+        return;
+      }
+      let html = '<p>Select the products you want to replace:</p>';
+      currentOrder.items.forEach(item => {
+        const checked = selectedOldIds.includes(item.product_id) ? 'checked' : '';
+        html += `
+          <div class="order-item-row">
+            <input type="checkbox" id="old_${item.product_id}" value="${item.product_id}" ${checked} onchange="toggleOldItem(${item.product_id})">
+            <label for="old_${item.product_id}"><strong>${item.product_name}</strong> (Qty: ${item.quantity}, Price: ${item.price})</label>
+          </div>
+        `;
+      });
+      body.innerHTML = html;
+      btn.textContent = 'Continue →';
+      btn.style.display = 'inline-block';
+      btn.onclick = () => {
+        if (selectedOldIds.length === 0) {
+          alert('Please select at least one product to replace.');
+          return;
+        }
+        replacementStep = 2;
+        renderReplaceStep();
+      };
+    } else if (replacementStep === 2) {
+      title.textContent = 'Step 2: Select Replacement Products';
+      fetch('/api/products')
+        .then(res => res.json())
+        .then(products => {
+          let html = '<p>Select the products you want as replacements:</p><div class="product-grid">';
+          products.forEach(p => {
+            const checked = selectedNewIds.includes(p.id) ? 'checked' : '';
+            const img = p.image ? `<img src="${p.image}" alt="${p.name}" onerror="this.style.display='none'">` : '';
+            html += `
+              <div class="product-item ${selectedNewIds.includes(p.id) ? 'selected' : ''}" onclick="toggleNewProduct(${p.id})">
+                ${img}
+                <div class="name">${p.name}</div>
+                <div class="price">${p.price}</div>
+                <input type="checkbox" ${checked} style="margin-top:4px;">
+              </div>
+            `;
+          });
+          html += '</div>';
+          body.innerHTML = html;
+          btn.textContent = 'Confirm Selection →';
+          btn.onclick = () => {
+            if (selectedNewIds.length === 0) {
+              alert('Please select at least one replacement product.');
+              return;
+            }
+            replacementStep = 3;
+            renderReplaceStep();
+          };
+        })
+        .catch(() => {
+          body.innerHTML = '<p>Error loading products.</p>';
+          btn.style.display = 'none';
+        });
+    } else if (replacementStep === 3) {
+      title.textContent = 'Step 3: Review & Confirm';
+      const oldItems = currentOrder.items.filter(i => selectedOldIds.includes(i.product_id));
+      let oldTotal = 0;
+      let oldNames = [];
+      oldItems.forEach(item => {
+        const priceNum = parseFloat(item.price.replace(/[^0-9.]/g, '')) || 0;
+        oldTotal += priceNum * item.quantity;
+        oldNames.push(item.product_name + ' x' + item.quantity);
+      });
+
+      fetch('/api/products')
+        .then(res => res.json())
+        .then(products => {
+          const selectedProducts = products.filter(p => selectedNewIds.includes(p.id));
+          let newTotal = 0;
+          let newNames = [];
+          selectedProducts.forEach(p => {
+            const priceNum = parseFloat(p.price.replace(/[^0-9.]/g, '')) || 0;
+            newTotal += priceNum;
+            newNames.push(p.name);
+          });
+          const diff = newTotal - oldTotal;
+          let msg = '';
+          if (diff > 0) msg = `<span style="color:#ef4444;">You need to pay an extra Ksh ${diff.toFixed(2)}</span>`;
+          else if (diff < 0) msg = `<span style="color:#16a34a;">You will get a refund of Ksh ${Math.abs(diff).toFixed(2)}</span>`;
+          else msg = `<span style="color:#2563eb;">Prices are equal, no payment needed.</span>`;
+
+          let html = `
+            <p><strong>Old products (to replace):</strong> ${oldNames.join(', ')}<br>
+            <strong>Total old price:</strong> Ksh ${oldTotal.toFixed(2)}</p>
+            <p><strong>New products (replacements):</strong> ${newNames.join(', ')}<br>
+            <strong>Total new price:</strong> Ksh ${newTotal.toFixed(2)}</p>
+            <p><strong>Difference:</strong> ${msg}</p>
+            <p>Click "Submit Replacement" to send request to admin.</p>
+          `;
+          body.innerHTML = html;
+          btn.textContent = 'Submit Replacement';
+          btn.onclick = () => {
+            submitReplacement(orderId, selectedOldIds, selectedNewIds);
+            closeModal();
+          };
+        })
+        .catch(() => {
+          body.innerHTML = '<p>Error calculating prices.</p>';
+          btn.style.display = 'none';
+        });
+    }
+  }
+
+  function toggleOldItem(id) {
+    const idx = selectedOldIds.indexOf(id);
+    if (idx > -1) selectedOldIds.splice(idx, 1);
+    else selectedOldIds.push(id);
+  }
+
+  function toggleNewProduct(id) {
+    const idx = selectedNewIds.indexOf(id);
+    if (idx > -1) selectedNewIds.splice(idx, 1);
+    else selectedNewIds.push(id);
+    renderReplaceStep();
+  }
+
+  // ---- API calls ----
+  async function cancelOrder(id, reason) {
+    try {
+      const res = await fetch(`/api/orders/${id}/cancel`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ reason })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Order cancelled.');
+        loadOrder();
+      } else {
+        alert('Failed: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Network error.');
+    }
+  }
+
+  async function requestRefund(id, reason) {
+    try {
+      const res = await fetch(`/api/orders/${id}/refund`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ reason })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Refund request submitted.');
+        loadOrder();
+      } else {
+        alert('Failed: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Network error.');
+    }
+  }
+
+  async function requestReturn(id, productId, reason) {
+    try {
+      const res = await fetch(`/api/orders/${id}/return`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ product_id: productId, reason })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Return request submitted.');
+        loadOrder();
+      } else {
+        alert('Failed: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Network error.');
+    }
+  }
+
+  async function submitReplacement(id, oldIds, newIds) {
+    try {
+      const res = await fetch(`/api/orders/${id}/replace`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ oldProductIds: oldIds, newProductIds: newIds })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Replacement request submitted!');
+        loadOrder();
+      } else {
+        alert('Failed: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Network error.');
+    }
+  }
+
+  async function reorder(id) {
+    try {
+      const res = await fetch(`/api/orders/${id}/reorder`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        localStorage.setItem('cart', JSON.stringify(data.items));
+        alert('Items added to cart! Redirecting to cart...');
+        window.location.href = '/cart.html';
+      } else {
+        alert('Failed: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Network error.');
+    }
+  }
+
+  // ---- Chat ----
+  function loadChat(orderId) {
+    const chatBox = document.getElementById('trackChat');
+    chatBox.innerHTML = 'Loading...';
+    fetch(`/api/orders/${orderId}/chat`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(messages => {
+      chatBox.innerHTML = '';
+      if (!messages || messages.length === 0) {
+        chatBox.innerHTML = '<div style="color:#94a3b8;">No messages yet.</div>';
+        return;
+      }
+      messages.forEach(msg => appendChatMessage(msg));
+    })
+    .catch(() => {
+      chatBox.innerHTML = 'Error loading messages.';
+    });
+  }
+
+  function appendChatMessage(msg) {
+    const chatBox = document.getElementById('trackChat');
+    const div = document.createElement('div');
+    const cls = msg.from_user === 'Seller' ? 'seller' : msg.from_user === 'System' ? 'system' : 'customer';
+    div.className = `chat-msg ${cls}`;
+    div.innerHTML = `<strong>${msg.from_user}:</strong> ${msg.message} <span style="float:right; font-size:0.7rem; opacity:0.6;">${new Date(msg.timestamp).toLocaleTimeString()}</span>`;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function sendTrackChat() {
+    const input = document.getElementById('trackChatInput');
+    const msg = input.value.trim();
+    if (!msg) return;
+    fetch(`/api/orders/${orderId}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ message: msg })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        input.value = '';
+        appendChatMessage({ from_user: 'Customer', message: msg, timestamp: new Date() });
+      } else {
+        alert('Failed to send message.');
+      }
+    })
+    .catch(() => alert('Network error.'));
+  }
+
+  function logout() {
+    localStorage.removeItem('customerToken');
+    window.location.href = '/';
+  }
+
+  loadOrder();
+</script>
+</body>
+</html>

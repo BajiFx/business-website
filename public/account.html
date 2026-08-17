@@ -18,7 +18,6 @@
     .account-actions .btn { padding: 10px 24px; font-size: 1rem; }
     .back-link { display: inline-block; margin-bottom: 20px; color: #2563eb; text-decoration: none; font-weight: 600; }
     .back-link:hover { text-decoration: underline; }
-
     .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 30px; }
     .dash-card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
     .dash-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
@@ -27,11 +26,9 @@
     .dash-card .btn-sm { padding: 4px 12px; font-size: 0.7rem; }
     .dash-card .msg-item { padding: 6px 0; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; }
     .dash-card .msg-item .time { font-size: 0.7rem; color: #94a3b8; }
-
     .order-section { margin-top: 30px; }
     .order-section h2 { font-size: 1.3rem; font-weight: 700; margin: 20px 0 10px; padding-bottom: 6px; border-bottom: 2px solid #e2e8f0; }
     .order-section .badge-count { background: #2563eb; color: white; border-radius: 12px; padding: 1px 10px; font-size: 0.7rem; margin-left: 8px; }
-
     .order-item-mini { padding: 12px 0; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
     .order-item-mini .status { padding: 2px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; }
     .status-pending { background: #fef3c7; color: #92400e; }
@@ -39,17 +36,31 @@
     .status-shipped { background: #dbeafe; color: #1e40af; }
     .status-delivered { background: #e0e7ff; color: #3730a3; }
     .status-received { background: #dcfce7; color: #166534; }
+    .status-cancelled { background: #fee2e2; color: #991b1b; }
     .order-item-mini .total { font-weight: 700; }
     .order-detail { display: none; margin-top: 10px; padding: 10px; background: #f8fafc; border-radius: 8px; }
     .order-detail.active { display: block; }
+    .order-summary-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .order-summary-table th { background: #e2e8f0; padding: 6px 8px; text-align: left; }
+    .order-summary-table td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; }
+    .order-summary-table .red-tick { color: #ef4444; font-weight: 700; margin-left: 6px; }
+    .order-summary-total { font-weight: 700; font-size: 1.1rem; margin-top: 10px; padding-top: 10px; border-top: 2px solid #2563eb; }
+    .timeline { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; align-items: center; }
+    .timeline .step { display: flex; align-items: center; gap: 4px; background: #e2e8f0; padding: 3px 10px; border-radius: 16px; font-size: 0.7rem; color: #475569; }
+    .timeline .step.active { background: #2563eb; color: white; font-weight: 600; }
+    .timeline .step .time { font-size: 0.55rem; opacity: 0.7; margin-left: 3px; }
+    .timeline .step i { font-size: 0.7rem; }
+    .status-message-box { background: #f1f5f9; padding: 10px; border-radius: 8px; margin: 8px 0; border-left: 4px solid #2563eb; font-weight: 500; font-size: 0.9rem; }
     .chat-box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; max-height: 150px; overflow-y: auto; background: white; }
     .chat-msg { padding: 4px 8px; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; }
     .chat-msg.seller { background: #e2e8f0; border-radius: 4px; margin: 2px 0; }
     .chat-msg.customer { background: #dbeafe; border-radius: 4px; margin: 2px 0; }
+    .chat-msg.system { background: #fef3c7; border-radius: 4px; margin: 2px 0; font-style: italic; }
     .btn-sm { padding: 2px 10px; font-size: 0.7rem; }
-
+    .address-book-section { margin: 15px 0; }
+    .address-item { display: flex; align-items: center; gap: 10px; padding: 8px; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:6px; }
+    .address-item .label { font-weight:600; }
     .empty-msg { color: #94a3b8; padding: 10px 0; text-align: center; }
-
     @media (max-width: 640px) { .dashboard-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -69,7 +80,6 @@
   <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Shop</a>
   <h1>👤 My Account</h1>
 
-  <!-- Profile Card -->
   <div class="account-card" id="accountCard">
     <div style="text-align:center; padding:20px;">
       <div style="font-size:4rem; color:#2563eb; margin-bottom:10px;">👤</div>
@@ -87,39 +97,50 @@
     </div>
   </div>
 
-  <!-- Dashboard Sections -->
+  <!-- Address Book -->
+  <div class="account-card" style="margin-top:20px;">
+    <h3>📍 My Addresses</h3>
+    <div id="addressBookContainer" class="address-book-section">
+      <p class="empty-msg">Loading addresses...</p>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="showAddAddress()"><i class="fas fa-plus"></i> Add New Address</button>
+  </div>
+
   <div class="dashboard-grid">
-    <!-- Cart Summary -->
     <div class="dash-card">
       <h3>🛒 Cart Summary</h3>
-      <div id="cartSummary">
-        <p style="color:#94a3b8;">Loading...</p>
-      </div>
+      <div id="cartSummary"><p class="empty-msg">Loading...</p></div>
       <a href="/cart.html" class="btn btn-primary btn-sm" style="margin-top:8px;">View Full Cart</a>
     </div>
-    <!-- Recent Messages -->
     <div class="dash-card">
       <h3>💬 Recent Messages</h3>
-      <div id="recentMessages">
-        <p style="color:#94a3b8;">Loading...</p>
-      </div>
+      <div id="recentMessages"><p class="empty-msg">Loading...</p></div>
       <button class="btn btn-primary btn-sm" onclick="loadRecentMessages()" style="margin-top:8px;">Refresh</button>
     </div>
   </div>
 
-  <!-- Order History (grouped by status) -->
   <div id="orderHistory" style="display:none; margin-top:30px;">
     <h2>📦 My Orders</h2>
     <div id="ordersContainer"></div>
   </div>
 </div>
 
+<!-- Add Address Modal -->
+<div class="modal-overlay" id="addressModal">
+  <div class="modal-box">
+    <h3>Add New Address</h3>
+    <label>Label: <select id="addressLabel"><option>Home</option><option>Office</option><option>Other</option></select></label><br><br>
+    <label>Address: <input type="text" id="addressInput" style="width:100%; padding:8px; margin-top:5px;"></label><br>
+    <label>GPS (optional): <input type="text" id="addressLat" placeholder="Latitude"> <input type="text" id="addressLng" placeholder="Longitude"></label><br>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeAddressModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAddress()">Save</button>
+    </div>
+  </div>
+</div>
+
 <script src="/app.js"></script>
 <script>
-  // ============================================================
-  //  GLOBALS & HELPERS
-  // ============================================================
-  // Use window.customerToken and window.currentUser from app.js
   let orderSocket = null;
 
   function getCartLocal() {
@@ -127,15 +148,12 @@
     try { return JSON.parse(localStorage.getItem('cart')) || []; } catch { return []; }
   }
 
-  // ============================================================
-  //  CART SUMMARY
-  // ============================================================
   function renderCartSummary() {
     const container = document.getElementById('cartSummary');
     try {
       const cart = getCartLocal();
       if (!cart || cart.length === 0) {
-        container.innerHTML = '<p style="color:#94a3b8;">Your cart is empty.</p>';
+        container.innerHTML = '<p class="empty-msg">Your cart is empty.</p>';
         return;
       }
       const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -150,32 +168,25 @@
         <div style="font-size:0.8rem; color:#64748b; margin-top:4px;">${cart.length} different products</div>
       `;
     } catch (e) {
-      console.error('Cart error:', e);
-      container.innerHTML = '<p style="color:#ef4444;">Error loading cart.</p>';
+      container.innerHTML = '<p class="empty-msg">Error loading cart.</p>';
     }
   }
 
-  // ============================================================
-  //  RECENT MESSAGES
-  // ============================================================
   function loadRecentMessages() {
     const container = document.getElementById('recentMessages');
-    container.innerHTML = '<p style="color:#94a3b8;">Loading...</p>';
+    container.innerHTML = '<p class="empty-msg">Loading...</p>';
     const token = window.customerToken;
     if (!token) {
-      container.innerHTML = '<p style="color:#94a3b8;">Please login.</p>';
+      container.innerHTML = '<p class="empty-msg">Please login.</p>';
       return;
     }
     fetch('/api/customer/chat', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
-    .then(res => {
-      if (!res.ok) throw new Error('Failed to fetch messages');
-      return res.json();
-    })
+    .then(res => res.json())
     .then(messages => {
       if (!messages || messages.length === 0) {
-        container.innerHTML = '<p style="color:#94a3b8;">No messages yet.</p>';
+        container.innerHTML = '<p class="empty-msg">No messages yet.</p>';
         return;
       }
       const recent = messages.slice(0, 5);
@@ -186,15 +197,117 @@
         </div>
       `).join('');
     })
-    .catch(err => {
-      console.error('Messages error:', err);
-      container.innerHTML = '<p style="color:#ef4444;">Error loading messages.</p>';
+    .catch(() => {
+      container.innerHTML = '<p class="empty-msg">Error loading messages.</p>';
     });
   }
 
-  // ============================================================
-  //  ORDER HISTORY (grouped by status)
-  // ============================================================
+  function loadAddresses() {
+    const container = document.getElementById('addressBookContainer');
+    const token = window.customerToken;
+    if (!token) {
+      container.innerHTML = '<p class="empty-msg">Please login to see addresses.</p>';
+      return;
+    }
+    fetch('/api/addresses', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(addresses => {
+      if (!addresses || addresses.length === 0) {
+        container.innerHTML = '<p class="empty-msg">No saved addresses.</p>';
+        return;
+      }
+      container.innerHTML = addresses.map(addr => `
+        <div class="address-item">
+          <div>
+            <span class="label">${addr.label}</span>
+            ${addr.is_default ? ' <span style="font-size:0.7rem; background:#2563eb; color:white; padding:1px 8px; border-radius:12px;">Default</span>' : ''}
+            <br><span style="font-size:0.9rem;">${addr.address}</span>
+          </div>
+          <div style="margin-left:auto;">
+            ${!addr.is_default ? `<button class="btn btn-sm btn-primary" onclick="setDefaultAddress(${addr.id})">Set Default</button>` : ''}
+            <button class="btn btn-sm btn-danger" onclick="deleteAddress(${addr.id})"><i class="fas fa-trash"></i></button>
+          </div>
+        </div>
+      `).join('');
+    })
+    .catch(() => {
+      container.innerHTML = '<p class="empty-msg">Error loading addresses.</p>';
+    });
+  }
+
+  function showAddAddress() {
+    document.getElementById('addressModal').classList.add('active');
+    document.getElementById('addressInput').value = '';
+    document.getElementById('addressLat').value = '';
+    document.getElementById('addressLng').value = '';
+  }
+
+  function closeAddressModal() {
+    document.getElementById('addressModal').classList.remove('active');
+  }
+
+  function saveAddress() {
+    const label = document.getElementById('addressLabel').value;
+    const address = document.getElementById('addressInput').value.trim();
+    const lat = document.getElementById('addressLat').value.trim();
+    const lng = document.getElementById('addressLng').value.trim();
+    if (!address) { alert('Please enter an address.'); return; }
+    const token = window.customerToken;
+    fetch('/api/addresses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ label, address, lat, lng })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert('Address saved!');
+        closeAddressModal();
+        loadAddresses();
+      } else {
+        alert('Failed to save address.');
+      }
+    })
+    .catch(() => alert('Network error.'));
+  }
+
+  function setDefaultAddress(id) {
+    const token = window.customerToken;
+    fetch(`/api/addresses/${id}/default`, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        loadAddresses();
+      } else {
+        alert('Failed to set default.');
+      }
+    })
+    .catch(() => alert('Network error.'));
+  }
+
+  function deleteAddress(id) {
+    if (!confirm('Delete this address?')) return;
+    const token = window.customerToken;
+    fetch(`/api/addresses/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        loadAddresses();
+      } else {
+        alert('Failed to delete address.');
+      }
+    })
+    .catch(() => alert('Network error.'));
+  }
+
   function viewOrders() {
     const container = document.getElementById('orderHistory');
     if (container.style.display === 'block') {
@@ -203,29 +316,25 @@
     }
     container.style.display = 'block';
     const ordersContainer = document.getElementById('ordersContainer');
-    ordersContainer.innerHTML = '<p style="color:#94a3b8;">Loading orders...</p>';
+    ordersContainer.innerHTML = '<p class="empty-msg">Loading orders...</p>';
 
     const token = window.customerToken;
     if (!token) {
-      ordersContainer.innerHTML = '<p style="color:#ef4444;">Please login.</p>';
+      ordersContainer.innerHTML = '<p class="empty-msg">Please login.</p>';
       return;
     }
 
     fetch('/api/orders', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
-    .then(res => {
-      if (!res.ok) throw new Error('Failed to fetch orders');
-      return res.json();
-    })
+    .then(res => res.json())
     .then(orders => {
       if (!orders || orders.length === 0) {
-        ordersContainer.innerHTML = '<p style="color:#94a3b8;">You have no orders yet.</p>';
+        ordersContainer.innerHTML = '<p class="empty-msg">You have no orders yet.</p>';
         return;
       }
 
-      // Group by status
-      const statuses = ['pending', 'confirmed', 'shipped', 'delivered', 'received'];
+      const statuses = ['pending', 'confirmed', 'shipped', 'delivered', 'received', 'cancelled'];
       const grouped = {};
       statuses.forEach(s => grouped[s] = []);
       orders.forEach(order => {
@@ -242,24 +351,93 @@
           <h2>${label} <span class="badge-count">${items.length}</span></h2>
         `;
         items.forEach(order => {
+          const orderDisplay = order.order_ref || `#${order.id}`;
+          let history = order.status_history || [];
+          if (typeof history === 'string') history = JSON.parse(history);
+          const statusesList = ['pending', 'confirmed', 'shipped', 'delivered', 'received', 'cancelled'];
+          let timelineHtml = '<div class="timeline">';
+          statusesList.forEach(s => {
+            const entry = history.find(h => h.status === s);
+            const active = order.status === s ? 'active' : '';
+            const time = entry ? new Date(entry.timestamp).toLocaleString() : '';
+            const icon = s === 'pending' ? '🕐' : s === 'confirmed' ? '✅' : s === 'shipped' ? '🚚' : s === 'delivered' ? '📦' : s === 'received' ? '✔️' : '❌';
+            if (entry || order.status === s) {
+              timelineHtml += `<div class="step ${active}"><i>${icon}</i> ${s.charAt(0).toUpperCase()+s.slice(1)} ${time ? `<span class="time">${time}</span>` : ''}</div>`;
+            }
+          });
+          timelineHtml += '</div>';
+
+          let statusMessage = '';
+          switch (order.status) {
+            case 'pending': statusMessage = 'Your orders are still being reviewed and packed for delivery.'; break;
+            case 'confirmed': statusMessage = 'Your order has been confirmed and is being prepared.'; break;
+            case 'shipped': statusMessage = 'Your orders are on the way to your destination.'; break;
+            case 'delivered': statusMessage = 'Please your products/orders are already delivered, go with your ID to pick them please in the next 7 working days.'; break;
+            case 'received': statusMessage = 'You have confirmed receipt of your order. Thank you!'; break;
+            case 'cancelled': statusMessage = 'This order has been cancelled.'; break;
+            default: statusMessage = '';
+          }
+
           html += `
             <div class="order-item-mini">
-              <span>Order #${order.id}</span>
+              <span>Order ${orderDisplay}</span>
               <span>${new Date(order.created_at).toLocaleString()}</span>
               <span class="status status-${order.status}">${order.status.toUpperCase()}</span>
               <span class="total">Ksh ${parseFloat(order.total).toFixed(2)}</span>
               <button class="btn btn-primary btn-sm" onclick="toggleOrderDetails(${order.id})">Details</button>
             </div>
             <div class="order-detail" id="customer-detail-${order.id}">
-              <div><strong>Items:</strong></div>
-              ${order.items && order.items.length > 0 ? order.items.map(item => `
-                <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #f1f5f9; font-size:0.9rem;">
-                  <span>${item.product_name} (ID: ${item.product_id}) x ${item.quantity}</span>
-                  <span>${item.price}</span>
-                </div>
-              `).join('') : '<div>No items</div>'}
-              <div style="font-weight:700; margin-top:6px;">Total: Ksh ${parseFloat(order.total).toFixed(2)}</div>
-              ${order.status === 'delivered' ? `<button class="btn btn-success" style="margin-top:6px;" onclick="markReceived(${order.id})">✅ Mark as Received</button>` : ''}
+              ${timelineHtml}
+              <div class="status-message-box">${statusMessage}</div>
+              ${order.estimated_delivery_days ? `<div style="font-size:0.9rem; color:#475569; margin-bottom:6px;">🚚 Estimated delivery: ${order.estimated_delivery_days} days</div>` : ''}
+              ${order.refund_status && order.refund_status !== 'none' ? `<div style="font-size:0.9rem; color:#f59e0b;">💰 Refund Status: ${order.refund_status}</div>` : ''}
+              ${order.replacement_status && order.replacement_status !== 'none' ? `<div style="font-size:0.9rem; color:#f59e0b;">🔄 Replacement Status: ${order.replacement_status}</div>` : ''}
+              ${order.shipping_tier ? `<div style="font-size:0.9rem; color:#475569;">🚚 Shipping: ${order.shipping_tier}</div>` : ''}
+              <div><strong>Order Summary</strong></div>
+              <div style="font-size:0.9rem; color:#475569; margin-bottom:6px;">Order Reference: ${orderDisplay}</div>
+              <table class="order-summary-table">
+                <thead><tr><th>Product</th><th>Qty</th><th>Unit Price</th><th>Subtotal</th><th>Unique ID</th><th>Status</th></tr></thead>
+                <tbody>
+          `;
+          if (order.items && order.items.length > 0) {
+            order.items.forEach(item => {
+              const priceNum = parseFloat(item.price.replace(/[^0-9.]/g, '')) || 0;
+              const subtotal = priceNum * item.quantity;
+              const isReceived = order.status === 'received';
+              const uniqueId = item.unique_id || '—';
+              html += `
+                <tr>
+                  <td>${item.product_name}</td>
+                  <td>${item.quantity}</td>
+                  <td>${item.price}</td>
+                  <td>Ksh ${subtotal.toFixed(2)}</td>
+                  <td style="font-family:monospace; font-size:0.75rem;">${uniqueId}</td>
+                  <td>${isReceived ? '<span class="red-tick">✔ Received</span>' : '-'}</td>
+                </tr>
+              `;
+            });
+          } else {
+            html += `<tr><td colspan="6">No items</td></tr>`;
+          }
+          html += `
+                </tbody>
+              </table>
+              <div class="order-summary-total">Total: Ksh ${parseFloat(order.total).toFixed(2)}</div>
+              <div style="margin-top:6px; font-size:0.9rem; color:#475569;">
+                <span>Order Date: ${new Date(order.created_at).toLocaleString()}</span>
+                ${order.shipped_at ? `<span style="margin-left:15px;">Shipped: ${new Date(order.shipped_at).toLocaleString()}</span>` : ''}
+                ${order.delivered_at ? `<span style="margin-left:15px;">Delivered: ${new Date(order.delivered_at).toLocaleString()}</span>` : ''}
+                ${order.received_at ? `<span style="margin-left:15px;">Received: ${new Date(order.received_at).toLocaleString()}</span>` : ''}
+                ${order.cancelled_at ? `<span style="margin-left:15px;">Cancelled: ${new Date(order.cancelled_at).toLocaleString()}</span>` : ''}
+                ${order.tracking_number ? `<span style="margin-left:15px;">Tracking: ${order.tracking_number}</span>` : ''}
+              </div>
+              <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+                <a href="/order-tracking.html?id=${order.id}" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> Track</a>
+                <button class="btn btn-primary btn-sm" onclick="reorderOrder(${order.id})"><i class="fas fa-redo"></i> Reorder</button>
+                ${(order.status === 'pending' || order.status === 'confirmed') ? `<button class="btn btn-danger btn-sm" onclick="cancelOrder(${order.id})"><i class="fas fa-times"></i> Cancel</button>` : ''}
+                ${order.status === 'delivered' ? `<button class="btn btn-success btn-sm" onclick="markReceived(${order.id})">✅ Mark Received</button>` : ''}
+                ${order.status === 'delivered' || order.status === 'received' ? `<button class="btn btn-warning btn-sm" onclick="requestReturn(${order.id})">📦 Request Return</button>` : ''}
+              </div>
               <div style="margin-top:10px;">
                 <strong>Order Chat:</strong>
                 <div class="chat-box" id="cust-chat-${order.id}">Loading messages...</div>
@@ -276,14 +454,13 @@
 
       ordersContainer.innerHTML = html;
 
-      // Connect socket for order chats if not already
       if (!orderSocket) {
         orderSocket = io({ auth: { token: token } });
         orderSocket.on('new-order-chat-message', (msg) => {
           const chatBox = document.getElementById(`cust-chat-${msg.order_id}`);
           if (chatBox) {
             const div = document.createElement('div');
-            div.className = `chat-msg ${msg.from_user === 'Customer' ? 'customer' : 'seller'}`;
+            div.className = `chat-msg ${msg.from_user === 'Customer' ? 'customer' : msg.from_user === 'System' ? 'system' : 'seller'}`;
             div.innerHTML = `<strong>${msg.from_user}:</strong> ${msg.message} <span style="float:right; font-size:0.7rem; opacity:0.6;">${new Date(msg.timestamp).toLocaleTimeString()}</span>`;
             chatBox.appendChild(div);
             chatBox.scrollTop = chatBox.scrollHeight;
@@ -291,15 +468,11 @@
         });
       }
     })
-    .catch(err => {
-      console.error('Orders error:', err);
-      ordersContainer.innerHTML = '<p style="color:#ef4444;">Error loading orders.</p>';
+    .catch(() => {
+      ordersContainer.innerHTML = '<p class="empty-msg">Error loading orders.</p>';
     });
   }
 
-  // ============================================================
-  //  ORDER CHAT FUNCTIONS
-  // ============================================================
   function toggleOrderDetails(orderId) {
     const detail = document.getElementById(`customer-detail-${orderId}`);
     if (!detail) return;
@@ -324,18 +497,18 @@
     .then(messages => {
       chatBox.innerHTML = '';
       if (!messages || messages.length === 0) {
-        chatBox.innerHTML = '<div style="color:#94a3b8;">No messages yet.</div>';
+        chatBox.innerHTML = '<div class="empty-msg">No messages yet.</div>';
         return;
       }
       messages.forEach(msg => {
         const div = document.createElement('div');
-        div.className = `chat-msg ${msg.from_user === 'Customer' ? 'customer' : 'seller'}`;
+        div.className = `chat-msg ${msg.from_user === 'Customer' ? 'customer' : msg.from_user === 'System' ? 'system' : 'seller'}`;
         div.innerHTML = `<strong>${msg.from_user}:</strong> ${msg.message} <span style="float:right; font-size:0.7rem; opacity:0.6;">${new Date(msg.timestamp).toLocaleTimeString()}</span>`;
         chatBox.appendChild(div);
       });
       chatBox.scrollTop = chatBox.scrollHeight;
     })
-    .catch(err => {
+    .catch(() => {
       chatBox.innerHTML = 'Error loading messages.';
     });
   }
@@ -364,34 +537,96 @@
         alert('Failed to send message.');
       }
     })
-    .catch(err => alert('Network error.'));
+    .catch(() => alert('Network error.'));
   }
 
-  // ============================================================
-  //  MARK ORDER AS RECEIVED
-  // ============================================================
-  function markReceived(orderId) {
-    if (!confirm('Have you received all items in this order?')) return;
+  async function cancelOrder(id) {
+    const reason = prompt('Please provide a reason for cancellation:');
+    if (!reason) return;
+    if (!confirm('Cancel this order?')) return;
     const token = window.customerToken;
-    fetch(`/api/orders/${orderId}/receive`, {
-      method: 'PUT',
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    .then(res => res.json())
-    .then(data => {
+    try {
+      const res = await fetch(`/api/orders/${id}/cancel`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ reason })
+      });
+      const data = await res.json();
       if (data.success) {
-        alert('✅ Order marked as received!');
-        viewOrders(); // refresh
+        alert('Order cancelled.');
+        viewOrders();
       } else {
         alert('Failed: ' + (data.error || 'Unknown error'));
       }
-    })
-    .catch(err => alert('Network error.'));
+    } catch (err) {
+      alert('Network error.');
+    }
   }
 
-  // ============================================================
-  //  INIT
-  // ============================================================
+  async function reorderOrder(id) {
+    const token = window.customerToken;
+    try {
+      const res = await fetch(`/api/orders/${id}/reorder`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        localStorage.setItem('cart', JSON.stringify(data.items));
+        alert('Items added to cart! Redirecting...');
+        window.location.href = '/cart.html';
+      } else {
+        alert('Failed: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Network error.');
+    }
+  }
+
+  async function markReceived(id) {
+    if (!confirm('Have you received all items?')) return;
+    const token = window.customerToken;
+    try {
+      const res = await fetch(`/api/orders/${id}/receive`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Order marked as received!');
+        viewOrders();
+      } else {
+        alert('Failed: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Network error.');
+    }
+  }
+
+  async function requestReturn(id) {
+    const productId = prompt('Enter the product ID to return (from the order list):');
+    if (!productId) return;
+    const reason = prompt('Reason for return:');
+    if (!reason) return;
+    const token = window.customerToken;
+    try {
+      const res = await fetch(`/api/orders/${id}/return`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ product_id: parseInt(productId), reason })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Return request submitted.');
+        viewOrders();
+      } else {
+        alert('Failed: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Network error.');
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     const token = window.customerToken;
     if (!token) {
@@ -400,14 +635,10 @@
       return;
     }
 
-    // Load user profile
     fetch('/api/auth/customer/verify', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
-    .then(res => {
-      if (!res.ok) { localStorage.removeItem('customerToken'); window.location.href = '/'; return; }
-      return res.json();
-    })
+    .then(res => res.json())
     .then(data => {
       if (data && data.user) {
         window.currentUser = data.user;
@@ -417,20 +648,30 @@
         document.getElementById('accName').textContent = data.user.name;
         document.getElementById('accEmail').textContent = data.user.email;
         document.getElementById('accDate').textContent = new Date(data.user.createdAt).toLocaleDateString() || 'N/A';
-        const nameDisplay = document.getElementById('userNameDisplay');
-        if (nameDisplay) nameDisplay.textContent = data.user.name;
-        // Load cart and messages
         renderCartSummary();
         loadRecentMessages();
+        loadAddresses();
       }
     })
-    .catch(err => { console.error(err); window.location.href = '/'; });
+    .catch(() => { window.location.href = '/'; });
 
-    // Re-render cart summary when cart changes
     window.addEventListener('storage', (e) => {
       if (e.key === 'cart') renderCartSummary();
     });
   });
+
+  window.viewOrders = viewOrders;
+  window.toggleOrderDetails = toggleOrderDetails;
+  window.sendCustomerOrderChat = sendCustomerOrderChat;
+  window.cancelOrder = cancelOrder;
+  window.reorderOrder = reorderOrder;
+  window.markReceived = markReceived;
+  window.requestReturn = requestReturn;
+  window.showAddAddress = showAddAddress;
+  window.closeAddressModal = closeAddressModal;
+  window.saveAddress = saveAddress;
+  window.setDefaultAddress = setDefaultAddress;
+  window.deleteAddress = deleteAddress;
 </script>
 </body>
 </html>
