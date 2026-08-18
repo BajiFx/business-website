@@ -11,24 +11,57 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 const cloudinary = require('cloudinary').v2;
+const nodemailer = require('nodemailer');
 require('dotenv').config();
 
-// ---- Optional email ----
-let sendEmail, orderConfirmationEmail, statusUpdateEmail, receivedEmail;
+// Increase max listeners to avoid warnings
+process.setMaxListeners(20);
+
+// ---- Email templates ----
+let orderConfirmationEmail, statusUpdateEmail, receivedEmail;
 try {
   const email = require('./email');
-  sendEmail = email.sendEmail;
   orderConfirmationEmail = email.orderConfirmationEmail;
   statusUpdateEmail = email.statusUpdateEmail;
   receivedEmail = email.receivedEmail;
 } catch (e) {
   console.warn('⚠️ Email module not loaded – email features disabled.');
-  sendEmail = async () => {};
   orderConfirmationEmail = () => ({ subject: '', html: '', text: '' });
   statusUpdateEmail = () => ({ subject: '', html: '', text: '' });
   receivedEmail = () => ({ subject: '', html: '', text: '' });
 }
 
+// ---- Nodemailer ----
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: process.env.SMTP_PORT,
+  secure: process.env.SMTP_SECURE === 'true',
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+
+async function sendEmail({ to, subject, html, text }) {
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.warn('SMTP credentials not set, email not sent.');
+    return;
+  }
+  try {
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to,
+      subject,
+      html,
+      text,
+    });
+    console.log(`📧 Email sent to ${to}`);
+  } catch (err) {
+    console.error('❌ Email send error:', err);
+  }
+}
+
+// ---- Express app ----
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
@@ -49,7 +82,7 @@ cloudinary.config({
 });
 console.log('✅ Cloudinary configured');
 
-// ---------- PostgreSQL (Neon) with improved settings ----------
+// ---------- PostgreSQL ----------
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
@@ -67,89 +100,26 @@ pool.on('error', (err) => {
   }, 3000);
 });
 
-const originalConnect = pool.connect.bind(pool);
-pool.connect = function(callback) {
-  return originalConnect((err, client, done) => {
-    if (err) {
-      console.error('❌ Pool connect error:', err);
-      if (callback) callback(err);
-      return;
-    }
-    client.on('error', (clientErr) => {
-      console.error('⚠️ Client error:', clientErr);
-    });
-    if (callback) callback(null, client, done);
-  });
-};
-
 pool.connect((err) => {
-  if (err) {
-    console.error('❌ Database connection error:', err);
-  } else {
-    console.log('✅ Neon PostgreSQL connected');
-  }
+  if (err) console.error('❌ Database connection error:', err);
+  else console.log('✅ Neon PostgreSQL connected');
 });
 
-// Global error handlers
-process.on('uncaughtException', (err) => {
-  console.error('❌ Uncaught Exception:', err);
-});
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection:', reason);
-});
+process.on('uncaughtException', (err) => console.error('❌ Uncaught Exception:', err));
+process.on('unhandledRejection', (reason) => console.error('❌ Unhandled Rejection:', reason));
 
 // ---------- Security ----------
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: [
-        "'self'",
-        "'unsafe-inline'",
-        "'unsafe-eval'",
-        "https://unpkg.com",
-        "https://cdnjs.cloudflare.com",
-        "https://cdn.jsdelivr.net",
-        "https://localhost:3000",
-      ],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://unpkg.com", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "https://localhost:3000"],
       scriptSrcAttr: ["'unsafe-inline'"],
-      styleSrc: [
-        "'self'",
-        "'unsafe-inline'",
-        "https://unpkg.com",
-        "https://cdnjs.cloudflare.com",
-        "https://cdn.jsdelivr.net",
-        "https://fonts.googleapis.com",
-      ],
-      styleSrcElem: [
-        "'self'",
-        "'unsafe-inline'",
-        "https://fonts.googleapis.com",
-        "https://unpkg.com",
-        "https://cdnjs.cloudflare.com",
-        "https://cdn.jsdelivr.net",
-      ],
-      fontSrc: [
-        "'self'",
-        "https://cdnjs.cloudflare.com",
-        "https://cdn.jsdelivr.net",
-        "https://fonts.gstatic.com",
-        "data:",
-      ],
-      imgSrc: [
-        "'self'",
-        "data:",
-        "https://res.cloudinary.com",
-        "https://*.tile.openstreetmap.org",
-        "https://*.openstreetmap.org",
-        "https://unpkg.com",
-      ],
-      connectSrc: [
-        "'self'",
-        "ws://localhost:3000",
-        "wss://*.onrender.com",
-        "https://unpkg.com",
-      ],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "https://fonts.googleapis.com"],
+      styleSrcElem: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://unpkg.com", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net"],
+      fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "https://fonts.gstatic.com", "data:"],
+      imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "https://*.tile.openstreetmap.org", "https://*.openstreetmap.org", "https://unpkg.com"],
+      connectSrc: ["'self'", "ws://localhost:3000", "wss://*.onrender.com", "https://unpkg.com"],
       objectSrc: ["'none'"],
     },
   },
@@ -160,9 +130,10 @@ app.use(cors({ origin: process.env.CLIENT_URL || '*' }));
 app.use(express.json());
 app.use(express.static('public'));
 
+// ---------- Rate Limiter ----------
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 200,
   message: { error: 'Too many requests, please try again later.' }
 });
 app.use('/api', limiter);
@@ -249,7 +220,7 @@ function authMiddleware(req, res, next) {
   }
 }
 
-// ---------- Order Reference Generator (15 chars) ----------
+// ---------- Order Reference Generator ----------
 function generateOrderRef() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let ref = '';
@@ -382,7 +353,7 @@ app.post('/api/shop', authMiddleware, upload.fields([{ name: 'logo' }, { name: '
   }
 });
 
-// ---- Products (CRUD) ----
+// ---- Products (with variants and media) ----
 app.get('/api/products', async (req, res) => {
   try {
     const { search, limit } = req.query;
@@ -398,19 +369,24 @@ app.get('/api/products', async (req, res) => {
       params.push(parseInt(limit));
     }
     const result = await pool.query(query, params);
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/products/:id', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const result = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Product not found' });
-    res.json(result.rows[0]);
+    const products = await Promise.all(result.rows.map(async (product) => {
+      const variantResult = await pool.query(
+        'SELECT id, name, price FROM product_variants WHERE product_id = $1 ORDER BY id LIMIT 1',
+        [product.id]
+      );
+      let variant = variantResult.rows[0] || null;
+      let image = null;
+      if (variant) {
+        const mediaResult = await pool.query(
+          'SELECT url FROM product_media WHERE variant_id = $1 AND type = $2 ORDER BY display_order LIMIT 1',
+          [variant.id, 'image']
+        );
+        if (mediaResult.rows.length > 0) image = mediaResult.rows[0].url;
+      }
+      if (!image && product.image) image = product.image;
+      return { ...product, image, variant_id: variant ? variant.id : null };
+    }));
+    res.json(products);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -423,32 +399,68 @@ app.get('/api/products/:id/detail', async (req, res) => {
     const productResult = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
     if (productResult.rows.length === 0) return res.status(404).json({ error: 'Product not found' });
     const product = productResult.rows[0];
-    const reviewsResult = await pool.query('SELECT * FROM product_reviews WHERE product_id = $1 ORDER BY created_at DESC', [id]);
-    const relatedResult = await pool.query('SELECT * FROM products WHERE id != $1 ORDER BY created_at DESC LIMIT 6', [id]);
-    res.json({ product, reviews: reviewsResult.rows, related: relatedResult.rows });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
-});
 
-app.post('/api/products/:id/review', authMiddleware, async (req, res) => {
-  if (req.role !== 'customer') return res.status(403).json({ error: 'Customer only' });
-  const productId = parseInt(req.params.id);
-  const { rating, review_text } = req.body;
-  if (!rating || rating < 1 || rating > 5) return res.status(400).json({ error: 'Invalid rating' });
-  try {
-    await pool.query(
-      'INSERT INTO product_reviews (product_id, customer_id, rating, review_text) VALUES ($1, $2, $3, $4)',
-      [productId, req.userId, rating, review_text]
+    const variantsResult = await pool.query(
+      'SELECT * FROM product_variants WHERE product_id = $1 ORDER BY id',
+      [id]
     );
-    res.json({ success: true });
+    const variants = await Promise.all(variantsResult.rows.map(async (variant) => {
+      const mediaResult = await pool.query(
+        'SELECT * FROM product_media WHERE variant_id = $1 ORDER BY display_order',
+        [variant.id]
+      );
+      return { ...variant, media: mediaResult.rows };
+    }));
+
+    const reviewsResult = await pool.query('SELECT * FROM product_reviews WHERE product_id = $1 ORDER BY created_at DESC', [id]);
+
+    const relatedResult = await pool.query('SELECT * FROM products WHERE id != $1 ORDER BY created_at DESC LIMIT 6', [id]);
+    const related = await Promise.all(relatedResult.rows.map(async (rel) => {
+      const vRes = await pool.query(
+        'SELECT pv.id, pm.url FROM product_variants pv LEFT JOIN product_media pm ON pm.variant_id = pv.id AND pm.type = $1 WHERE pv.product_id = $2 ORDER BY pv.id, pm.display_order LIMIT 1',
+        ['image', rel.id]
+      );
+      const variant = vRes.rows[0] || null;
+      return { ...rel, image: variant ? variant.url : rel.image };
+    }));
+
+    res.json({ product, variants, reviews: reviewsResult.rows, related });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
+// ---- Admin: add variant and media ----
+app.post('/api/products/:id/variants', authMiddleware, upload.fields([{ name: 'media' }]), async (req, res) => {
+  if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
+  const productId = parseInt(req.params.id);
+  const { name, price, stock, sku, attributes } = req.body;
+  try {
+    const result = await pool.query(
+      'INSERT INTO product_variants (product_id, name, price, stock, sku, attributes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [productId, name, price || null, stock || 0, sku || null, attributes || null]
+    );
+    const variant = result.rows[0];
+    if (req.files && req.files['media']) {
+      for (let file of req.files['media']) {
+        const url = await uploadToCloudinary(file.path);
+        const type = file.mimetype.startsWith('video') ? 'video' : 'image';
+        await pool.query(
+          'INSERT INTO product_media (variant_id, type, url) VALUES ($1, $2, $3)',
+          [variant.id, type, url]
+        );
+        fs.unlink(file.path, (err) => { if (err) console.error('Failed to delete local file:', err); });
+      }
+    }
+    res.json({ success: true, variant });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Product CRUD ----
 app.post('/api/products', authMiddleware, upload.fields([{ name: 'image' }, { name: 'video' }]), async (req, res) => {
   try {
     const { name, price, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival, description, shipping_fee, free_shipping_eligible, return_enabled, return_window_days, restocking_fee_percent, return_shipping_paid_by, return_condition } = req.body;
@@ -522,6 +534,38 @@ app.delete('/api/products/:id', authMiddleware, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     await pool.query('DELETE FROM products WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Product Reviews ----
+app.post('/api/products/:id/review', authMiddleware, async (req, res) => {
+  if (req.role !== 'customer') {
+    return res.status(403).json({ error: 'Only customers can write reviews.' });
+  }
+  const productId = parseInt(req.params.id);
+  const { rating, review_text } = req.body;
+  if (!rating || rating < 1 || rating > 5) {
+    return res.status(400).json({ error: 'Rating must be between 1 and 5.' });
+  }
+  if (!review_text) {
+    return res.status(400).json({ error: 'Review text is required.' });
+  }
+  try {
+    const existing = await pool.query(
+      'SELECT id FROM product_reviews WHERE product_id = $1 AND customer_id = $2',
+      [productId, req.userId]
+    );
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: 'You have already reviewed this product.' });
+    }
+    await pool.query(
+      'INSERT INTO product_reviews (product_id, customer_id, rating, review_text) VALUES ($1, $2, $3, $4)',
+      [productId, req.userId, rating, review_text]
+    );
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -635,13 +679,10 @@ app.get('/api/auth/customer/verify', authMiddleware, async (req, res) => {
   }
 });
 
-// ---- Address Book (with location_name) ----
+// ---- Address Book ----
 app.get('/api/addresses', authMiddleware, async (req, res) => {
   try {
-    const result = await pool.query(
-      'SELECT id, label, address, lat, lng, location_name, is_default FROM customer_addresses WHERE customer_id = $1 ORDER BY is_default DESC, created_at ASC',
-      [req.userId]
-    );
+    const result = await pool.query('SELECT * FROM customer_addresses WHERE customer_id = $1 ORDER BY is_default DESC, created_at ASC', [req.userId]);
     res.json(result.rows);
   } catch (err) {
     console.error(err);
@@ -899,9 +940,127 @@ app.post('/api/admin/location/update', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
-// ORDERS (full enhanced)
+// PAYMENT ROUTES
 // ============================================================
 
+// ---- Initiate payment ----
+app.post('/api/payments/initiate', authMiddleware, async (req, res) => {
+  try {
+    const { orderId, method, amount, phone, account, bank, pin } = req.body;
+    const customerId = req.userId;
+
+    if (!method || !amount) {
+      return res.status(400).json({ error: 'Payment method and amount required.' });
+    }
+
+    // Validate required fields per method
+    if (method === 'mpesa' || method === 'airtel') {
+      if (!phone) return res.status(400).json({ error: 'Phone number required.' });
+      if (!pin) return res.status(400).json({ error: 'PIN required.' });
+    } else if (method === 'bank') {
+      if (!bank || !account) return res.status(400).json({ error: 'Bank and account number required.' });
+      if (!pin) return res.status(400).json({ error: 'PIN required.' });
+    } else if (method === 'paypal') {
+      if (!phone) return res.status(400).json({ error: 'Email required.' });
+      if (!pin) return res.status(400).json({ error: 'Password required.' });
+    }
+
+    // Simulate payment validation: PIN must be at least 4 digits
+    const isSuccess = pin && pin.length >= 4;
+    const status = isSuccess ? 'success' : 'failed';
+    const transactionId = isSuccess ? `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}` : null;
+
+    // Save payment record
+    const paymentDetails = { phone, account, bank, pin: pin ? '***' : null };
+    const result = await pool.query(
+      `INSERT INTO payments (customer_id, order_id, amount, method, status, transaction_id, payment_details)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [customerId, orderId || null, amount, method, status, transactionId, JSON.stringify(paymentDetails)]
+    );
+
+    const payment = result.rows[0];
+
+    // If success and orderId provided, update order payment_status
+    if (isSuccess && orderId) {
+      await pool.query('UPDATE orders SET payment_status = $1 WHERE id = $2', ['paid', orderId]);
+      // Also update order status from pending_payment to pending (if it was pending_payment)
+      await pool.query(
+        `UPDATE orders SET status = 'pending' WHERE id = $1 AND status = 'pending_payment'`,
+        [orderId]
+      );
+      // Add status history
+      await appendOrderStatus(orderId, 'pending', 'Payment successful. Order confirmed.');
+      // Send email notification
+      const orderResult = await pool.query('SELECT * FROM orders WHERE id = $1', [orderId]);
+      const customerResult = await pool.query('SELECT name, email FROM customers WHERE id = $1', [customerId]);
+      if (orderResult.rows.length > 0 && customerResult.rows.length > 0) {
+        try {
+          const mailData = orderConfirmationEmail(orderResult.rows[0], customerResult.rows[0].name);
+          await sendEmail({ to: customerResult.rows[0].email, ...mailData });
+        } catch (emailErr) {
+          console.error('⚠️ Email send failed:', emailErr.message);
+        }
+      }
+      // Notify admin via socket
+      io.emit('new-order', { orderId });
+    }
+
+    // Emit real-time update
+    if (orderId) {
+      io.to(`order_${orderId}`).emit('payment-updated', { orderId, paymentStatus: isSuccess ? 'paid' : 'failed' });
+    }
+
+    res.json({
+      success: isSuccess,
+      payment: payment,
+      message: isSuccess ? 'Payment successful! Your order has been confirmed.' : 'Payment failed. Please try again.',
+      transactionId
+    });
+
+  } catch (err) {
+    console.error('Payment initiation error:', err);
+    res.status(500).json({ error: 'Payment processing failed.' });
+  }
+});
+
+// ---- Get payment by order ----
+app.get('/api/payments/order/:orderId', authMiddleware, async (req, res) => {
+  const orderId = parseInt(req.params.id);
+  try {
+    const result = await pool.query(
+      'SELECT * FROM payments WHERE order_id = $1 ORDER BY created_at DESC',
+      [orderId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Get customer payment history ----
+app.get('/api/payments/customer', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT p.*, o.order_ref 
+       FROM payments p 
+       LEFT JOIN orders o ON p.order_id = o.id 
+       WHERE p.customer_id = $1 
+       ORDER BY p.created_at DESC`,
+      [req.userId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// ORDERS
+// ============================================================
+
+// ---- Create order (status = pending_payment) ----
 app.post('/api/orders', authMiddleware, async (req, res) => {
   if (req.role !== 'customer') {
     return res.status(403).json({ error: 'Only customers can place orders.' });
@@ -919,7 +1078,6 @@ app.post('/api/orders', authMiddleware, async (req, res) => {
     if (address_id) {
       const addrCheck = await pool.query('SELECT id, address, location_name FROM customer_addresses WHERE id = $1 AND customer_id = $2', [address_id, customerId]);
       if (addrCheck.rows.length === 0) return res.status(400).json({ error: 'Invalid address.' });
-      // Store the address details for the order
       var addressData = addrCheck.rows[0];
     }
 
@@ -942,34 +1100,35 @@ app.post('/api/orders', authMiddleware, async (req, res) => {
       }
     }
 
+    const urgent = shipping_tier === 'overnight';
+
     await pool.query('BEGIN');
+    // Insert order with status 'pending_payment'
     const orderResult = await pool.query(`
-      INSERT INTO orders (customer_id, total, status, order_ref, status_history, shipping_tier, shipping_cost, order_notes, address_id, promo_code, discount_applied, delivery_location_name)
-      VALUES ($1, $2, 'pending', $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *
-    `, [customerId, total, orderRef, JSON.stringify([{ status: 'pending', timestamp: new Date().toISOString() }]), shipping_tier || 'standard', shipping_cost || 0, order_notes || null, address_id || null, promo_code || null, appliedDiscount, addressData ? addressData.location_name || addressData.address : null]);
+      INSERT INTO orders (customer_id, total, status, order_ref, status_history, shipping_tier, shipping_cost, order_notes, address_id, promo_code, discount_applied, delivery_location_name, urgent_delivery, payment_status)
+      VALUES ($1, $2, 'pending_payment', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'pending') RETURNING *
+    `, [customerId, total, orderRef, JSON.stringify([{ status: 'pending_payment', timestamp: new Date().toISOString() }]), shipping_tier || 'standard', shipping_cost || 0, order_notes || null, address_id || null, promo_code || null, appliedDiscount, addressData ? addressData.location_name || addressData.address : null, urgent]);
     const order = orderResult.rows[0];
+
+    // Insert order items
     for (const item of items) {
       const uniqueId = generateOrderRef();
       await pool.query(`
-        INSERT INTO order_items (order_id, product_id, product_name, price, quantity, image, unique_id)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [order.id, item.productId || 0, item.name, item.price, item.quantity, item.image || '', uniqueId]);
+        INSERT INTO order_items (order_id, product_id, product_name, price, quantity, image, unique_id, variant_name)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `, [order.id, item.productId || 0, item.name, item.price, item.quantity, item.image || '', uniqueId, item.variant_name || 'Default']);
     }
+
+    // Clear cart
     await pool.query('UPDATE carts SET items = $1, reserved_until = NULL WHERE customer_id = $2', ['[]', customerId]);
+
     await pool.query('COMMIT');
 
-    const customerResult = await pool.query('SELECT name, email FROM customers WHERE id = $1', [customerId]);
-    const customer = customerResult.rows[0];
-    if (customer && customer.email) {
-      try {
-        const mailData = orderConfirmationEmail(order, customer.name);
-        await sendEmail({ to: customer.email, ...mailData });
-      } catch (emailErr) {
-        console.error('⚠️ Email send failed, but order placed:', emailErr.message);
-      }
-    }
+    // Notify admin via socket
+    io.emit('new-order', { orderId: order.id });
 
-    res.status(201).json({ success: true, order });
+    res.status(201).json({ success: true, order, requiresPayment: true });
+
   } catch (err) {
     await pool.query('ROLLBACK');
     console.error(err);
@@ -977,6 +1136,55 @@ app.post('/api/orders', authMiddleware, async (req, res) => {
   }
 });
 
+// ---- Confirm payment and activate order ----
+app.post('/api/orders/:id/confirm-payment', authMiddleware, async (req, res) => {
+  const orderId = parseInt(req.params.id);
+  try {
+    const orderCheck = await pool.query('SELECT customer_id, status FROM orders WHERE id = $1', [orderId]);
+    if (orderCheck.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
+    if (orderCheck.rows[0].customer_id !== req.userId) return res.status(403).json({ error: 'Forbidden' });
+    if (orderCheck.rows[0].status !== 'pending_payment') {
+      return res.status(400).json({ error: 'Order not in pending payment state.' });
+    }
+
+    // Check if a successful payment exists
+    const paymentCheck = await pool.query(
+      'SELECT * FROM payments WHERE order_id = $1 AND status = $2 ORDER BY created_at DESC LIMIT 1',
+      [orderId, 'success']
+    );
+    if (paymentCheck.rows.length === 0) {
+      return res.status(400).json({ error: 'No successful payment found for this order.' });
+    }
+
+    // Update order status to pending (awaiting admin confirmation)
+    await pool.query(
+      `UPDATE orders SET status = 'pending', payment_status = 'paid' WHERE id = $1`,
+      [orderId]
+    );
+    await appendOrderStatus(orderId, 'pending', 'Payment confirmed. Order awaiting admin confirmation.');
+
+    // Get customer email and send confirmation
+    const customerResult = await pool.query('SELECT name, email FROM customers WHERE id = $1', [req.userId]);
+    const customer = customerResult.rows[0];
+    if (customer && customer.email) {
+      try {
+        const order = await pool.query('SELECT * FROM orders WHERE id = $1', [orderId]);
+        const mailData = orderConfirmationEmail(order.rows[0], customer.name);
+        await sendEmail({ to: customer.email, ...mailData });
+      } catch (emailErr) {
+        console.error('⚠️ Email send failed:', emailErr.message);
+      }
+    }
+
+    res.json({ success: true, message: 'Payment confirmed. Your order is now pending.' });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- List orders ----
 app.get('/api/orders', authMiddleware, async (req, res) => {
   try {
     let query = `
@@ -1025,6 +1233,7 @@ app.get('/api/orders', authMiddleware, async (req, res) => {
   }
 });
 
+// ---- Get single order ----
 app.get('/api/orders/:id', authMiddleware, async (req, res) => {
   const orderId = parseInt(req.params.id);
   try {
@@ -1045,7 +1254,7 @@ app.get('/api/orders/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// ---- Order location (with location_name) ----
+// ---- Set delivery location ----
 app.post('/api/orders/:id/location', authMiddleware, async (req, res) => {
   const orderId = parseInt(req.params.id);
   const { lat, lng, address, location_name } = req.body;
@@ -1082,6 +1291,7 @@ app.post('/api/orders/:id/location', authMiddleware, async (req, res) => {
   }
 });
 
+// ---- Tracking ----
 app.get('/api/orders/:id/tracking', authMiddleware, async (req, res) => {
   const orderId = parseInt(req.params.id);
   try {
@@ -1098,11 +1308,12 @@ app.get('/api/orders/:id/tracking', authMiddleware, async (req, res) => {
     order.items = itemsResult.rows;
     let statusMessage = '';
     switch (order.status) {
-      case 'pending': statusMessage = 'Your orders are still being reviewed and packed for delivery.'; break;
-      case 'confirmed': statusMessage = 'Your order has been confirmed and is being prepared.'; break;
-      case 'shipped': statusMessage = 'Your orders are on the way to your destination.'; break;
-      case 'delivered': statusMessage = 'Please your products/orders are already delivered, go with your ID to pick them please in the next 7 working days.'; break;
-      case 'received': statusMessage = 'You have confirmed receipt of your order. Thank you!'; break;
+      case 'pending_payment': statusMessage = 'Awaiting payment confirmation.'; break;
+      case 'pending': statusMessage = 'Your order is being reviewed.'; break;
+      case 'confirmed': statusMessage = 'Your order is confirmed and being prepared.'; break;
+      case 'shipped': statusMessage = 'Your order is on the way.'; break;
+      case 'delivered': statusMessage = 'Please collect within 7 working days.'; break;
+      case 'received': statusMessage = 'You have confirmed receipt. Thank you!'; break;
       case 'cancelled': statusMessage = 'This order has been cancelled.'; break;
       default: statusMessage = 'Status unknown.';
     }
@@ -1113,6 +1324,7 @@ app.get('/api/orders/:id/tracking', authMiddleware, async (req, res) => {
   }
 });
 
+// ---- Cancel order ----
 app.put('/api/orders/:id/cancel', authMiddleware, async (req, res) => {
   const orderId = parseInt(req.params.id);
   const { reason } = req.body;
@@ -1129,7 +1341,7 @@ app.put('/api/orders/:id/cancel', authMiddleware, async (req, res) => {
         return res.status(400).json({ error: `Cancellation only allowed within ${maxHours} hours of order placement.` });
       }
     }
-    if (!['pending', 'confirmed'].includes(order.status)) {
+    if (!['pending', 'confirmed', 'pending_payment'].includes(order.status)) {
       return res.status(400).json({ error: 'This order cannot be cancelled.' });
     }
     await pool.query(
@@ -1148,6 +1360,7 @@ app.put('/api/orders/:id/cancel', authMiddleware, async (req, res) => {
   }
 });
 
+// ---- Request refund ----
 app.put('/api/orders/:id/refund', authMiddleware, async (req, res) => {
   if (req.role !== 'customer') return res.status(403).json({ error: 'Customer only.' });
   const orderId = parseInt(req.params.id);
@@ -1171,6 +1384,7 @@ app.put('/api/orders/:id/refund', authMiddleware, async (req, res) => {
   }
 });
 
+// ---- Admin approve/reject refund ----
 app.put('/api/admin/orders/:id/refund', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const orderId = parseInt(req.params.id);
@@ -1192,6 +1406,7 @@ app.put('/api/admin/orders/:id/refund', authMiddleware, async (req, res) => {
   }
 });
 
+// ---- REPLACEMENT ----
 app.put('/api/orders/:id/replace', authMiddleware, async (req, res) => {
   if (req.role !== 'customer') return res.status(403).json({ error: 'Customer only.' });
   const orderId = parseInt(req.params.id);
@@ -1241,9 +1456,20 @@ app.put('/api/orders/:id/replace', authMiddleware, async (req, res) => {
       diff: diff,
       status: diff === 0 ? 'approved' : (diff > 0 ? 'pending_payment' : 'pending_refund')
     };
+    let paymentStatus = 'none';
+    let refundStatus = 'none';
+    if (diff > 0) {
+      paymentStatus = 'pending';
+    } else if (diff < 0) {
+      refundStatus = 'pending';
+    } else {
+      paymentStatus = 'approved';
+      refundStatus = 'approved';
+    }
     await pool.query(
-      `UPDATE orders SET replacement_request = $1, replacement_status = $2, replacement_diff = $3 WHERE id = $4`,
-      [JSON.stringify(replacementData), replacementData.status, diff, orderId]
+      `UPDATE orders SET replacement_request = $1, replacement_status = $2, replacement_diff = $3,
+       replacement_payment_status = $4, replacement_refund_status = $5 WHERE id = $6`,
+      [JSON.stringify(replacementData), replacementData.status, diff, paymentStatus, refundStatus, orderId]
     );
     let msg = `🔄 Replacement requested: ${oldItemsResult.rows.map(i => i.product_name).join(', ')} → ${newProductsResult.rows.map(i => i.name).join(', ')}. `;
     if (diff > 0) msg += `You need to pay Ksh ${diff.toFixed(2)} extra.`;
@@ -1251,23 +1477,72 @@ app.put('/api/orders/:id/replace', authMiddleware, async (req, res) => {
     else msg += `Prices are equal.`;
     await pool.query('INSERT INTO order_chat_messages (order_id, from_user, message) VALUES ($1, $2, $3)', [orderId, 'System', msg]);
     io.to(`order_${orderId}`).emit('new-order-chat-message', { order_id: orderId, from_user: 'System', message: msg, timestamp: new Date() });
-    res.json({ success: true, replacement: replacementData });
+    // Notify admin
+    io.emit('replacement-requested', { orderId });
+    res.json({ success: true, replacement: replacementData, payment_status: paymentStatus, refund_status: refundStatus });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
+// ---- Endpoint to submit replacement payment ----
+app.post('/api/orders/:id/replacement-payment', authMiddleware, async (req, res) => {
+  if (req.role !== 'customer') return res.status(403).json({ error: 'Customer only.' });
+  const orderId = parseInt(req.params.id);
+  const { payment_method, payment_details } = req.body;
+  if (!payment_method) return res.status(400).json({ error: 'Payment method required.' });
+  try {
+    const orderCheck = await pool.query('SELECT replacement_payment_status, replacement_diff FROM orders WHERE id = $1', [orderId]);
+    if (orderCheck.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
+    const order = orderCheck.rows[0];
+    if (order.replacement_payment_status !== 'pending') {
+      return res.status(400).json({ error: 'No pending payment.' });
+    }
+    // Record payment via the same payment endpoint but we'll call it directly
+    const amount = order.replacement_diff;
+    const method = payment_method;
+    const details = payment_details || {};
+    const isSuccess = true; // assume success after confirmation
+    const transactionId = `REP-${Date.now()}-${Math.random().toString(36).substr(2,6).toUpperCase()}`;
+
+    await pool.query(
+      `INSERT INTO payments (customer_id, order_id, amount, method, status, transaction_id, payment_details)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [req.userId, orderId, amount, method, 'success', transactionId, JSON.stringify(details)]
+    );
+
+    await pool.query(
+      `UPDATE orders SET replacement_payment_status = 'paid', replacement_payment_method = $1, replacement_payment_details = $2, replacement_payment_date = NOW() WHERE id = $3`,
+      [method, JSON.stringify(details || {}), orderId]
+    );
+    await pool.query(`UPDATE orders SET replacement_status = 'approved' WHERE id = $1`, [orderId]);
+    const msg = `✅ Replacement payment received via ${method}. Replacement approved.`;
+    await pool.query('INSERT INTO order_chat_messages (order_id, from_user, message) VALUES ($1, $2, $3)', [orderId, 'System', msg]);
+    io.to(`order_${orderId}`).emit('new-order-chat-message', { order_id: orderId, from_user: 'System', message: msg, timestamp: new Date() });
+    res.json({ success: true, message: 'Payment recorded. Replacement approved.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Admin approve/reject replacement ----
 app.put('/api/admin/orders/:id/replace', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const orderId = parseInt(req.params.id);
   const { action } = req.body;
   if (!['approve', 'reject'].includes(action)) return res.status(400).json({ error: 'Invalid action.' });
   try {
-    const orderResult = await pool.query('SELECT replacement_status FROM orders WHERE id = $1', [orderId]);
+    const orderResult = await pool.query('SELECT replacement_status, replacement_diff FROM orders WHERE id = $1', [orderId]);
     if (orderResult.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
-    if (orderResult.rows[0].replacement_status === 'none' || orderResult.rows[0].replacement_status === 'approved' || orderResult.rows[0].replacement_status === 'rejected') {
+    const order = orderResult.rows[0];
+    if (order.replacement_status === 'none' || order.replacement_status === 'approved' || order.replacement_status === 'rejected') {
       return res.status(400).json({ error: 'No pending replacement request.' });
+    }
+    const diff = parseFloat(order.replacement_diff) || 0;
+    if (diff > 0 && order.replacement_payment_status !== 'paid') {
+      return res.status(400).json({ error: 'Customer must complete payment first.' });
     }
     const newStatus = action === 'approve' ? 'approved' : 'rejected';
     await pool.query(`UPDATE orders SET replacement_status = $1 WHERE id = $2`, [newStatus, orderId]);
@@ -1281,6 +1556,7 @@ app.put('/api/admin/orders/:id/replace', authMiddleware, async (req, res) => {
   }
 });
 
+// ---- Return request ----
 app.post('/api/orders/:id/return', authMiddleware, async (req, res) => {
   if (req.role !== 'customer') return res.status(403).json({ error: 'Customer only.' });
   const orderId = parseInt(req.params.id);
@@ -1307,6 +1583,8 @@ app.post('/api/orders/:id/return', authMiddleware, async (req, res) => {
     const msg = `📦 Return requested for product #${product_id}. Reason: ${reason}`;
     await pool.query('INSERT INTO order_chat_messages (order_id, from_user, message) VALUES ($1, $2, $3)', [orderId, 'System', msg]);
     io.to(`order_${orderId}`).emit('new-order-chat-message', { order_id: orderId, from_user: 'System', message: msg, timestamp: new Date() });
+    // Notify admin
+    io.emit('return-requested', { orderId });
     res.json({ success: true, message: 'Return request submitted.' });
   } catch (err) {
     console.error(err);
@@ -1314,6 +1592,7 @@ app.post('/api/orders/:id/return', authMiddleware, async (req, res) => {
   }
 });
 
+// ---- Admin approve/reject return ----
 app.put('/api/admin/returns/:id', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const returnId = parseInt(req.params.id);
@@ -1336,6 +1615,7 @@ app.put('/api/admin/returns/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// ---- Reorder ----
 app.post('/api/orders/:id/reorder', authMiddleware, async (req, res) => {
   const orderId = parseInt(req.params.id);
   try {
@@ -1343,14 +1623,15 @@ app.post('/api/orders/:id/reorder', authMiddleware, async (req, res) => {
     if (orderResult.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
     const order = orderResult.rows[0];
     if (order.customer_id !== req.userId) return res.status(403).json({ error: 'Forbidden' });
-    const itemsResult = await pool.query('SELECT product_id, product_name, price, image FROM order_items WHERE order_id = $1', [orderId]);
+    const itemsResult = await pool.query('SELECT product_id, product_name, price, image, variant_name FROM order_items WHERE order_id = $1', [orderId]);
     if (itemsResult.rows.length === 0) return res.status(400).json({ error: 'No items to reorder.' });
     const cartItems = itemsResult.rows.map(item => ({
       id: item.product_id,
       name: item.product_name,
       price: item.price,
       image: item.image || '',
-      quantity: 1
+      quantity: 1,
+      variant_name: item.variant_name || 'Default'
     }));
     await pool.query('UPDATE carts SET items = $1, updated_at = NOW() WHERE customer_id = $2', [JSON.stringify(cartItems), req.userId]);
     res.json({ success: true, items: cartItems });
@@ -1360,9 +1641,7 @@ app.post('/api/orders/:id/reorder', authMiddleware, async (req, res) => {
   }
 });
 
-// ============================================================
-// CONFIRM ORDER – with beautiful HTML table
-// ============================================================
+// ---- Confirm order ----
 app.put('/api/orders/:id/confirm', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const orderId = parseInt(req.params.id);
@@ -1389,21 +1668,22 @@ app.put('/api/orders/:id/confirm', authMiddleware, async (req, res) => {
     const itemsResult = await pool.query('SELECT * FROM order_items WHERE order_id = $1', [orderId]);
     const items = itemsResult.rows;
 
-    // ---- Build HTML table ----
     const ref = order.order_ref || `#${order.id}`;
     let message = `<h2>✅ Order ${ref} Confirmed!</h2>`;
     message += `<p>Dear ${order.customer_name},</p>`;
     message += `<p>Your order has been confirmed. Here are the details:</p>`;
     message += `<table border="1" cellpadding="5" style="border-collapse:collapse; width:100%; font-family:Arial, sans-serif;">`;
-    message += `<tr style="background:#f1f5f9;"><th>Product</th><th>Qty</th><th>Unit Price</th><th>Subtotal</th><th>Product ID</th><th>Status</th></tr>`;
+    message += `<tr style="background:#f1f5f9;"><th>Product</th><th>Variant</th><th>Qty</th><th>Unit Price</th><th>Subtotal</th><th>Product ID</th><th>Status</th></tr>`;
     let total = 0;
     items.forEach(item => {
       const priceNum = parseFloat(item.price.replace(/[^0-9.]/g, '')) || 0;
       const subtotal = priceNum * item.quantity;
       total += subtotal;
       const uniqueId = item.unique_id || '—';
+      const variantName = item.variant_name || 'Default';
       message += `<tr>
         <td>${item.product_name}</td>
+        <td>${variantName}</td>
         <td>${item.quantity}</td>
         <td>Ksh ${priceNum.toFixed(2)}</td>
         <td>Ksh ${subtotal.toFixed(2)}</td>
@@ -1441,7 +1721,7 @@ app.put('/api/orders/:id/confirm', authMiddleware, async (req, res) => {
   }
 });
 
-// ---- Update status (admin) ----
+// ---- Update status (shipped/delivered) ----
 app.put('/api/orders/:id/status', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const orderId = parseInt(req.params.id);
@@ -1489,7 +1769,7 @@ app.put('/api/orders/:id/status', authMiddleware, async (req, res) => {
   }
 });
 
-// ---- Mark received (customer) ----
+// ---- Mark received ----
 app.put('/api/orders/:id/receive', authMiddleware, async (req, res) => {
   if (req.role !== 'customer') return res.status(403).json({ error: 'Customer only.' });
   const orderId = parseInt(req.params.id);
@@ -1562,7 +1842,108 @@ app.post('/api/orders/:id/chat', authMiddleware, async (req, res) => {
   }
 });
 
-// ---- Admin bulk shipping rules CRUD ----
+// ---- Admin dashboard (enhanced) ----
+app.get('/api/admin/dashboard', authMiddleware, async (req, res) => {
+  if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
+  try {
+    const stats = {};
+    const statuses = ['pending', 'confirmed', 'shipped', 'delivered', 'received', 'cancelled', 'pending_payment'];
+    for (const status of statuses) {
+      const result = await pool.query('SELECT COUNT(*) FROM orders WHERE status = $1', [status]);
+      stats[status] = parseInt(result.rows[0].count);
+    }
+    // Replacements pending
+    const replacementsPending = await pool.query(
+      `SELECT COUNT(*) FROM orders WHERE replacement_status IN ('pending', 'pending_payment', 'pending_refund')`
+    );
+    stats.replacements_pending = parseInt(replacementsPending.rows[0].count);
+    // Refunds pending
+    const refundsPending = await pool.query(`SELECT COUNT(*) FROM orders WHERE refund_status = 'pending'`);
+    stats.refunds_pending = parseInt(refundsPending.rows[0].count);
+    // Urgent deliveries
+    const urgent = await pool.query(`SELECT COUNT(*) FROM orders WHERE urgent_delivery = true AND status NOT IN ('received', 'cancelled')`);
+    stats.urgent = parseInt(urgent.rows[0].count);
+    // Total orders
+    const total = await pool.query('SELECT COUNT(*) FROM orders');
+    stats.total_orders = parseInt(total.rows[0].count);
+    // Total revenue
+    const revenue = await pool.query(`SELECT SUM(total) FROM orders WHERE status IN ('confirmed', 'shipped', 'delivered', 'received')`);
+    stats.total_revenue = parseFloat(revenue.rows[0].sum) || 0;
+    // Returns pending
+    const returnsPending = await pool.query(`SELECT COUNT(*) FROM returns WHERE status = 'pending'`);
+    stats.returns_pending = parseInt(returnsPending.rows[0].count);
+    res.json(stats);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Returns list for admin ----
+app.get('/api/admin/returns', authMiddleware, async (req, res) => {
+  if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
+  try {
+    const result = await pool.query(`
+      SELECT r.*, o.order_ref, c.name AS customer_name, c.email AS customer_email
+      FROM returns r
+      JOIN orders o ON r.order_id = o.id
+      JOIN customers c ON r.customer_id = c.id
+      ORDER BY r.requested_at DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Customer returns list ----
+app.get('/api/returns/customer', authMiddleware, async (req, res) => {
+  if (req.role !== 'customer') return res.status(403).json({ error: 'Customer only.' });
+  try {
+    const result = await pool.query(
+      'SELECT * FROM returns WHERE customer_id = $1 ORDER BY requested_at DESC',
+      [req.userId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Send reminder ----
+app.post('/api/admin/orders/:id/remind', authMiddleware, async (req, res) => {
+  if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
+  const orderId = parseInt(req.params.id);
+  try {
+    const orderResult = await pool.query('SELECT customer_id, order_ref FROM orders WHERE id = $1 AND status = $1', [orderId, 'delivered']);
+    if (orderResult.rows.length === 0) {
+      return res.status(400).json({ error: 'Order not found or not in "delivered" state.' });
+    }
+    const customerId = orderResult.rows[0].customer_id;
+    const ref = orderResult.rows[0].order_ref || `#${orderId}`;
+    const customerResult = await pool.query('SELECT name FROM customers WHERE id = $1', [customerId]);
+    const customerName = customerResult.rows[0]?.name || 'Customer';
+    const message = `📢 Reminder: Dear ${customerName}, your order ${ref} has been delivered and is awaiting pickup. Please collect it within 7 working days. If you have already collected, please mark it as "Received" in your account. Thank you!`;
+    await pool.query(
+      'INSERT INTO order_chat_messages (order_id, from_user, message) VALUES ($1, $2, $3)',
+      [orderId, 'System', message]
+    );
+    io.to(`order_${orderId}`).emit('new-order-chat-message', {
+      order_id: orderId,
+      from_user: 'System',
+      message: message,
+      timestamp: new Date()
+    });
+    res.json({ success: true, message: 'Reminder sent.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Bulk shipping rules ----
 app.get('/api/admin/bulk-rules', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   try {
@@ -1601,7 +1982,7 @@ app.delete('/api/admin/bulk-rules/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// ---- Socket.IO ----
+// ---------- Socket.IO ----------
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
   if (!token) {
@@ -1620,10 +2001,12 @@ io.use((socket, next) => {
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id, 'Customer ID:', socket.customerId);
+
   if (socket.customerId) {
     socket.join(`customer_${socket.customerId}`);
   }
 
+  // ---- Customer chat ----
   socket.on('chat-message', async (data) => {
     try {
       const { message } = data;
@@ -1641,6 +2024,57 @@ io.on('connection', (socket) => {
     }
   });
 
+  // ---- Seller chat message ----
+  socket.on('seller-chat-message', async (data) => {
+    try {
+      const { message } = data;
+      if (!message) return;
+      const result = await pool.query(
+        'INSERT INTO chat_messages (from_user, message) VALUES ($1, $2) RETURNING *',
+        ['Seller', message]
+      );
+      const newMsg = result.rows[0];
+      io.emit('new-chat-message', { ...newMsg, customer_name: 'Seller' });
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  // ---- Seller requests chat history ----
+  socket.on('request-chat-history', async () => {
+    try {
+      const result = await pool.query(
+        'SELECT cm.*, c.name AS customer_name FROM chat_messages cm LEFT JOIN customers c ON cm.customer_id = c.id ORDER BY timestamp ASC'
+      );
+      const history = result.rows.map(row => ({
+        from: row.from_user,
+        message: row.message,
+        timestamp: row.timestamp,
+        customer_name: row.customer_name
+      }));
+      socket.emit('chat-history', history);
+    } catch (err) {
+      console.error('Error fetching chat history:', err);
+      socket.emit('chat-history', []);
+    }
+  });
+
+  // ---- Customer location sharing ----
+  socket.on('customer-location', (data) => {
+    socket.broadcast.emit('customer-update', {
+      socketId: socket.id,
+      lat: data.lat,
+      lng: data.lng,
+      name: data.name || 'Customer'
+    });
+  });
+
+  // ---- Admin requests current customers ----
+  socket.on('get-customers', () => {
+    socket.emit('customer-list', []);
+  });
+
+  // ---- Join/leave order rooms ----
   socket.on('join-order-room', (orderId) => {
     socket.join(`order_${orderId}`);
   });
@@ -1648,9 +2082,17 @@ io.on('connection', (socket) => {
     socket.leave(`order_${orderId}`);
   });
 
+  // ---- Disconnect ----
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
+    socket.broadcast.emit('customer-left', socket.id);
   });
+});
+
+// ---------- Global Error Handler ----------
+app.use((err, req, res, next) => {
+  console.error('❌ Unhandled error:', err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 // ---------- Start Server ----------

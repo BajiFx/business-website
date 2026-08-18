@@ -2,18 +2,76 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
   <title>Our Shop</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    /* Hover preview styles */
+    .product-card {
+      position: relative;
+    }
+    .hover-preview {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      padding: 10px;
+      width: 220px;
+      z-index: 50;
+      pointer-events: none;
+    }
+    .product-card:hover .hover-preview {
+      display: block;
+    }
+    .hover-preview .variant-swatches {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+    .hover-preview .variant-swatches .swatch {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1px solid #e2e8f0;
+      cursor: pointer;
+      pointer-events: auto;
+      background-size: cover;
+      background-position: center;
+    }
+    .hover-preview .variant-swatches .swatch:hover {
+      border-color: #2563eb;
+    }
+    .hover-preview .product-name {
+      font-weight: 600;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .hover-preview .product-price {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: #2563eb;
+    }
+    .hover-preview .product-rating {
+      font-size: 0.7rem;
+      color: #64748b;
+    }
+  </style>
 </head>
 <body>
 
 <!-- ===== ANNOUNCEMENT BAR ===== -->
 <div class="announcement-bar">
-  <marquee behavior="scroll" direction="left" scrollamount="4">
-    🎉 Welcome to our store! Free delivery on orders over Ksh 5,000 &nbsp;•&nbsp; New arrivals every week &nbsp;•&nbsp; Call us for bulk orders
+  <marquee behavior="scroll" direction="left" scrollamount="3">
+    🎉 Welcome! Free delivery on orders over Ksh 5,000 &nbsp;•&nbsp; New arrivals every week
   </marquee>
 </div>
 
@@ -22,247 +80,160 @@
 
 <!-- ===== HEADER ===== -->
 <div class="header">
-  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; max-width:1200px; margin:0 auto; width:100%;">
-    <h1 style="font-weight:900; letter-spacing:-0.5px; font-size:2rem; text-shadow:0 0 20px rgba(255,107,107,0.3); margin:0;">
-      🛍️ <span id="shopNameHeader">Our Business</span>
-    </h1>
-    <div style="display:flex; align-items:center; gap:15px;">
-      <a href="/" style="color:#94a3b8; text-decoration:none; font-weight:600;">Home</a>
-      <a href="/track.html" style="color:#feca57; text-decoration:none; font-weight:600;">📍 Track</a>
-      <!-- Profile Button / Dropdown -->
-      <div style="position:relative; display:inline-block;">
-        <button id="profileBtn" onclick="toggleProfileMenu()" style="background:transparent; border:none; color:#feca57; font-size:1.5rem; cursor:pointer; display:flex; align-items:center; gap:6px;">
-          <i class="fas fa-user-circle"></i>
-          <span id="profileLabel" style="font-size:0.9rem; font-weight:600;">Profile</span>
-        </button>
-        <!-- Dropdown Menu -->
-        <div id="profileDropdown" style="display:none; position:absolute; right:0; top:40px; background:white; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.15); min-width:180px; z-index:1000; overflow:hidden;">
-          <div id="dropdownGuest" style="padding:12px 16px;">
-            <div style="padding:8px 0; cursor:pointer; color:#1e293b; font-weight:600;" onclick="openAuthModal('login')">Login</div>
-            <div style="padding:8px 0; cursor:pointer; color:#1e293b; font-weight:600; border-top:1px solid #e2e8f0;" onclick="openAuthModal('register')">Register</div>
-          </div>
-          <div id="dropdownUser" style="display:none; padding:12px 16px;">
-            <div style="padding:4px 0; color:#64748b; font-size:0.9rem;" id="dropdownUserName">User</div>
-            <div style="padding:8px 0; cursor:pointer; color:#1e293b; font-weight:600; border-top:1px solid #e2e8f0;" onclick="location.href='/account.html'">My Account</div>
-            <div style="padding:8px 0; cursor:pointer; color:#ef4444; font-weight:600; border-top:1px solid #e2e8f0;" onclick="logout()">Logout</div>
-          </div>
-        </div>
-      </div>
-    </div>
+  <h1>🛍️ <span id="shopNameHeader">Our Business</span></h1>
+  <div class="header-right">
+    <a href="#" onclick="openAuthModal()" id="authLinks">Login</a>
+    <a href="/account.html" style="display:none;" id="userMenu">Account</a>
+    <a href="/cart.html" style="position:relative;">
+      <i class="fas fa-shopping-cart" style="font-size:1.2rem;"></i>
+      <span id="cartBadge" style="position:absolute; top:-6px; right:-8px; background:#ef4444; color:white; border-radius:50%; padding:0 5px; font-size:0.55rem; min-width:16px; text-align:center; font-weight:700; display:none;">0</span>
+    </a>
   </div>
 </div>
 
-<!-- ===== HERO / COVER SECTION ===== -->
+<!-- ===== HERO ===== -->
 <div class="hero-section" id="heroSection">
   <div class="hero-overlay">
     <div class="hero-content">
       <img id="heroLogo" src="" alt="Shop Logo" class="hero-logo">
-      <h1 id="heroTitle">Welcome to Our Shop</h1>
+      <h1 id="heroTitle">Welcome</h1>
       <p id="heroLocation">📍 Nairobi, Kenya</p>
       <p id="heroAddress"></p>
-      <p id="heroDesc">We sell quality goods.</p>
     </div>
   </div>
 </div>
 
 <!-- ===== SAVE MORE BANNER ===== -->
-<div class="container">
-  <div class="save-more-banner">💰 Save more by buying from us – Best prices, quality guaranteed!</div>
-</div>
+<div class="save-more-banner">💰 Save more – Best prices, quality guaranteed!</div>
 
-<!-- ===== ABOUT / MISSION & VISION ===== -->
-<div class="container">
-  <div class="about-card">
-    <div class="about-grid">
-      <div class="about-item">
-        <i class="fas fa-bullseye" style="color:#ff6b6b;"></i>
-        <h3>Mission</h3>
-        <p id="heroMission">-</p>
-      </div>
-      <div class="about-item">
-        <i class="fas fa-eye" style="color:#7c3aed;"></i>
-        <h3>Vision</h3>
-        <p id="heroVision">-</p>
-      </div>
+<!-- ===== ABOUT ===== -->
+<div class="about-card">
+  <div class="about-grid">
+    <div class="about-item">
+      <i class="fas fa-bullseye" style="color:#ff6b6b;"></i>
+      <h3>Mission</h3>
+      <p id="heroMission">-</p>
+    </div>
+    <div class="about-item">
+      <i class="fas fa-eye" style="color:#7c3aed;"></i>
+      <h3>Vision</h3>
+      <p id="heroVision">-</p>
     </div>
   </div>
 </div>
 
-<!-- ===== PRODUCT SLIDER ===== -->
+<!-- ===== SLIDER ===== -->
 <div class="slider-container">
   <div class="slider-wrapper" id="sliderWrapper">
-    <div class="slide">✨ Loading products...</div>
+    <div class="slide">✨ Loading...</div>
   </div>
   <button class="slider-btn prev" onclick="changeSlide(-1)">❮</button>
   <button class="slider-btn next" onclick="changeSlide(1)">❯</button>
 </div>
 
-<!-- ===== PRODUCT GRID ===== -->
+<!-- ===== PRODUCTS ===== -->
 <div class="container">
-  <h2 style="margin-bottom:20px; font-weight:800; color:#0f172a;">📦 Our Products</h2>
+  <div class="section-header">
+    <h2>📦 Our Products</h2>
+  </div>
   <div class="products-grid" id="productGrid"></div>
 
-  <!-- ===== LOCATION TRACKING BUTTON & MAPS ===== -->
-  <div style="text-align:center; margin:30px 0;">
-    <button id="showMapBtn" class="btn btn-primary" style="font-size:1.1rem; padding:12px 30px;">
-      📍 Track My Shop Location
-    </button>
-    <p id="locationRequestStatus" style="margin-top:8px; color:#64748b; font-size:0.9rem;"></p>
+  <!-- LOCATION REQUEST -->
+  <div style="text-align:center; margin:20px 0;">
+    <button id="requestLocationBtn" class="btn btn-primary" style="font-size:0.85rem; padding:8px 20px;">📍 Request Location</button>
+    <p id="locationRequestStatus" style="font-size:0.7rem; color:#64748b; margin-top:4px;"></p>
   </div>
 
-  <!-- ===== STATIC MAP (hidden by default) ===== -->
-  <div id="staticMapSection" style="display:none; margin-top:20px;">
-    <h2>📍 Find Our Shop</h2>
-    <div id="shopMap" style="height:400px; border-radius:16px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
-    <p id="mapAddress" style="margin-top:8px; color:#475569;"></p>
+  <!-- MAPS (hidden) -->
+  <div id="staticMapSection" style="display:none; margin:16px 0;">
+    <h3 style="font-size:0.95rem;">📍 Find Our Shop</h3>
+    <div id="shopMap" style="height:250px; border-radius:12px; overflow:hidden;"></div>
+    <p id="mapAddress" style="font-size:0.75rem; color:#475569; margin-top:4px;"></p>
+  </div>
+  <div id="liveLocationSection" style="display:none; margin:16px 0;">
+    <h3 style="font-size:0.95rem;">📍 Seller's Live Location</h3>
+    <div id="liveMap" style="height:250px; border-radius:12px; overflow:hidden;"></div>
+    <p id="liveDistance" style="font-size:0.75rem; color:#2563eb; margin-top:4px;"></p>
   </div>
 
-  <!-- ===== LIVE LOCATION MAP (hidden by default) ===== -->
-  <div id="liveLocationSection" style="display:none; margin-top:30px;">
-    <h2>📍 Seller's Live Location</h2>
-    <div id="liveMap" style="height:400px; border-radius:16px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
-    <p id="liveDistance" style="margin-top:8px; font-weight:600; color:#2563eb;"></p>
-  </div>
-
-  <!-- ===== CONTACT ICONS ===== -->
-  <div id="contactIcons" style="margin:40px 0; text-align:center;">
-    <h3>📞 Contact Us</h3>
-    <div style="display:flex; justify-content:center; gap:20px; flex-wrap:wrap; margin-top:15px;">
-      <a id="iconWhatsapp" href="#" target="_blank" style="font-size:2rem; color:#25D366;" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
-      <a id="iconTiktok" href="#" target="_blank" style="font-size:2rem; color:#000000;" title="TikTok"><i class="fab fa-tiktok"></i></a>
-      <a id="iconInstagram" href="#" target="_blank" style="font-size:2rem; color:#E4405F;" title="Instagram"><i class="fab fa-instagram"></i></a>
-      <a id="iconFacebook" href="#" target="_blank" style="font-size:2rem; color:#1877F2;" title="Facebook Messenger"><i class="fab fa-facebook-messenger"></i></a>
-      <a id="iconPhone" href="#" style="font-size:2rem; color:#2563eb;" title="Call"><i class="fas fa-phone"></i></a>
+  <!-- CONTACT -->
+  <div style="text-align:center; margin:24px 0;">
+    <h3 style="font-size:0.95rem;">📞 Contact Us</h3>
+    <div style="display:flex; justify-content:center; gap:16px; flex-wrap:wrap; margin-top:8px;">
+      <a id="iconWhatsapp" href="#" target="_blank" style="font-size:1.6rem; color:#25D366;"><i class="fab fa-whatsapp"></i></a>
+      <a id="iconTiktok" href="#" target="_blank" style="font-size:1.6rem; color:#000;"><i class="fab fa-tiktok"></i></a>
+      <a id="iconInstagram" href="#" target="_blank" style="font-size:1.6rem; color:#E4405F;"><i class="fab fa-instagram"></i></a>
+      <a id="iconFacebook" href="#" target="_blank" style="font-size:1.6rem; color:#1877F2;"><i class="fab fa-facebook-messenger"></i></a>
+      <a id="iconPhone" href="#" style="font-size:1.6rem; color:#2563eb;"><i class="fas fa-phone"></i></a>
     </div>
-  </div>
-
-  <div style="text-align:center; margin:40px 0;">
-    <a href="/track.html" class="btn btn-primary" style="font-size:1.2rem; padding:12px 30px;">📍 Live Track to Shop</a>
-    <p style="color:#64748b; margin-top:10px;">Share your location live with the seller to get directions.</p>
   </div>
 </div>
 
-<!-- ===== DETAILS MODAL ===== -->
+<!-- ===== DETAIL MODAL ===== -->
 <div class="modal-overlay" id="detailModal">
-  <div class="modal-box modal-detail">
+  <div class="modal-box">
     <span class="close-modal" onclick="closeDetails()">&times;</span>
-    <div class="detail-grid">
-      <div class="detail-media">
-        <img id="detailImage" src="" alt="Product" style="display:none;">
-        <video id="detailVideo" controls style="display:none;"></video>
-      </div>
-      <div class="detail-info">
-        <h2 id="detailName"></h2>
-        <div class="detail-price" id="detailPrice"></div>
-        <div class="detail-rating" id="detailRating"></div>
-        <div class="detail-description" id="detailDescription"></div>
-        <div class="detail-badges" id="detailBadges"></div>
-        <div class="detail-contact"><strong>Contact:</strong> <span id="detailContact"></span></div>
-        <div class="detail-shipping"><strong>Shipping:</strong> <span id="detailShipping"></span></div>
-        <div class="detail-actions" id="detailActions"></div>
-        <div style="display:flex; align-items:center; gap:12px; margin-top:12px; flex-wrap:wrap;">
-          <div style="display:flex; align-items:center; gap:6px;">
-            <button onclick="changeQty(-1)" style="width:32px; height:32px; border-radius:50%; border:1px solid #d1d5db; background:white; font-size:1.2rem; cursor:pointer;">−</button>
-            <span id="modalQty" style="font-weight:700; min-width:24px; text-align:center;">1</span>
-            <button onclick="changeQty(1)" style="width:32px; height:32px; border-radius:50%; border:1px solid #d1d5db; background:white; font-size:1.2rem; cursor:pointer;">+</button>
-          </div>
-          <button class="btn btn-primary" id="modalAddToCart" onclick="addToCartFromModal()" style="flex:1; padding:10px 20px;">
-            <i class="fas fa-cart-plus"></i> Add to Cart
-          </button>
-        </div>
-      </div>
-    </div>
-    <div class="related-products">
-      <h3>🔄 You may also like</h3>
-      <div id="relatedProductsContainer" class="related-grid"></div>
-    </div>
+    <div id="detailContent"></div>
   </div>
 </div>
 
 <!-- ===== AUTH MODAL ===== -->
 <div class="modal-overlay" id="authModal">
-  <div class="modal-box" style="max-width:450px;">
+  <div class="modal-box">
     <span class="close-modal" onclick="closeAuthModal()">&times;</span>
     <h2 id="authModalTitle">Login</h2>
-    <div style="margin-top:15px;">
-      <!-- Login Form -->
-      <div id="authLoginForm">
-        <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="authLoginEmail" placeholder="your@email.com">
-        </div>
-        <div class="form-group" style="position:relative;">
-          <label>Password</label>
-          <input type="password" id="authLoginPassword" placeholder="Enter password">
-          <button class="toggle-pwd" onclick="toggleAuthPwd('authLoginPassword', this)"><i class="fas fa-eye"></i></button>
-        </div>
-        <button class="btn btn-primary" style="width:100%;" onclick="handleAuthLogin()">Login</button>
-        <div id="authLoginStatus" class="auth-status" style="margin-top:8px;"></div>
-        <p style="margin-top:12px; text-align:center; font-size:0.9rem;">
-          Don't have an account? <a href="#" onclick="switchAuthTab('register')">Register</a>
-        </p>
-      </div>
-      <!-- Register Form -->
-      <div id="authRegisterForm" style="display:none;">
-        <div class="form-group">
-          <label>Full Name</label>
-          <input type="text" id="authRegName" placeholder="Your name">
-        </div>
-        <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="authRegEmail" placeholder="your@email.com">
-        </div>
-        <div class="form-group" style="position:relative;">
-          <label>Password</label>
-          <input type="password" id="authRegPassword" placeholder="Min 6 characters">
-          <button class="toggle-pwd" onclick="toggleAuthPwd('authRegPassword', this)"><i class="fas fa-eye"></i></button>
-        </div>
-        <div class="form-group" style="position:relative;">
-          <label>Confirm Password</label>
-          <input type="password" id="authRegConfirm" placeholder="Re-enter password">
-          <button class="toggle-pwd" onclick="toggleAuthPwd('authRegConfirm', this)"><i class="fas fa-eye"></i></button>
-        </div>
-        <button class="btn btn-success" style="width:100%;" onclick="handleAuthRegister()">Create Account</button>
-        <div id="authRegisterStatus" class="auth-status" style="margin-top:8px;"></div>
-        <p style="margin-top:12px; text-align:center; font-size:0.9rem;">
-          Already have an account? <a href="#" onclick="switchAuthTab('login')">Login</a>
-        </p>
-      </div>
+    <div id="authLoginForm">
+      <div class="form-group"><label>Email</label><input type="email" id="authLoginEmail" placeholder="your@email.com"></div>
+      <div class="form-group" style="position:relative;"><label>Password</label><input type="password" id="authLoginPassword" placeholder="Enter password"><button class="toggle-pwd" onclick="toggleAuthPwd('authLoginPassword', this)"><i class="fas fa-eye"></i></button></div>
+      <button class="btn btn-primary" style="width:100%;" onclick="handleAuthLogin()">Login</button>
+      <div id="authLoginStatus" class="auth-status"></div>
+      <p style="margin-top:8px; text-align:center; font-size:0.8rem;">Don't have an account? <a href="#" onclick="switchAuthTab('register')">Register</a></p>
+    </div>
+    <div id="authRegisterForm" style="display:none;">
+      <div class="form-group"><label>Full Name</label><input type="text" id="authRegName" placeholder="Your name"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="authRegEmail" placeholder="your@email.com"></div>
+      <div class="form-group" style="position:relative;"><label>Password</label><input type="password" id="authRegPassword" placeholder="Min 6 chars"><button class="toggle-pwd" onclick="toggleAuthPwd('authRegPassword', this)"><i class="fas fa-eye"></i></button></div>
+      <div class="form-group" style="position:relative;"><label>Confirm</label><input type="password" id="authRegConfirm" placeholder="Re-enter"><button class="toggle-pwd" onclick="toggleAuthPwd('authRegConfirm', this)"><i class="fas fa-eye"></i></button></div>
+      <button class="btn btn-success" style="width:100%;" onclick="handleAuthRegister()">Create Account</button>
+      <div id="authRegisterStatus" class="auth-status"></div>
+      <p style="margin-top:8px; text-align:center; font-size:0.8rem;">Already have an account? <a href="#" onclick="switchAuthTab('login')">Login</a></p>
     </div>
   </div>
 </div>
 
 <!-- ===== FLOATING WIDGETS ===== -->
-<div id="floatingWidgets" style="position:fixed; bottom:24px; right:24px; z-index:1000; display:flex; flex-direction:column; gap:12px; align-items:flex-end; display:none;">
-  <a href="/cart.html" id="cartFloatingBtn" style="background:linear-gradient(135deg, #2563eb, #7c3aed); color:white; border:none; border-radius:50%; width:60px; height:60px; font-size:2rem; cursor:pointer; box-shadow:0 8px 24px rgba(37,99,235,0.4); display:flex; align-items:center; justify-content:center; text-decoration:none; position:relative;">
-    🛒
-    <span id="cartBadgeFloat" style="position:absolute; top:-6px; right:-6px; background:#ef4444; color:white; border-radius:50%; padding:0 6px; font-size:0.7rem; min-width:20px; text-align:center; font-weight:700; display:none;">0</span>
+<div id="floatingWidgets" style="display:none;">
+  <a href="/cart.html" id="cartFloatingBtn" style="position:relative;">
+    🛒<span id="cartBadgeFloat" style="display:none;">0</span>
   </a>
-  <button id="chatToggle" onclick="toggleChat()" style="background:linear-gradient(135deg, #2563eb, #7c3aed); color:white; border:none; border-radius:50%; width:60px; height:60px; font-size:2rem; cursor:pointer; box-shadow:0 8px 24px rgba(37,99,235,0.4);">
-    <i class="fas fa-comment"></i>
-  </button>
+  <button id="chatToggle" onclick="toggleChat()"><i class="fas fa-comment"></i></button>
 </div>
 
 <!-- ===== CHAT BOX ===== -->
-<div id="chatBox" style="display:none; position:fixed; bottom:160px; right:24px; width:340px; max-width:85vw; height:460px; background:white; border-radius:20px; box-shadow:0 12px 48px rgba(0,0,0,0.15); overflow:hidden; flex-direction:column; z-index:1001;">
-  <div style="background:#1e293b; color:white; padding:12px 16px; font-weight:bold; display:flex; justify-content:space-between; align-items:center;">
-    <span id="chatHeader">💬 Live Chat</span>
-    <span onclick="toggleChat()" style="cursor:pointer; font-size:1.4rem;">&times;</span>
+<div id="chatBox">
+  <div class="chat-header"><span>💬 Live Chat</span><span onclick="toggleChat()">&times;</span></div>
+  <div id="chatMessages"><p style="color:#94a3b8; text-align:center; font-size:0.8rem;">Loading...</p></div>
+  <div id="chatInputArea" style="display:none;">
+    <input id="chatInput" type="text" placeholder="Type a message...">
+    <button onclick="sendChatMessage()"><i class="fas fa-paper-plane"></i></button>
   </div>
-  <div id="chatMessages" style="flex:1; padding:14px; overflow-y:auto; background:#f8fafc; display:flex; flex-direction:column; gap:8px;">
-    <p style="color:#94a3b8; text-align:center;">Loading messages...</p>
+  <div id="chatLoginPrompt">
+    <p style="font-size:0.8rem;">Please login to chat</p>
+    <button class="btn btn-primary" onclick="openAuthModal()" style="font-size:0.8rem;">Login</button>
   </div>
-  <div id="chatInputArea" style="display:none; padding:10px; border-top:1px solid #e2e8f0; background:white;">
-    <input id="chatInput" type="text" placeholder="Type a message..." style="flex:1; padding:8px 12px; border:1px solid #d1d5db; border-radius:30px; outline:none;">
-    <button onclick="sendChatMessage()" style="margin-left:8px; background:#2563eb; color:white; border:none; border-radius:50%; width:40px; height:40px; font-size:1.2rem; cursor:pointer;">
-      <i class="fas fa-paper-plane"></i>
-    </button>
-  </div>
-  <div id="chatLoginPrompt" style="display:flex; justify-content:center; align-items:center; padding:20px; background:#f8fafc; flex-direction:column; gap:8px;">
-    <p style="color:#64748b; font-size:0.9rem;">Please login to send messages</p>
-    <button class="btn btn-primary" onclick="openAuthModal()">Login / Register</button>
-  </div>
-  <input type="hidden" id="chatProductName">
+</div>
+
+<!-- ===== BOTTOM NAVIGATION ===== -->
+<div class="bottom-nav">
+  <a href="/" class="active"><i class="fas fa-home"></i><span>Home</span></a>
+  <a href="/category.html"><i class="fas fa-th-large"></i><span>Category</span></a>
+  <a href="/account.html"><i class="fas fa-envelope"></i><span>Messages</span></a>
+  <a href="/cart.html" style="position:relative;">
+    <i class="fas fa-shopping-cart"></i>
+    <span class="nav-badge" id="navCartBadge">0</span>
+    <span>Cart</span>
+  </a>
+  <a href="/account.html"><i class="fas fa-user"></i><span>Account</span></a>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

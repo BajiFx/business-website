@@ -1,176 +1,239 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Panel</title>
-  <link rel="stylesheet" href="/style.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script src="/socket.io/socket.io.js"></script>
   <style>
-    * { box-sizing: border-box; }
-    body { background: #f4f6f9; font-family: 'Segoe UI', sans-serif; }
+    /* ===== RESET & BASE ===== */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f1f5f9; font-family: 'Segoe UI', system-ui, sans-serif; padding-bottom: 20px; }
 
-    .admin-header { background: #1e293b; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-    .admin-header .nav-links { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
-    .admin-header a { color: #94a3b8; text-decoration: none; font-weight: 600; transition: color 0.2s; }
-    .admin-header a:hover { color: white; }
-    .admin-header .active-link { color: #feca57; }
+    /* ===== HEADER ===== */
+    .admin-header {
+      background: #0f172a; color: white; padding: 8px 16px;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .admin-header h1 { font-size: 1rem; font-weight: 700; }
+    .admin-header h1 i { color: #facc15; margin-right: 6px; }
+    .admin-header .nav-links {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .admin-header .nav-links a {
+      color: #94a3b8; text-decoration: none; font-weight: 600; font-size: 0.75rem;
+    }
+    .admin-header .nav-links a:hover { color: white; }
+    .admin-header .nav-links a.active { color: #facc15; }
+    .logout-btn {
+      background: #ef4444; color: white; border: none; padding: 3px 12px;
+      border-radius: 20px; font-weight: 600; font-size: 0.75rem; cursor: pointer;
+    }
+    .logout-btn:hover { background: #dc2626; }
 
-    .auth-container { max-width: 420px; margin: 40px auto; background: white; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.1); overflow: hidden; }
+    /* ===== DASHBOARD LAYOUT ===== */
+    .dashboard-container {
+      max-width: 1500px; margin: 10px auto; padding: 0 12px;
+      display: flex; gap: 12px; align-items: flex-start;
+    }
+
+    /* ===== LEFT SIDEBAR – CARDS ===== */
+    .sidebar-cards {
+      flex: 0 0 120px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .stat-card {
+      border-radius: 8px; padding: 6px 4px; color: #1e293b;
+      cursor: pointer; transition: transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+      border: none; min-height: 48px; justify-content: center;
+      position: relative; overflow: hidden;
+    }
+    .stat-card::after {
+      content: ''; position: absolute; top: -50%; right: -50%;
+      width: 100%; height: 100%; background: rgba(255,255,255,0.3);
+      border-radius: 50%; transform: scale(0); transition: transform 0.3s;
+    }
+    .stat-card:hover { transform: translateY(-1px) scale(1.02); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+    .stat-card:hover::after { transform: scale(2); }
+    .stat-card .icon { font-size: 0.9rem; opacity: 0.8; margin-bottom: 1px; }
+    .stat-card .number { font-size: 1.2rem; font-weight: 800; line-height: 1.2; }
+    .stat-card .label {
+      font-size: 0.65rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.3px; margin-top: 1px;
+    }
+    .stat-card .blink-dot {
+      display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+      background: #facc15; margin-left: 4px;
+      animation: pulse-blink 1.2s infinite;
+    }
+    .stat-card .blink-dot.hidden { display: none; }
+    @keyframes pulse-blink {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.2; transform: scale(0.7); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* Card Colors – lighter gradients for black text */
+    .stat-card.pending { background: linear-gradient(145deg, #fde68a, #fcd34d); }
+    .stat-card.confirmed { background: linear-gradient(145deg, #86efac, #4ade80); }
+    .stat-card.shipped { background: linear-gradient(145deg, #93c5fd, #60a5fa); }
+    .stat-card.delivered { background: linear-gradient(145deg, #c4b5fd, #a78bfa); }
+    .stat-card.received { background: linear-gradient(145deg, #5eead4, #2dd4bf); }
+    .stat-card.cancelled { background: linear-gradient(145deg, #fca5a5, #f87171); }
+    .stat-card.replacements { background: linear-gradient(145deg, #fdba74, #fb923c); }
+    .stat-card.refunds { background: linear-gradient(145deg, #f9a8d4, #f472b6); }
+    .stat-card.urgent { background: linear-gradient(145deg, #fca5a5, #f87171); }
+    .stat-card.total { background: linear-gradient(145deg, #e2e8f0, #cbd5e1); }
+    .stat-card.returns { background: linear-gradient(145deg, #a5f3fc, #67e8f9); }
+
+    /* ===== MAIN CONTENT – ORDER / RETURN PANEL ===== */
+    .order-panel {
+      flex: 1; background: white; border-radius: 12px;
+      padding: 12px 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+      border: 1px solid #e2e8f0; min-height: 300px;
+    }
+    .order-panel .panel-header {
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 2px solid #e2e8f0; padding-bottom: 6px;
+      margin-bottom: 12px; flex-wrap: wrap; gap: 6px;
+    }
+    .order-panel .panel-header h2 {
+      font-size: 0.95rem; font-weight: 700; color: #0f172a;
+    }
+    .order-panel .panel-header .badge {
+      background: #2563eb; color: white; font-size: 0.6rem;
+      padding: 1px 8px; border-radius: 20px; font-weight: 600;
+    }
+    .order-panel .panel-header .refresh-btn {
+      background: #e2e8f0; border: none; padding: 2px 10px;
+      border-radius: 20px; font-weight: 600; font-size: 0.7rem; cursor: pointer;
+    }
+    .order-panel .panel-header .refresh-btn:hover { background: #cbd5e1; }
+
+    /* ===== ORDER LIST ===== */
+    .order-list { display: flex; flex-direction: column; gap: 6px; }
+    .order-row {
+      background: #f8fafc; border-radius: 8px; padding: 8px 10px;
+      border-left: 3px solid #94a3b8; transition: background 0.2s;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .order-row:hover { background: #f1f5f9; }
+    .order-row .order-header {
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 4px;
+    }
+    .order-row .order-header .ref {
+      font-weight: 700; color: #0f172a; font-size: 0.8rem;
+    }
+    .order-row .order-header .customer {
+      color: #475569; font-size: 0.75rem;
+    }
+    .order-row .order-header .date {
+      color: #94a3b8; font-size: 0.65rem;
+    }
+    .order-row .order-header .total {
+      font-weight: 700; color: #2563eb; font-size: 0.85rem;
+    }
+    .order-row .order-header .status-badge {
+      font-size: 0.55rem; font-weight: 600; padding: 1px 8px;
+      border-radius: 20px; text-transform: uppercase;
+    }
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-confirmed { background: #d1fae5; color: #065f46; }
+    .status-shipped { background: #dbeafe; color: #1e40af; }
+    .status-delivered { background: #e0e7ff; color: #3730a3; }
+    .status-received { background: #dcfce7; color: #166534; }
+    .status-cancelled { background: #fee2e2; color: #991b1b; }
+
+    .order-row .order-actions {
+      display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+    }
+    .order-row .order-actions select,
+    .order-row .order-actions input {
+      padding: 2px 6px; border: 1px solid #d1d5db; border-radius: 4px;
+      font-size: 0.6rem; background: white;
+    }
+    .order-row .order-actions button {
+      padding: 2px 8px; border: none; border-radius: 14px;
+      font-weight: 600; font-size: 0.55rem; cursor: pointer;
+      transition: background 0.2s; white-space: nowrap;
+    }
+    .btn-confirm { background: #22c55e; color: white; }
+    .btn-confirm:hover { background: #16a34a; }
+    .btn-ship { background: #3b82f6; color: white; }
+    .btn-ship:hover { background: #2563eb; }
+    .btn-deliver { background: #8b5cf6; color: white; }
+    .btn-deliver:hover { background: #7c3aed; }
+    .btn-received { background: #14b8a6; color: white; }
+    .btn-received:hover { background: #0d9488; }
+    .btn-remind { background: #f59e0b; color: white; }
+    .btn-remind:hover { background: #d97706; }
+    .btn-refund-approve { background: #22c55e; color: white; }
+    .btn-refund-reject { background: #ef4444; color: white; }
+    .btn-replace-approve { background: #22c55e; color: white; }
+    .btn-replace-reject { background: #ef4444; color: white; }
+    .btn-cancel { background: #ef4444; color: white; }
+    .btn-cancel:hover { background: #dc2626; }
+    .btn-return-approve { background: #22c55e; color: white; }
+    .btn-return-reject { background: #ef4444; color: white; }
+    .empty-msg {
+      color: #94a3b8; text-align: center; padding: 30px 0; font-size: 0.85rem;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      .dashboard-container { flex-direction: column; }
+      .sidebar-cards {
+        flex: 1; flex-direction: row; flex-wrap: wrap; gap: 4px;
+      }
+      .stat-card {
+        flex: 1 0 80px; min-height: 40px; padding: 4px 2px;
+      }
+      .stat-card .number { font-size: 1rem; }
+      .stat-card .label { font-size: 0.55rem; }
+      .stat-card .icon { font-size: 0.8rem; }
+    }
+
+    /* ===== AUTH (unchanged) ===== */
+    .auth-container { max-width: 380px; margin: 30px auto; background: white; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.06); overflow: hidden; }
     .auth-tabs { display: flex; border-bottom: 1px solid #e2e8f0; }
-    .auth-tabs button { flex: 1; padding: 14px; border: none; background: #f8fafc; font-weight: 600; cursor: pointer; font-size: 1rem; transition: 0.2s; }
+    .auth-tabs button { flex: 1; padding: 12px; border: none; background: #f8fafc; font-weight: 600; cursor: pointer; font-size: 0.9rem; }
     .auth-tabs button.active { background: white; color: #2563eb; border-bottom: 3px solid #2563eb; }
-    .auth-tabs button:hover { background: #e2e8f0; }
-
-    .auth-form { padding: 30px; display: none; }
+    .auth-form { padding: 24px; display: none; }
     .auth-form.active { display: block; }
-    .auth-form h2 { margin-top: 0; margin-bottom: 6px; color: #0f172a; }
-    .auth-form p.sub { color: #64748b; font-size: 0.9rem; margin-bottom: 20px; }
-    .form-group { margin-bottom: 16px; position: relative; }
-    .form-group label { display: block; font-weight: 600; font-size: 0.85rem; color: #334155; margin-bottom: 4px; }
-    .form-group input { width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem; transition: 0.2s; }
+    .auth-form h2 { margin-bottom: 4px; font-size: 1.1rem; }
+    .auth-form .sub { color: #64748b; font-size: 0.8rem; margin-bottom: 16px; }
+    .form-group { margin-bottom: 12px; position: relative; }
+    .form-group label { display: block; font-weight: 600; font-size: 0.75rem; color: #334155; margin-bottom: 2px; }
+    .form-group input { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem; }
     .form-group input:focus { border-color: #2563eb; outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-    .form-group .toggle-pwd { position: absolute; right: 12px; bottom: 12px; cursor: pointer; color: #94a3b8; background: none; border: none; font-size: 1.1rem; }
-    .form-group .toggle-pwd:hover { color: #334155; }
-
-    .btn-primary { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: 0.2s; }
+    .form-group .toggle-pwd { position: absolute; right: 10px; bottom: 10px; cursor: pointer; color: #94a3b8; background: none; border: none; }
+    .btn-primary { width: 100%; padding: 10px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
     .btn-primary:hover { background: #1d4ed8; }
-    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-
-    .auth-status { text-align: center; font-size: 0.9rem; margin-top: 12px; padding: 8px; border-radius: 8px; }
+    .auth-status { text-align: center; font-size: 0.8rem; margin-top: 10px; padding: 6px; border-radius: 6px; }
     .auth-status.error { color: #ef4444; background: #fef2f2; }
     .auth-status.success { color: #16a34a; background: #f0fdf4; }
-
     .hidden { display: none !important; }
-
-    .dashboard-container { max-width: 900px; margin: 20px auto; padding: 0 20px; }
-    .dashboard-section { background: white; padding: 25px; border-radius: 16px; margin-bottom: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .dashboard-section h2 { border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 20px; }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-    .form-row .full { grid-column: 1 / -1; }
-    .dashboard-section input, .dashboard-section textarea, .dashboard-section select { width: 100%; padding: 10px; margin: 6px 0 14px; border: 1px solid #d1d5db; border-radius: 8px; }
-    .dashboard-section label { font-weight: 600; font-size: 0.9rem; color: #334155; }
-    .checkbox-group { display: flex; gap: 20px; margin: 10px 0; }
-    .checkbox-group label { font-weight: normal; display: flex; align-items: center; gap: 5px; }
-    .product-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding: 12px 0; flex-wrap: wrap; }
-    .product-item .actions { display: flex; gap: 8px; }
-    .edit-btn, .delete-btn { background: #2563eb; color: white; border: none; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; }
-    .delete-btn { background: #ef4444; }
-    .edit-btn:hover { background: #1d4ed8; }
-    .delete-btn:hover { background: #dc2626; }
-    .badge-preview { background: #e2e8f0; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; margin-right: 4px; }
-    .gps-btn { background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 30px; font-weight: 600; cursor: pointer; margin-bottom: 10px; }
-    .gps-btn:hover { background: #1d4ed8; }
-    .gps-btn.active { background: #22c55e; }
-    .gps-btn.active:hover { background: #16a34a; }
-
-    #adminMapPreview {
-      width: 100%;
-      height: 220px;
-      border-radius: 12px;
-      margin-top: 10px;
-      border: 1px solid #e2e8f0;
-      background: #f8fafc;
-      overflow: hidden;
-      position: relative;
-    }
-    #adminMapPreview .leaflet-container { width: 100% !important; height: 100% !important; }
-    #adminMapPreview p { margin: 0; padding: 20px; text-align: center; color: #94a3b8; }
-
-    .cover-preview, .logo-preview {
-      border: 2px dashed #d1d5db;
-      border-radius: 12px;
-      background: #f8fafc;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #94a3b8;
-      overflow: hidden;
-      position: relative;
-      margin-top: 10px;
-    }
-    .cover-preview { width: 100%; height: 200px; }
-    .logo-preview { width: 150px; height: 150px; border-radius: 50%; margin: 10px auto; }
-    .cover-preview img, .logo-preview img { width: 100%; height: 100%; object-fit: cover; }
-    .cover-preview .placeholder, .logo-preview .placeholder { font-size: 0.9rem; text-align: center; }
-    .cover-preview .placeholder i, .logo-preview .placeholder i { font-size: 2rem; display: block; margin-bottom: 8px; }
-
-    .upload-area {
-      border: 2px dashed #d1d5db;
-      border-radius: 12px;
-      padding: 15px;
-      text-align: center;
-      cursor: pointer;
-      transition: 0.2s;
-      background: #f8fafc;
-    }
-    .upload-area:hover { border-color: #2563eb; background: #eff6ff; }
-    .upload-area i { font-size: 2rem; color: #2563eb; }
-
-    .logout-btn { background: #ef4444; color: white; border: none; padding: 6px 16px; border-radius: 30px; cursor: pointer; font-weight: 600; }
-    .logout-btn:hover { background: #dc2626; }
-    .btn-success { background: #22c55e; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; }
-    .btn-success:hover { background: #16a34a; }
-
-    .request-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
-    .request-item .info { flex: 1; }
-    .request-item .actions button { margin-left: 8px; padding: 4px 12px; border-radius: 20px; border: none; font-weight: 600; cursor: pointer; }
-    .request-item .actions .approve { background: #22c55e; color: white; }
-    .request-item .actions .reject { background: #ef4444; color: white; }
-
-    /* Edit Modal */
-    .modal-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.5);
-      z-index: 9999;
-      display: none;
-      align-items: center;
-      justify-content: center;
-    }
-    .modal-overlay.active { display: flex; }
-    .modal-box {
-      background: white;
-      max-width: 700px;
-      width: 90%;
-      max-height: 90vh;
-      overflow-y: auto;
-      padding: 30px;
-      border-radius: 20px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      position: relative;
-    }
-    .modal-box .close-modal { position: absolute; top: 15px; right: 20px; font-size: 2rem; cursor: pointer; color: #94a3b8; transition: 0.2s; }
-    .modal-box .close-modal:hover { color: #ef4444; }
-    .modal-box h2 { margin-top: 0; margin-bottom: 20px; }
-    .modal-box .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-    .modal-box .form-row .full { grid-column: 1 / -1; }
-    .modal-box input, .modal-box textarea, .modal-box select { width: 100%; padding: 10px; margin: 6px 0 14px; border: 1px solid #d1d5db; border-radius: 8px; }
-    .modal-box label { font-weight: 600; font-size: 0.9rem; color: #334155; }
-    .modal-box .checkbox-group { display: flex; gap: 20px; margin: 10px 0; }
-    .modal-box .checkbox-group label { font-weight: normal; display: flex; align-items: center; gap: 5px; }
-
-    @media (max-width: 640px) {
-      .form-row { grid-template-columns: 1fr; }
-      .admin-header { flex-direction: column; align-items: center; }
-      .admin-header .nav-links { justify-content: center; }
-    }
   </style>
 </head>
 <body>
 
+<!-- ===== HEADER ===== -->
 <div class="admin-header">
-  <h1>🔐 Admin Panel</h1>
+  <h1><i class="fas fa-chart-pie"></i> Admin Panel</h1>
   <div class="nav-links">
-    <a href="/">← Back to Shop</a>
-    <a href="/admin.html" class="active-link">Dashboard</a>
+    <a href="/" target="_blank">← Shop</a>
+    <a href="/admin.html" class="active">Dashboard</a>
     <a href="/admin-orders.html">📦 Orders</a>
-    <button id="logoutBtn" class="logout-btn hidden" onclick="logout()">Logout</button>
+    <button class="logout-btn" id="logoutBtn" onclick="logout()">Logout</button>
   </div>
 </div>
 
-<!-- ====== AUTH SECTION ====== -->
+<!-- ===== AUTH ===== -->
 <div id="authContainer" class="auth-container">
   <div class="auth-tabs">
     <button id="loginTab" class="active" onclick="showTab('login')">Login</button>
@@ -179,186 +242,58 @@
   <div id="loginForm" class="auth-form active">
     <h2>Welcome Back</h2>
     <p class="sub">Login to manage your business.</p>
-    <div class="form-group"><label>Email</label><input type="email" id="loginEmail" placeholder="your@email.com"></div>
-    <div class="form-group" style="position:relative;"><label>Password</label><input type="password" id="loginPassword" placeholder="Enter your password"><button class="toggle-pwd" onclick="togglePassword('loginPassword', this)"><i class="fas fa-eye"></i></button></div>
+    <div class="form-group"><label>Email</label><input type="email" id="loginEmail" placeholder="your@email.com" /></div>
+    <div class="form-group" style="position:relative;"><label>Password</label><input type="password" id="loginPassword" placeholder="Enter your password" /><button class="toggle-pwd" onclick="togglePassword('loginPassword', this)"><i class="fas fa-eye"></i></button></div>
     <button class="btn-primary" id="loginBtn">Login</button>
     <div id="loginStatus" class="auth-status"></div>
   </div>
   <div id="registerForm" class="auth-form">
     <h2>Create Admin Account</h2>
-    <p class="sub">This can only be done once.</p>
-    <div class="form-group"><label>Email</label><input type="email" id="regEmail" placeholder="your@email.com"></div>
-    <div class="form-group" style="position:relative;"><label>Password</label><input type="password" id="regPassword" placeholder="Min 6 characters"><button class="toggle-pwd" onclick="togglePassword('regPassword', this)"><i class="fas fa-eye"></i></button></div>
-    <div class="form-group" style="position:relative;"><label>Confirm Password</label><input type="password" id="regConfirm" placeholder="Re-enter your password"><button class="toggle-pwd" onclick="togglePassword('regConfirm', this)"><i class="fas fa-eye"></i></button></div>
+    <p class="sub">One-time setup only.</p>
+    <div class="form-group"><label>Email</label><input type="email" id="regEmail" placeholder="your@email.com" /></div>
+    <div class="form-group" style="position:relative;"><label>Password</label><input type="password" id="regPassword" placeholder="Min 6 characters" /><button class="toggle-pwd" onclick="togglePassword('regPassword', this)"><i class="fas fa-eye"></i></button></div>
+    <div class="form-group" style="position:relative;"><label>Confirm Password</label><input type="password" id="regConfirm" placeholder="Re-enter" /><button class="toggle-pwd" onclick="togglePassword('regConfirm', this)"><i class="fas fa-eye"></i></button></div>
     <button class="btn-primary" id="registerBtn">Create Account</button>
     <div id="registerStatus" class="auth-status"></div>
   </div>
 </div>
 
-<!-- ====== DASHBOARD ====== -->
+<!-- ===== DASHBOARD ===== -->
 <div id="dashboardContainer" class="hidden dashboard-container">
+  <!-- Left Sidebar – Cards -->
+  <div class="sidebar-cards" id="statsGrid"></div>
 
-  <!-- SHOP PROFILE -->
-  <div class="dashboard-section">
-    <h2>🏪 Shop Profile</h2>
-    <form id="shopForm" enctype="multipart/form-data">
-      <div class="form-row">
-        <div class="full"><label>Shop Name</label><input type="text" id="shopName" name="name" placeholder="My Shop"></div>
-        <div class="full"><label>Location</label><input type="text" id="shopLocation" name="location" placeholder="Nairobi, Kenya"></div>
-        <div class="full"><label>Address</label><input type="text" id="shopAddress" name="address" placeholder="Street, Building"></div>
-        <div class="full">
-          <label>GPS Coordinates</label>
-          <button type="button" class="gps-btn" id="getLocationBtn">📍 Get Current Location</button>
-          <span id="locationStatus" style="font-size:0.9rem; color:#16a34a; display:block; margin-top:4px;"></span>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px; margin-top:6px;">
-            <input type="text" id="shopLatitude" name="latitude" placeholder="Latitude" readonly style="background:#f1f5f9;">
-            <input type="text" id="shopLongitude" name="longitude" placeholder="Longitude" readonly style="background:#f1f5f9;">
-          </div>
-          <div id="adminMapPreview"><p>No location set. Click "Get Current Location" to see map.</p></div>
-        </div>
-
-        <div class="full">
-          <label style="font-size:1.1rem; color:#0f172a;">🖼️ Cover Photo (Hero Image)</label>
-          <p style="font-size:0.8rem; color:#64748b; margin-bottom:8px;">This image will appear as the background cover on your public page.</p>
-          <div class="upload-area" onclick="document.getElementById('shopHero').click()">
-            <i class="fas fa-cloud-upload-alt"></i>
-            <p style="margin-top:4px;">Click to upload cover image</p>
-            <input type="file" id="shopHero" name="heroImage" accept="image/*" style="display:none;">
-          </div>
-          <div id="coverPreview" class="cover-preview">
-            <div class="placeholder"><i class="fas fa-image"></i>No cover image uploaded</div>
-          </div>
-        </div>
-
-        <div class="full">
-          <label style="font-size:1.1rem; color:#0f172a;">🖼️ Shop Logo (Profile Picture)</label>
-          <p style="font-size:0.8rem; color:#64748b; margin-bottom:8px;">This image will appear as your profile picture on the public page.</p>
-          <div class="upload-area" onclick="document.getElementById('shopLogo').click()">
-            <i class="fas fa-cloud-upload-alt"></i>
-            <p style="margin-top:4px;">Click to upload logo</p>
-            <input type="file" id="shopLogo" name="logo" accept="image/*" style="display:none;">
-          </div>
-          <div id="logoPreview" class="logo-preview">
-            <div class="placeholder"><i class="fas fa-user-circle"></i>No logo</div>
-          </div>
-        </div>
-
-        <div class="full"><label>Description</label><textarea id="shopDesc" name="description" rows="3" placeholder="Describe your business..."></textarea></div>
-        <div><label>Mission</label><textarea id="shopMission" name="mission" rows="2" placeholder="Your mission..."></textarea></div>
-        <div><label>Vision</label><textarea id="shopVision" name="vision" rows="2" placeholder="Your vision..."></textarea></div>
-
-        <div class="full"><label><i class="fab fa-whatsapp"></i> WhatsApp</label><input type="text" id="shopWhatsapp" name="whatsapp" placeholder="254712345678"></div>
-        <div><label><i class="fab fa-tiktok"></i> TikTok</label><input type="text" id="shopTiktok" name="tiktok" placeholder="@myshop"></div>
-        <div><label><i class="fab fa-instagram"></i> Instagram</label><input type="text" id="shopInstagram" name="instagram" placeholder="@myshop"></div>
-        <div><label><i class="fab fa-facebook"></i> Facebook</label><input type="text" id="shopFacebook" name="facebook" placeholder="username"></div>
-        <div><label><i class="fas fa-phone"></i> Phone</label><input type="text" id="shopPhone" name="phone" placeholder="+254700000000"></div>
-      </div>
-      <button type="submit" class="btn-success">💾 Update Shop Profile</button>
-    </form>
-  </div>
-
-  <!-- LOCATION SHARING -->
-  <div class="dashboard-section">
-    <h2>📍 Live Location Sharing</h2>
-    <p style="color:#64748b; margin-bottom:10px;">Share your live GPS location with customers who request it.</p>
-    <div style="display:flex; align-items:center; gap:15px;">
-      <button id="shareLocationBtn" class="gps-btn">📍 Start Sharing</button>
-      <span id="shareStatus" style="font-weight:600; color:#64748b;">Not sharing</span>
+  <!-- Right Panel – Orders / Returns -->
+  <div class="order-panel" id="orderPanel">
+    <div class="panel-header">
+      <h2 id="panelTitle">📋 Orders <span class="badge" id="panelBadge">Click a card</span></h2>
+      <button class="refresh-btn" onclick="refreshCurrentOrders()"><i class="fas fa-sync-alt"></i> Refresh</button>
     </div>
-    <div style="margin-top:15px;">
-      <h3>Pending Location Requests</h3>
-      <div id="locationRequestsList">
-        <p style="color:#94a3b8;">No pending requests.</p>
-      </div>
+    <div id="orderListContainer">
+      <p class="empty-msg">Select a metric card on the left to see orders.</p>
     </div>
-  </div>
-
-  <!-- PRODUCT MANAGER -->
-  <div class="dashboard-section">
-    <h2>📦 Product Manager</h2>
-    <form id="productForm" enctype="multipart/form-data">
-      <input type="hidden" id="editProductId" value="">
-      <div class="form-row">
-        <div class="full"><label>Product Name</label><input type="text" id="pName" name="name" required></div>
-        <div><label>Price</label><input type="text" id="pPrice" name="price" required></div>
-        <div><label>Rating</label><input type="text" id="pRating" name="rating" placeholder="e.g. 6235"></div>
-        <div class="full"><label>Contact</label><input type="text" id="pContact" name="contact" value="+254700000000"></div>
-        <div><label>Badge 1</label><input type="text" id="pBadge1" name="badge1" placeholder="Brand Official"></div>
-        <div><label>Badge 2</label><input type="text" id="pBadge2" name="badge2" placeholder="Fulfilled By Kilimall"></div>
-        <div class="full"><label>Shipping</label><input type="text" id="pShipping" name="shipping" placeholder="1-3Day Fast Delivery"></div>
-        <div class="full"><label>Description</label><textarea id="pDescription" name="description" rows="3" placeholder="Full product description..."></textarea></div>
-        <div class="full checkbox-group">
-          <label><input type="checkbox" id="pFlashSale" name="isFlashSale"> 🔥 Flash Sale</label>
-          <label><input type="checkbox" id="pNewArrival" name="isNewArrival"> 🆕 New Arrival</label>
-        </div>
-        <div><label>Image</label><input type="file" id="pImage" name="image" accept="image/*"></div>
-        <div><label>Video</label><input type="file" id="pVideo" name="video" accept="video/*"></div>
-      </div>
-      <button type="submit" class="btn-success" id="productSubmitBtn">➕ Add Product</button>
-    </form>
-  </div>
-
-  <!-- MANAGE PRODUCTS -->
-  <div class="dashboard-section">
-    <h2>📋 Manage Products</h2>
-    <div id="adminProductList"></div>
   </div>
 </div>
 
-<!-- ====== EDIT MODAL ====== -->
-<div class="modal-overlay" id="editModal">
-  <div class="modal-box">
-    <span class="close-modal" onclick="closeEditModal()">&times;</span>
-    <h2>✏️ Edit Product</h2>
-    <form id="editProductForm" enctype="multipart/form-data">
-      <input type="hidden" id="editId">
-      <div class="form-row">
-        <div class="full"><label>Product Name</label><input type="text" id="editName" required></div>
-        <div><label>Price</label><input type="text" id="editPrice" required></div>
-        <div><label>Rating</label><input type="text" id="editRating" placeholder="e.g. 6235"></div>
-        <div class="full"><label>Contact</label><input type="text" id="editContact" value="+254700000000"></div>
-        <div><label>Badge 1</label><input type="text" id="editBadge1" placeholder="Brand Official"></div>
-        <div><label>Badge 2</label><input type="text" id="editBadge2" placeholder="Fulfilled By Kilimall"></div>
-        <div class="full"><label>Shipping</label><input type="text" id="editShipping" placeholder="1-3Day Fast Delivery"></div>
-        <div class="full"><label>Description</label><textarea id="editDescription" rows="3" placeholder="Full product description..."></textarea></div>
-        <div class="full checkbox-group">
-          <label><input type="checkbox" id="editFlashSale"> 🔥 Flash Sale</label>
-          <label><input type="checkbox" id="editNewArrival"> 🆕 New Arrival</label>
-        </div>
-        <div><label>Image (leave empty to keep current)</label><input type="file" id="editImage" accept="image/*"></div>
-        <div><label>Video (leave empty to keep current)</label><input type="file" id="editVideo" accept="video/*"></div>
-      </div>
-      <button type="submit" class="btn-success">💾 Update Product</button>
-    </form>
-  </div>
-</div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+// ============================================================
+// AUTH & DASHBOARD LOGIC (same as before, with Returns added)
+// ============================================================
 let token = localStorage.getItem('token');
-let adminMap = null;
-let isSharing = false;
-let shareInterval = null;
+let currentStatus = null;
+let currentOrders = [];
+let socket = null;
 
-console.log('✅ admin.html loaded');
-
-// ============================================================
-// AUTH HELPERS
-// ============================================================
 function authHeaders() {
   return { 'Authorization': `Bearer ${token}` };
 }
 
-// ============================================================
-// TAB SWITCHING
-// ============================================================
 function showTab(tab) {
   document.getElementById('loginForm').classList.toggle('active', tab === 'login');
   document.getElementById('registerForm').classList.toggle('active', tab === 'register');
   document.getElementById('loginTab').classList.toggle('active', tab === 'login');
   document.getElementById('registerTab').classList.toggle('active', tab === 'register');
 }
-
 function togglePassword(inputId, btn) {
   const input = document.getElementById(inputId);
   const icon = btn.querySelector('i');
@@ -371,9 +306,6 @@ function togglePassword(inputId, btn) {
   }
 }
 
-// ============================================================
-// AUTH
-// ============================================================
 async function checkAdminExists() {
   try {
     const res = await fetch('/api/auth/admin-exists');
@@ -387,7 +319,6 @@ async function checkAdminExists() {
       document.getElementById('registerTab').style.display = 'block';
     }
   } catch (err) {
-    console.error(err);
     document.getElementById('registerTab').style.display = 'block';
   }
 }
@@ -398,13 +329,29 @@ async function handleRegister() {
   const confirm = document.getElementById('regConfirm').value;
   const status = document.getElementById('registerStatus');
   status.className = 'auth-status';
-  if (!email || !password || !confirm) { status.textContent = '❌ All fields are required.'; status.className += ' error'; return; }
-  if (password.length < 6) { status.textContent = '❌ Password must be at least 6 characters.'; status.className += ' error'; return; }
-  if (password !== confirm) { status.textContent = '❌ Passwords do not match.'; status.className += ' error'; return; }
+  if (!email || !password || !confirm) {
+    status.textContent = '❌ All fields are required.';
+    status.className += ' error';
+    return;
+  }
+  if (password.length < 6) {
+    status.textContent = '❌ Password must be at least 6 characters.';
+    status.className += ' error';
+    return;
+  }
+  if (password !== confirm) {
+    status.textContent = '❌ Passwords do not match.';
+    status.className += ' error';
+    return;
+  }
   status.textContent = '⏳ Creating account...';
   document.getElementById('registerBtn').disabled = true;
   try {
-    const res = await fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
     const data = await res.json();
     if (res.ok) {
       status.textContent = '✅ ' + data.message;
@@ -429,11 +376,19 @@ async function handleLogin() {
   const password = document.getElementById('loginPassword').value;
   const status = document.getElementById('loginStatus');
   status.className = 'auth-status';
-  if (!email || !password) { status.textContent = '❌ Email and password are required.'; status.className += ' error'; return; }
+  if (!email || !password) {
+    status.textContent = '❌ Email and password are required.';
+    status.className += ' error';
+    return;
+  }
   status.textContent = '⏳ Logging in...';
   document.getElementById('loginBtn').disabled = true;
   try {
-    const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
     const data = await res.json();
     if (res.ok) {
       status.textContent = '✅ Welcome back!';
@@ -456,12 +411,10 @@ async function handleLogin() {
 function logout() {
   localStorage.removeItem('token');
   token = null;
-  if (shareInterval) clearInterval(shareInterval);
   document.getElementById('authContainer').style.display = 'block';
   document.getElementById('dashboardContainer').classList.add('hidden');
   document.getElementById('logoutBtn').classList.add('hidden');
-  if (adminMap) { adminMap.remove(); adminMap = null; }
-  console.log('👋 Logged out');
+  if (socket) { socket.disconnect(); socket = null; }
   window.location.href = '/admin.html';
 }
 
@@ -469,430 +422,492 @@ function showDashboard() {
   document.getElementById('authContainer').style.display = 'none';
   document.getElementById('dashboardContainer').classList.remove('hidden');
   document.getElementById('logoutBtn').classList.remove('hidden');
-  loadShopProfile();
-  loadAdminProducts();
-  loadLocationRequests();
-  checkSharingStatus();
+  initSocket();
+  loadDashboardStats();
+}
+
+function initSocket() {
+  if (socket) return;
+  socket = io({ auth: { token } });
+  socket.on('new-order-chat-message', (msg) => {
+    if (currentStatus) loadOrdersByStatus(currentStatus);
+  });
+  socket.on('order-status-updated', () => {
+    if (currentStatus) loadOrdersByStatus(currentStatus);
+  });
+  socket.on('new-order', () => {
+    loadDashboardStats();
+    if (currentStatus) loadOrdersByStatus(currentStatus);
+  });
 }
 
 // ============================================================
-// SHOP PROFILE
+// DASHBOARD STATS & CARDS (includes Returns)
 // ============================================================
-async function loadShopProfile() {
-  const res = await fetch('/api/shop', { headers: authHeaders() });
-  if (res.status === 401) { logout(); return; }
-  const shop = await res.json();
-  document.getElementById('shopName').value = shop.name || '';
-  document.getElementById('shopLocation').value = shop.location || '';
-  document.getElementById('shopAddress').value = shop.address || '';
-  document.getElementById('shopLatitude').value = shop.latitude || '';
-  document.getElementById('shopLongitude').value = shop.longitude || '';
-  document.getElementById('shopWhatsapp').value = shop.whatsapp || '';
-  document.getElementById('shopTiktok').value = shop.tiktok || '';
-  document.getElementById('shopInstagram').value = shop.instagram || '';
-  document.getElementById('shopFacebook').value = shop.facebook || '';
-  document.getElementById('shopPhone').value = shop.phone || '';
-  document.getElementById('shopDesc').value = shop.description || '';
-  document.getElementById('shopMission').value = shop.mission || '';
-  document.getElementById('shopVision').value = shop.vision || '';
-
-  const coverPreview = document.getElementById('coverPreview');
-  if (shop.heroImage) {
-    coverPreview.innerHTML = `<img src="${shop.heroImage}" alt="Cover Image">`;
-  } else {
-    coverPreview.innerHTML = `<div class="placeholder"><i class="fas fa-image"></i>No cover image uploaded</div>`;
-  }
-
-  const logoPreview = document.getElementById('logoPreview');
-  if (shop.logo) {
-    logoPreview.innerHTML = `<img src="${shop.logo}" alt="Logo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
-  } else {
-    logoPreview.innerHTML = `<div class="placeholder"><i class="fas fa-user-circle"></i>No logo</div>`;
-  }
-
-  updateAdminMap(shop.latitude, shop.longitude);
+function loadDashboardStats() {
+  fetch('/api/admin/dashboard', { headers: authHeaders() })
+    .then(res => {
+      if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
+      return res.json();
+    })
+    .then(stats => {
+      renderCards(stats);
+      if (currentStatus) loadOrdersByStatus(currentStatus);
+    })
+    .catch(err => console.error(err));
 }
 
-function updateAdminMap(lat, lng) {
-  const mapContainer = document.getElementById('adminMapPreview');
-  if (adminMap) { adminMap.remove(); adminMap = null; }
-  mapContainer.innerHTML = '';
-  const latNum = parseFloat(lat);
-  const lngNum = parseFloat(lng);
-  if (latNum && lngNum && !isNaN(latNum) && !isNaN(lngNum)) {
-    adminMap = L.map(mapContainer).setView([latNum, lngNum], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(adminMap);
-    L.marker([latNum, lngNum]).addTo(adminMap);
-    setTimeout(() => { if (adminMap) adminMap.invalidateSize(); }, 100);
-  } else {
-    mapContainer.innerHTML = '<p>No location set. Click "Get Current Location" to see map.</p>';
-  }
-}
+function renderCards(stats) {
+  const grid = document.getElementById('statsGrid');
+  const configs = [
+    { key: 'pending', label: 'Pending', icon: 'fa-clock', css: 'pending', statusParam: 'pending' },
+    { key: 'confirmed', label: 'Confirmed', icon: 'fa-check-circle', css: 'confirmed', statusParam: 'confirmed' },
+    { key: 'shipped', label: 'Shipped', icon: 'fa-truck', css: 'shipped', statusParam: 'shipped' },
+    { key: 'delivered', label: 'Awaiting Pickup', icon: 'fa-box-open', css: 'delivered', statusParam: 'delivered' },
+    { key: 'received', label: 'Received', icon: 'fa-check-double', css: 'received', statusParam: 'received' },
+    { key: 'cancelled', label: 'Cancelled', icon: 'fa-times-circle', css: 'cancelled', statusParam: 'cancelled' },
+    { key: 'replacements_pending', label: 'Replacements', icon: 'fa-exchange-alt', css: 'replacements', statusParam: 'replacements' },
+    { key: 'refunds_pending', label: 'Refunds', icon: 'fa-hand-holding-usd', css: 'refunds', statusParam: 'refunds' },
+    { key: 'urgent', label: 'Urgent', icon: 'fa-exclamation-triangle', css: 'urgent', statusParam: 'urgent' },
+    { key: 'returns_pending', label: 'Returns', icon: 'fa-undo', css: 'returns', statusParam: 'returns' },
+    { key: 'total_orders', label: 'Total', icon: 'fa-shopping-bag', css: 'total', statusParam: 'all' },
+  ];
 
-// ============================================================
-// GPS
-// ============================================================
-document.getElementById('getLocationBtn').addEventListener('click', function() {
-  if (!navigator.geolocation) {
-    document.getElementById('locationStatus').textContent = '❌ Not supported';
-    return;
-  }
-  const btn = this;
-  btn.disabled = true;
-  document.getElementById('locationStatus').textContent = '⏳ Getting location...';
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      document.getElementById('shopLatitude').value = lat;
-      document.getElementById('shopLongitude').value = lng;
-      document.getElementById('locationStatus').textContent = '✅ Location detected!';
-      updateAdminMap(lat, lng);
-      btn.disabled = false;
-    },
-    (err) => {
-      document.getElementById('locationStatus').textContent = '❌ ' + err.message;
-      btn.disabled = false;
-    },
-    { enableHighAccuracy: true, timeout: 15000 }
-  );
-});
-
-// ============================================================
-// SHOP FORM
-// ============================================================
-document.getElementById('shopForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const formData = new FormData(e.target);
-  const logo = document.getElementById('shopLogo').files[0];
-  const hero = document.getElementById('shopHero').files[0];
-  if (logo) formData.append('logo', logo);
-  if (hero) formData.append('heroImage', hero);
-  try {
-    const res = await fetch('/api/shop', { method: 'POST', headers: authHeaders(), body: formData });
-    const data = await res.json();
-    if (res.ok) {
-      alert('✅ Shop Profile Updated!');
-      loadShopProfile();
-    } else {
-      alert('❌ Update failed: ' + (data.error || 'Unknown error'));
-    }
-  } catch (err) {
-    alert('❌ Network error: ' + err.message);
-  }
-});
-
-// ============================================================
-// LOCATION SHARING
-// ============================================================
-async function checkSharingStatus() {
-  try {
-    const res = await fetch('/api/shop', { headers: authHeaders() });
-    if (res.status === 401) { logout(); return; }
-    const shop = await res.json();
-    isSharing = shop.location_sharing_enabled || false;
-    updateShareUI();
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-function updateShareUI() {
-  const btn = document.getElementById('shareLocationBtn');
-  const status = document.getElementById('shareStatus');
-  if (isSharing) {
-    btn.textContent = '🛑 Stop Sharing';
-    btn.classList.add('active');
-    status.textContent = '🔴 Sharing live location';
-    status.style.color = '#ef4444';
-  } else {
-    btn.textContent = '📍 Start Sharing';
-    btn.classList.remove('active');
-    status.textContent = 'Not sharing';
-    status.style.color = '#64748b';
-  }
-}
-
-document.getElementById('shareLocationBtn').addEventListener('click', function() {
-  if (!navigator.geolocation) {
-    alert('Geolocation not supported.');
-    return;
-  }
-  if (isSharing) {
-    toggleSharing(false);
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      toggleSharing(true, lat, lng);
-    },
-    (err) => {
-      alert('Could not get location: ' + err.message);
-    },
-    { enableHighAccuracy: true, timeout: 10000 }
-  );
-});
-
-async function toggleSharing(enabled, lat, lng) {
-  try {
-    const res = await fetch('/api/admin/location/toggle', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ enabled, lat, lng })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      isSharing = enabled;
-      updateShareUI();
-      if (enabled) {
-        if (shareInterval) clearInterval(shareInterval);
-        shareInterval = setInterval(() => {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => {
-              fetch('/api/admin/location/update', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', ...authHeaders() },
-                body: JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-              });
-            },
-            (err) => console.error('Update location error:', err),
-            { enableHighAccuracy: true, timeout: 5000 }
-          );
-        }, 5000);
-      } else {
-        if (shareInterval) clearInterval(shareInterval);
-        shareInterval = null;
-      }
-    } else {
-      alert(data.error || 'Failed to toggle sharing');
-    }
-  } catch (err) {
-    console.error(err);
-    alert('Network error');
-  }
-}
-
-// ============================================================
-// LOCATION REQUESTS
-// ============================================================
-async function loadLocationRequests() {
-  try {
-    const res = await fetch('/api/admin/location/requests', { headers: authHeaders() });
-    if (res.status === 401) { logout(); return; }
-    const requests = await res.json();
-    const list = document.getElementById('locationRequestsList');
-    if (requests.length === 0) {
-      list.innerHTML = '<p style="color:#94a3b8;">No pending requests.</p>';
-    } else {
-      list.innerHTML = requests.map(req => `
-        <div class="request-item">
-          <div class="info">
-            <strong>${req.name}</strong> (${req.email})<br>
-            <span style="font-size:0.8rem; color:#64748b;">Requested: ${new Date(req.created_at).toLocaleString()}</span>
-          </div>
-          <div class="actions">
-            <button class="approve" onclick="handleRequest(${req.id}, 'approve')">✅ Approve</button>
-            <button class="reject" onclick="handleRequest(${req.id}, 'reject')">❌ Reject</button>
-          </div>
-        </div>
-      `).join('');
-    }
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-async function handleRequest(id, action) {
-  try {
-    const res = await fetch(`/api/admin/location/requests/${id}/${action}`, { method: 'POST', headers: authHeaders() });
-    if (res.ok) {
-      loadLocationRequests();
-    } else {
-      alert('Failed to ' + action + ' request.');
-    }
-  } catch (err) {
-    console.error(err);
-    alert('Network error');
-  }
-}
-
-// ============================================================
-// PRODUCTS
-// ============================================================
-async function loadAdminProducts() {
-  try {
-    const res = await fetch('/api/products', { headers: authHeaders() });
-    if (res.status === 401) { logout(); return; }
-    const products = await res.json();
-    const list = document.getElementById('adminProductList');
-    if (!products.length) {
-      list.innerHTML = '<p style="color:#94a3b8;">No products yet.</p>';
-      return;
-    }
-    list.innerHTML = products.map(p => `
-      <div class="product-item">
-        <span>
-          <strong>${p.name}</strong> - ${p.price}
-          ${p.rating ? `⭐(${p.rating})` : ''}
-          ${p.badge1 ? `<span class="badge-preview">${p.badge1}</span>` : ''}
-          ${p.isFlashSale ? '🔥' : ''} ${p.isNewArrival ? '🆕' : ''}
-        </span>
-        <div class="actions">
-          <button class="edit-btn" onclick="editProduct(${p.id})">✏️ Edit</button>
-          <button class="delete-btn" onclick="deleteProduct(${p.id})">Delete</button>
-        </div>
+  let html = '';
+  configs.forEach(cfg => {
+    const count = stats[cfg.key] ?? 0;
+    const isPendingAction = ['replacements_pending', 'refunds_pending', 'urgent', 'pending', 'delivered', 'returns_pending'].includes(cfg.key);
+    const shouldBlink = (count > 0 && isPendingAction);
+    const blinkClass = shouldBlink ? '' : 'hidden';
+    html += `
+      <div class="stat-card ${cfg.css}" onclick="handleCardClick('${cfg.statusParam}')">
+        <div class="icon"><i class="fas ${cfg.icon}"></i></div>
+        <div class="number">${count}</div>
+        <div class="label">${cfg.label} <span class="blink-dot ${blinkClass}"></span></div>
       </div>
-    `).join('');
-  } catch (err) {
-    console.error('Error loading products:', err);
-  }
-}
-
-document.getElementById('productForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const formData = new FormData(e.target);
-  const editId = document.getElementById('editProductId').value;
-  const method = editId ? 'PUT' : 'POST';
-  const url = editId ? `/api/products/${editId}` : '/api/products';
-  try {
-    const res = await fetch(url, {
-      method: method,
-      headers: { 'Authorization': `Bearer ${token}` },
-      body: formData
-    });
-    const data = await res.json();
-    if (res.ok) {
-      alert(editId ? '✅ Product updated!' : '✅ Product added!');
-      document.getElementById('productForm').reset();
-      document.getElementById('editProductId').value = '';
-      document.getElementById('productSubmitBtn').textContent = '➕ Add Product';
-      loadAdminProducts();
-    } else {
-      alert('❌ ' + (data.error || 'Operation failed'));
-    }
-  } catch (err) {
-    alert('❌ Network error: ' + err.message);
-  }
-});
-
-// ============================================================
-// EDIT PRODUCT
-// ============================================================
-async function editProduct(id) {
-  console.log('🔵 Edit product ID:', id);
-  try {
-    const res = await fetch(`/api/products/${id}`, { headers: authHeaders() });
-    if (res.status === 401) { logout(); return; }
-    const product = await res.json();
-    console.log('📦 Product data:', product);
-
-    document.getElementById('editId').value = product.id;
-    document.getElementById('editName').value = product.name || '';
-    document.getElementById('editPrice').value = product.price || '';
-    document.getElementById('editRating').value = product.rating || '';
-    document.getElementById('editContact').value = product.contact || '+254700000000';
-    document.getElementById('editBadge1').value = product.badge1 || '';
-    document.getElementById('editBadge2').value = product.badge2 || '';
-    document.getElementById('editShipping').value = product.shipping || '';
-    document.getElementById('editDescription').value = product.description || '';
-    document.getElementById('editFlashSale').checked = product.isFlashSale === true || product.isFlashSale === 'true';
-    document.getElementById('editNewArrival').checked = product.isNewArrival === true || product.isNewArrival === 'true';
-
-    document.getElementById('editModal').classList.add('active');
-  } catch (err) {
-    console.error('Error fetching product:', err);
-    alert('Failed to load product details.');
-  }
-}
-
-function closeEditModal() {
-  document.getElementById('editModal').classList.remove('active');
-}
-
-document.getElementById('editProductForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const id = document.getElementById('editId').value;
-  const formData = new FormData();
-  formData.append('name', document.getElementById('editName').value);
-  formData.append('price', document.getElementById('editPrice').value);
-  formData.append('contact', document.getElementById('editContact').value);
-  formData.append('rating', document.getElementById('editRating').value);
-  formData.append('badge1', document.getElementById('editBadge1').value);
-  formData.append('badge2', document.getElementById('editBadge2').value);
-  formData.append('shipping', document.getElementById('editShipping').value);
-  formData.append('description', document.getElementById('editDescription').value);
-  formData.append('isFlashSale', document.getElementById('editFlashSale').checked);
-  formData.append('isNewArrival', document.getElementById('editNewArrival').checked);
-
-  const image = document.getElementById('editImage').files[0];
-  const video = document.getElementById('editVideo').files[0];
-  if (image) formData.append('image', image);
-  if (video) formData.append('video', video);
-
-  try {
-    const res = await fetch(`/api/products/${id}`, {
-      method: 'PUT',
-      headers: { 'Authorization': `Bearer ${token}` },
-      body: formData
-    });
-    const data = await res.json();
-    if (res.ok) {
-      alert('✅ Product updated!');
-      closeEditModal();
-      loadAdminProducts();
-    } else {
-      alert('❌ Update failed: ' + (data.error || 'Unknown error'));
-    }
-  } catch (err) {
-    alert('❌ Network error: ' + err.message);
-  }
-});
-
-// ============================================================
-// DELETE PRODUCT
-// ============================================================
-async function deleteProduct(id) {
-  if (!confirm('Delete this product?')) return;
-  try {
-    const res = await fetch(`/api/products/${id}`, { method: 'DELETE', headers: authHeaders() });
-    if (res.ok) {
-      loadAdminProducts();
-    } else {
-      alert('Failed to delete product.');
-    }
-  } catch (err) {
-    alert('Network error: ' + err.message);
-  }
+    `;
+  });
+  grid.innerHTML = html;
 }
 
 // ============================================================
-// FILE PREVIEW
+// HANDLE CARD CLICK – LOAD ORDERS OR RETURNS
 // ============================================================
-document.getElementById('shopHero').addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(event) {
-    document.getElementById('coverPreview').innerHTML = `<img src="${event.target.result}" alt="Cover Preview">`;
+function handleCardClick(status) {
+  currentStatus = status;
+  if (status === 'returns') {
+    loadReturns();
+    return;
+  }
+  loadOrdersByStatus(status);
+}
+
+function refreshCurrentOrders() {
+  if (currentStatus === 'returns') {
+    loadReturns();
+  } else if (currentStatus) {
+    loadOrdersByStatus(currentStatus);
+  }
+}
+
+function loadOrdersByStatus(status) {
+  const container = document.getElementById('orderListContainer');
+  const title = document.getElementById('panelTitle');
+  const badge = document.getElementById('panelBadge');
+
+  const labelMap = {
+    pending: 'Pending Orders',
+    confirmed: 'Confirmed Orders',
+    shipped: 'Shipped Orders',
+    delivered: 'Awaiting Pickup',
+    received: 'Received Orders',
+    cancelled: 'Cancelled Orders',
+    replacements: 'Replacement Requests',
+    refunds: 'Refund Requests',
+    urgent: 'Urgent Deliveries',
+    all: 'All Orders'
   };
-  reader.readAsDataURL(file);
-});
+  title.innerHTML = `📋 ${labelMap[status] || 'Orders'} <span class="badge" id="panelBadge">Loading...</span>`;
 
-document.getElementById('shopLogo').addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(event) {
-    document.getElementById('logoPreview').innerHTML = `<img src="${event.target.result}" alt="Logo Preview" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
-  };
-  reader.readAsDataURL(file);
-});
+  let url = '/api/orders?';
+  const params = new URLSearchParams();
+  if (status !== 'all' && status !== 'replacements' && status !== 'refunds' && status !== 'urgent') {
+    params.append('status', status);
+  }
+  url += params.toString();
+
+  fetch(url, { headers: authHeaders() })
+    .then(res => {
+      if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
+      return res.json();
+    })
+    .then(orders => {
+      let filtered = orders;
+      if (status === 'replacements') {
+        filtered = orders.filter(o => o.replacement_status && o.replacement_status !== 'none' && o.replacement_status !== 'approved' && o.replacement_status !== 'rejected');
+      } else if (status === 'refunds') {
+        filtered = orders.filter(o => o.refund_status === 'pending');
+      } else if (status === 'urgent') {
+        filtered = orders.filter(o => o.urgent_delivery === true && o.status !== 'received' && o.status !== 'cancelled');
+      }
+      currentOrders = filtered;
+      badge.textContent = filtered.length + ' order' + (filtered.length !== 1 ? 's' : '');
+      renderOrderRows(filtered);
+    })
+    .catch(err => {
+      console.error(err);
+      container.innerHTML = `<p class="empty-msg" style="color:#ef4444;">Error loading orders.</p>`;
+    });
+}
+
+// ---- Render Returns (new) ----
+function loadReturns() {
+  const container = document.getElementById('orderListContainer');
+  const title = document.getElementById('panelTitle');
+  const badge = document.getElementById('panelBadge');
+  title.innerHTML = `📋 Returns <span class="badge" id="panelBadge">Loading...</span>`;
+
+  fetch('/api/admin/returns', { headers: authHeaders() })
+    .then(res => {
+      if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
+      return res.json();
+    })
+    .then(returns => {
+      badge.textContent = returns.length + ' return' + (returns.length !== 1 ? 's' : '');
+      if (!returns || returns.length === 0) {
+        container.innerHTML = `<p class="empty-msg">No returns found.</p>`;
+        return;
+      }
+      let html = `<div class="order-list">`;
+      returns.forEach(r => {
+        html += `
+          <div class="order-row">
+            <div class="order-header">
+              <span class="ref">Order ${r.order_ref}</span>
+              <span class="customer">${r.customer_name}</span>
+              <span class="date">${new Date(r.requested_at).toLocaleString()}</span>
+              <span class="status-badge status-${r.status}">${r.status}</span>
+              <span style="font-size:0.7rem;">Product #${r.product_id}</span>
+            </div>
+            <div style="font-size:0.7rem; color:#475569;"><strong>Reason:</strong> ${r.reason}</div>
+            <div class="order-actions">
+              ${r.status === 'pending' ? `
+                <button class="btn-return-approve" onclick="handleReturn(${r.id},'approve')">Approve</button>
+                <button class="btn-return-reject" onclick="handleReturn(${r.id},'reject')">Reject</button>
+                <span style="font-size:0.5rem; color:#94a3b8;">Refund amount: Ksh ${parseFloat(r.refund_amount || 0).toFixed(2)}</span>
+              ` : `<span style="font-size:0.6rem; color:#94a3b8;">Processed</span>`}
+            </div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+      container.innerHTML = html;
+    })
+    .catch(err => {
+      console.error(err);
+      container.innerHTML = `<p class="empty-msg" style="color:#ef4444;">Error loading returns.</p>`;
+    });
+}
+
+// ---- Handle Return (admin) ----
+function handleReturn(returnId, action) {
+  if (!confirm(`${action === 'approve' ? 'Approve' : 'Reject'} this return?`)) return;
+  fetch(`/api/admin/returns/${returnId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ action })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      alert(`Return ${action}d.`);
+      loadReturns();
+      loadDashboardStats(); // refresh card counts
+    } else {
+      alert('Failed: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(() => alert('Network error.'));
+}
+
+// ---- Render Order Rows (same as before, with payment history addition) ----
+function renderOrderRows(orders) {
+  const container = document.getElementById('orderListContainer');
+  if (!orders || orders.length === 0) {
+    container.innerHTML = `<p class="empty-msg">No orders found for this status.</p>`;
+    return;
+  }
+
+  let html = `<div class="order-list">`;
+  orders.forEach(order => {
+    const ref = order.order_ref || `#${order.id}`;
+    const customer = order.customer_name || 'Guest';
+    const date = new Date(order.created_at).toLocaleString();
+    const total = parseFloat(order.total).toFixed(2);
+    const statusClass = order.status;
+
+    // Build actions (same as before)
+    let actionsHtml = '';
+    let statusOptions = '';
+    if (order.status === 'pending') {
+      statusOptions = `<option value="confirmed">Confirm</option><option value="shipped">Ship</option>`;
+    } else if (order.status === 'confirmed') {
+      statusOptions = `<option value="shipped">Ship</option>`;
+    } else if (order.status === 'shipped') {
+      statusOptions = `<option value="delivered">Deliver</option>`;
+    } else if (order.status === 'delivered') {
+      statusOptions = `<option value="received">Mark Received</option>`;
+    }
+    if (statusOptions) {
+      actionsHtml += `
+        <select id="statusSelect-${order.id}" class="status-select">
+          <option value="">Update...</option>
+          ${statusOptions}
+        </select>
+        <input type="text" id="trackingInput-${order.id}" placeholder="Tracking #" style="width:80px;" />
+        <button class="btn-ship" onclick="updateOrderStatus(${order.id})">Update</button>
+      `;
+    }
+    if (order.status === 'pending') {
+      actionsHtml += `<button class="btn-confirm" onclick="confirmOrder(${order.id})">Confirm</button>`;
+    }
+    if (order.status === 'delivered') {
+      actionsHtml += `<button class="btn-remind" onclick="remindCustomer(${order.id})"><i class="fas fa-bell"></i> Remind</button>`;
+    }
+    if (order.refund_status === 'pending') {
+      actionsHtml += `
+        <button class="btn-refund-approve" onclick="handleRefund(${order.id},'approve')">Approve Refund</button>
+        <button class="btn-refund-reject" onclick="handleRefund(${order.id},'reject')">Reject</button>
+      `;
+    }
+    if (['pending_payment','pending_refund'].includes(order.replacement_status)) {
+      actionsHtml += `
+        <button class="btn-replace-approve" onclick="handleReplacement(${order.id},'approve')">Approve Replacement</button>
+        <button class="btn-replace-reject" onclick="handleReplacement(${order.id},'reject')">Reject</button>
+      `;
+    }
+    if (order.status === 'delivered') {
+      actionsHtml += `<button class="btn-received" onclick="markReceived(${order.id})">Mark Received</button>`;
+    }
+    if (['pending','confirmed'].includes(order.status)) {
+      actionsHtml += `<button class="btn-cancel" onclick="cancelOrder(${order.id})">Cancel</button>`;
+    }
+    if (!actionsHtml) {
+      actionsHtml = `<span style="font-size:0.6rem; color:#94a3b8;">No actions</span>`;
+    }
+
+    // ---- Payment History (new) ----
+    // We'll fetch and display payments if any (we can show inline)
+    // For simplicity, we'll show a button to view payments
+    actionsHtml += ` <button class="btn btn-primary btn-sm" onclick="viewPayments(${order.id})" style="font-size:0.55rem; background:#64748b; color:white;">Payments</button>`;
+
+    html += `
+      <div class="order-row" id="order-row-${order.id}">
+        <div class="order-header">
+          <span class="ref">${ref}</span>
+          <span class="customer">${customer}</span>
+          <span class="date">${date}</span>
+          <span class="total">Ksh ${total}</span>
+          <span class="status-badge status-${statusClass}">${order.status}</span>
+          <a href="/admin-orders.html?status=${currentStatus}" target="_blank" style="font-size:0.6rem; color:#2563eb;">View full</a>
+        </div>
+        <div class="order-actions">${actionsHtml}</div>
+        <div id="payments-${order.id}" style="display:none; margin-top:4px; border-top:1px dashed #e2e8f0; padding-top:4px;"></div>
+      </div>
+    `;
+  });
+  html += `</div>`;
+  container.innerHTML = html;
+}
+
+// ---- View Payments (new) ----
+function viewPayments(orderId) {
+  const container = document.getElementById(`payments-${orderId}`);
+  if (container.style.display === 'block') {
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = 'block';
+  container.innerHTML = 'Loading payments...';
+  fetch(`/api/payments/order/${orderId}`, { headers: authHeaders() })
+    .then(res => res.json())
+    .then(payments => {
+      if (!payments || payments.length === 0) {
+        container.innerHTML = '<span style="font-size:0.7rem; color:#94a3b8;">No payments recorded.</span>';
+        return;
+      }
+      let html = '<div style="font-size:0.7rem;">';
+      payments.forEach(p => {
+        const statusColor = p.status === 'success' ? '#16a34a' : '#ef4444';
+        html += `
+          <div style="display:flex; justify-content:space-between; padding:2px 0; border-bottom:1px solid #f1f4f8;">
+            <span><strong>${p.method.toUpperCase()}</strong> ${p.transaction_id || ''}</span>
+            <span>Ksh ${parseFloat(p.amount).toFixed(2)}</span>
+            <span style="color:${statusColor};">${p.status}</span>
+            <span style="font-size:0.6rem; color:#94a3b8;">${new Date(p.created_at).toLocaleString()}</span>
+          </div>
+        `;
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    })
+    .catch(() => {
+      container.innerHTML = '<span style="font-size:0.7rem; color:#ef4444;">Error loading payments.</span>';
+    });
+}
 
 // ============================================================
-// AUTO-LOGIN
+// ACTION FUNCTIONS (same as before)
 // ============================================================
+function updateOrderStatus(orderId) {
+  const statusSelect = document.getElementById(`statusSelect-${orderId}`);
+  const trackingInput = document.getElementById(`trackingInput-${orderId}`);
+  const status = statusSelect.value;
+  const tracking = trackingInput.value.trim();
+  if (!status) return;
+  if (!confirm(`Update order to ${status.toUpperCase()}?`)) return;
+  fetch(`/api/orders/${orderId}/status`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ status, tracking_number: tracking || undefined })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      alert('Order status updated.');
+      refreshCurrentOrders();
+      if (socket) socket.emit('order-status-updated', { orderId, status });
+    } else {
+      alert('Failed: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(() => alert('Network error.'));
+}
+
+function confirmOrder(orderId) {
+  if (!confirm('Confirm this order?')) return;
+  fetch(`/api/orders/${orderId}/confirm`, {
+    method: 'PUT',
+    headers: { 'Authorization': `Bearer ${token}` }
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      alert('Order confirmed.');
+      refreshCurrentOrders();
+      if (socket) socket.emit('order-status-updated', { orderId, status: 'confirmed' });
+    } else {
+      alert('Failed: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(() => alert('Network error.'));
+}
+
+function markReceived(orderId) {
+  if (!confirm('Mark this order as received by customer?')) return;
+  fetch(`/api/orders/${orderId}/receive`, {
+    method: 'PUT',
+    headers: { 'Authorization': `Bearer ${token}` }
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      alert('Order marked as received.');
+      refreshCurrentOrders();
+      if (socket) socket.emit('order-status-updated', { orderId, status: 'received' });
+    } else {
+      alert('Failed: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(() => alert('Network error.'));
+}
+
+function handleRefund(orderId, action) {
+  if (!confirm(`${action === 'approve' ? 'Approve' : 'Reject'} refund for this order?`)) return;
+  fetch(`/api/admin/orders/${orderId}/refund`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ action })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      alert(`Refund ${action}d.`);
+      refreshCurrentOrders();
+      if (socket) socket.emit('order-status-updated', { orderId, refundStatus: action === 'approve' ? 'approved' : 'rejected' });
+    } else {
+      alert('Failed: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(() => alert('Network error.'));
+}
+
+function handleReplacement(orderId, action) {
+  if (!confirm(`${action === 'approve' ? 'Approve' : 'Reject'} replacement?`)) return;
+  fetch(`/api/admin/orders/${orderId}/replace`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ action })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      alert(`Replacement ${action}d.`);
+      refreshCurrentOrders();
+      if (socket) socket.emit('order-status-updated', { orderId, replacementStatus: action === 'approve' ? 'approved' : 'rejected' });
+    } else {
+      alert('Failed: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(() => alert('Network error.'));
+}
+
+function remindCustomer(orderId) {
+  if (!confirm('Send a reminder to the customer to pick up their order?')) return;
+  fetch(`/api/admin/orders/${orderId}/remind`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` }
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      alert('Reminder sent to customer via chat.');
+      refreshCurrentOrders();
+    } else {
+      alert('Failed: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(() => alert('Network error.'));
+}
+
+function cancelOrder(orderId) {
+  const reason = prompt('Please provide a cancellation reason:');
+  if (!reason) return;
+  if (!confirm('Cancel this order?')) return;
+  fetch(`/api/orders/${orderId}/cancel`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ reason })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      alert('Order cancelled.');
+      refreshCurrentOrders();
+      if (socket) socket.emit('order-status-updated', { orderId, status: 'cancelled' });
+    } else {
+      alert('Failed: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(() => alert('Network error.'));
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.getElementById('registerBtn').addEventListener('click', handleRegister);
+document.getElementById('loginBtn').addEventListener('click', handleLogin);
+
 if (token) {
   fetch('/api/auth/verify', { headers: authHeaders() })
     .then(res => res.ok ? showDashboard() : logout())
@@ -901,8 +916,20 @@ if (token) {
   checkAdminExists();
 }
 
-document.getElementById('registerBtn').addEventListener('click', handleRegister);
-document.getElementById('loginBtn').addEventListener('click', handleLogin);
+window.logout = logout;
+window.showTab = showTab;
+window.togglePassword = togglePassword;
+window.handleCardClick = handleCardClick;
+window.updateOrderStatus = updateOrderStatus;
+window.confirmOrder = confirmOrder;
+window.markReceived = markReceived;
+window.handleRefund = handleRefund;
+window.handleReplacement = handleReplacement;
+window.remindCustomer = remindCustomer;
+window.cancelOrder = cancelOrder;
+window.refreshCurrentOrders = refreshCurrentOrders;
+window.viewPayments = viewPayments;
+window.handleReturn = handleReturn;
 </script>
 </body>
 </html>

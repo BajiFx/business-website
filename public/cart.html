@@ -2,121 +2,134 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
   <title>Shopping Cart</title>
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
-    .cart-page { max-width: 900px; margin: 40px auto; padding: 0 20px; }
-    .cart-page h1 { font-size: 2rem; font-weight: 800; color: #0f172a; }
-    .cart-page .sub { color: #64748b; margin-bottom: 20px; }
-
-    .cart-empty { text-align: center; padding: 60px 20px; }
-    .cart-empty i { font-size: 4rem; color: #94a3b8; margin-bottom: 16px; }
-    .cart-empty h2 { font-size: 1.5rem; color: #1e293b; }
-    .cart-empty p { color: #64748b; margin: 10px 0 20px; }
-    .cart-empty .btn { padding: 12px 30px; }
-
-    .cart-item { display: flex; gap: 16px; padding: 12px 0; border-bottom: 1px solid #e2e8f0; align-items: center; }
-    .cart-item img { width: 70px; height: 70px; object-fit: cover; border-radius: 8px; background: #f8fafc; }
+    .cart-page { max-width: 100%; padding: 0 12px 20px; padding-bottom: 80px; }
+    .cart-page h1 { font-size: 1.3rem; font-weight: 800; }
+    .cart-page .sub { font-size: 0.8rem; color: #64748b; margin-bottom: 12px; }
+    .back-link { display: inline-block; margin-bottom: 12px; color: #2563eb; text-decoration: none; font-weight: 600; font-size: 0.85rem; }
+    .cart-item { display: flex; gap: 12px; padding: 10px 0; align-items: center; background: white; padding: 10px 12px; border-radius: 10px; margin-bottom: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); }
+    .cart-item img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; background: #f8fafc; }
     .cart-item .details { flex: 1; }
-    .cart-item .details .name { font-weight: 600; font-size: 0.95rem; }
-    .cart-item .details .price { font-weight: 700; color: #0f172a; }
-    .cart-item .qty-control { display: flex; align-items: center; gap: 6px; }
-    .cart-item .qty-control button { width: 28px; height: 28px; border-radius: 50%; border: none; background: #e2e8f0; font-weight: 700; cursor: pointer; transition: 0.2s; }
+    .cart-item .details .name { font-weight: 600; font-size: 0.85rem; }
+    .cart-item .details .variant { font-size: 0.65rem; color: #64748b; }
+    .cart-item .details .price { font-weight: 700; font-size: 0.8rem; color: #0f172a; }
+    .cart-item .qty-control { display: flex; align-items: center; gap: 4px; }
+    .cart-item .qty-control button { width: 26px; height: 26px; border-radius: 50%; border: none; background: #e2e8f0; font-weight: 700; cursor: pointer; }
     .cart-item .qty-control button:hover { background: #2563eb; color: white; }
-    .cart-item .qty-control span { font-weight: 700; min-width: 20px; text-align: center; }
-    .cart-item .remove-btn { background: none; border: none; color: #ef4444; font-size: 1.1rem; cursor: pointer; padding: 4px 8px; }
-    .cart-item .remove-btn:hover { transform: scale(1.2); }
-    .cart-item .subtotal { font-weight: 700; min-width: 70px; text-align: right; }
-
-    .section { background: #f8fafc; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; }
-    .section h3 { font-weight: 700; font-size: 1.1rem; margin: 0 0 8px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
-
-    .shipping-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
-    .shipping-option { border: 2px solid #e2e8f0; border-radius: 8px; padding: 6px 10px; cursor: pointer; transition: 0.2s; }
+    .cart-item .qty-control span { font-weight: 700; min-width: 18px; text-align: center; font-size: 0.85rem; }
+    .cart-item .subtotal { font-weight: 700; font-size: 0.8rem; min-width: 60px; text-align: right; }
+    .cart-item .remove-btn { background: none; border: none; color: #ef4444; font-size: 1rem; cursor: pointer; padding: 4px; }
+    .section { background: white; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+    .section h3 { font-weight: 700; font-size: 0.9rem; margin: 0 0 6px 0; border-bottom: 1px solid #e8ecf1; padding-bottom: 6px; }
+    .shipping-options { display: grid; grid-template-columns: 1fr; gap: 6px; }
+    .shipping-option { border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; cursor: pointer; transition: 0.2s; }
     .shipping-option:hover { border-color: #2563eb; }
     .shipping-option.selected { border-color: #2563eb; background: #eff6ff; }
-    .shipping-option .tier-name { font-weight: 700; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; }
-    .shipping-option .tier-price { font-size: 1.1rem; color: #2563eb; font-weight: 700; }
-    .shipping-option .tier-reason { font-size: 0.75rem; color: #475569; margin-top: 2px; }
-
-    .address-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border:1px solid #e2e8f0; border-radius:6px; margin-bottom:4px; cursor:pointer; font-size:0.9rem; }
-    .address-item.selected { border-color:#2563eb; background:#eff6ff; }
-    .address-item .location-tag { font-size:0.65rem; color:#2563eb; background:#dbeafe; padding:0 8px; border-radius:10px; }
-    .address-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
-
-    .promo-input { display: flex; gap: 8px; margin: 8px 0 4px; }
-    .promo-input input { flex:1; padding:6px 10px; border:1px solid #d1d5db; border-radius:6px; font-size:0.9rem; }
-    .promo-input button { padding:6px 14px; font-size:0.85rem; }
-
-    .summary-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 0.95rem; }
-    .summary-row.total { font-weight: 800; font-size: 1.2rem; border-top: 2px solid #e2e8f0; padding-top: 12px; margin-top: 8px; }
-
-    .btn-place { width: 100%; padding: 16px; font-size: 1.2rem; background: #22c55e; color: white; border: none; border-radius: 30px; font-weight: 700; cursor: pointer; transition: 0.2s; margin-top: 12px; }
-    .btn-place:hover { background: #16a34a; transform: scale(1.01); }
-
+    .shipping-option .tier-name { font-weight: 700; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; }
+    .shipping-option .tier-price { font-size: 0.9rem; color: #2563eb; font-weight: 700; }
+    .shipping-option .tier-reason { font-size: 0.7rem; color: #475569; margin-top: 2px; line-height: 1.4; }
+    .shipping-option .tier-why { font-size: 0.65rem; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 10px; margin-top: 2px; display: inline-block; }
+    .free-shipping-banner { background: #dcfce7; padding: 8px 12px; border-radius: 8px; border-left: 4px solid #22c55e; margin-bottom: 8px; font-size: 0.85rem; font-weight: 600; color: #166534; display: none; }
+    .shipping-info { font-size: 0.7rem; color: #64748b; margin-top: 4px; padding: 6px 10px; background: #f8fafc; border-radius: 6px; }
+    .address-item { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 4px; cursor: pointer; font-size: 0.8rem; }
+    .address-item.selected { border-color: #2563eb; background: #eff6ff; }
+    .address-item .location-tag { font-size: 0.6rem; color: #2563eb; background: #dbeafe; padding: 0 6px; border-radius: 8px; }
+    .promo-input { display: flex; gap: 6px; margin: 6px 0; }
+    .promo-input input { flex:1; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.8rem; }
+    .promo-input button { padding: 6px 12px; font-size: 0.75rem; }
+    .summary-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 0.85rem; }
+    .summary-row.total { font-weight: 800; font-size: 1.05rem; border-top: 2px solid #e2e8f0; padding-top: 8px; margin-top: 6px; }
+    .btn-place { width: 100%; padding: 14px; font-size: 1rem; background: #22c55e; color: white; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+    .btn-place:hover { background: #16a34a; }
     .timer { color: #ef4444; font-weight: 700; font-size:0.9rem; margin-bottom: 12px; }
-
-    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 9999; }
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; display: none; align-items: center; justify-content: center; padding: 16px; }
     .modal-overlay.active { display: flex; }
-    .modal-box { background: white; max-width: 500px; width: 90%; padding: 20px; border-radius: 16px; max-height: 80vh; overflow-y: auto; }
-    .modal-box .btn-row { display: flex; gap: 10px; margin-top: 10px; justify-content: flex-end; }
-    .modal-box .location-confirm { background: #f0fdf4; padding: 12px; border-radius: 8px; border-left: 4px solid #22c55e; margin: 10px 0; }
-    .modal-box .location-confirm .address-display { font-size:1.1rem; font-weight:700; color:#0f172a; }
-    .modal-box .location-confirm .sub-address { font-size:0.85rem; color:#64748b; }
-    .modal-box .location-confirm .actions { display:flex; gap:10px; margin-top:8px; flex-wrap:wrap; }
+    .modal-box { background: white; max-width: 100%; width: 100%; max-height: 90vh; overflow-y: auto; padding: 20px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+    .modal-box .btn-row { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end; flex-wrap: wrap; }
+    .modal-box .payment-methods { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+    .modal-box .payment-methods .method { padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
+    .modal-box .payment-methods .method:hover { border-color: #2563eb; }
+    .modal-box .payment-methods .method.selected { border-color: #2563eb; background: #eff6ff; }
+    .modal-box .payment-methods .method i { font-size: 1.2rem; width: 24px; }
+    .modal-box .payment-details input, .modal-box .payment-details select { width: 100%; padding: 8px; margin: 4px 0; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem; }
+    .bank-search-container { position: relative; }
+    .bank-search-container input { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; }
+    .bank-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #d1d5db; border-radius: 6px; max-height: 150px; overflow-y: auto; z-index: 10; display: none; }
+    .bank-dropdown.show { display: block; }
+    .bank-dropdown .bank-item { padding: 6px 10px; cursor: pointer; font-size: 0.85rem; }
+    .bank-dropdown .bank-item:hover { background: #f1f5f9; }
+    .cart-empty { text-align: center; padding: 40px 20px; }
+    .cart-empty i { font-size: 3rem; color: #94a3b8; margin-bottom: 12px; }
+    .cart-empty h2 { font-size: 1.2rem; color: #1e293b; }
+    .cart-empty p { color: #64748b; margin: 8px 0 16px; font-size: 0.9rem; }
+    .cart-empty .btn { padding: 10px 24px; }
+    .related-grid { display: flex; gap: 10px; overflow-x: auto; padding: 4px 0 10px; -webkit-overflow-scrolling: touch; }
+    .related-item { flex: 0 0 110px; background: #f8fafc; border-radius: 8px; overflow: hidden; cursor: pointer; }
+    .related-item img { width: 100%; height: 90px; object-fit: cover; }
+    .related-item .no-image { height: 90px; display: flex; align-items: center; justify-content: center; font-size: 2rem; background: #e2e8f0; }
+    .related-item .related-info { padding: 4px 6px; }
+    .related-item .related-name { font-weight: 600; font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .related-item .related-price { font-weight: 700; font-size: 0.7rem; color: #2563eb; }
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #e8ecf1; display: flex; justify-content: space-around; align-items: center; padding: 6px 0 env(safe-area-inset-bottom, 6px) 0; z-index: 1000; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+    .bottom-nav a { display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #94a3b8; font-size: 0.55rem; font-weight: 600; padding: 2px 8px; position: relative; }
+    .bottom-nav a i { font-size: 1.3rem; margin-bottom: 1px; }
+    .bottom-nav a.active { color: #2563eb; }
+    .bottom-nav a .nav-badge { position: absolute; top: -2px; right: 0; background: #ef4444; color: white; border-radius: 50%; padding: 0 5px; font-size: 0.5rem; min-width: 16px; text-align: center; font-weight: 700; display: none; }
+    .bottom-nav a .nav-badge.show { display: block; }
+    .header { background: #ffffff; color: #1e293b; padding: 10px 14px; border-bottom: 1px solid #e8ecf1; position: sticky; top: 0; z-index: 99; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+    .header h1 { font-weight: 800; font-size: 1.1rem; color: #0f172a; }
+    .header a { color: #64748b; margin: 0 8px; text-decoration: none; font-weight: 600; font-size: 0.75rem; }
+    .header a:hover { color: #2563eb; }
+    .header .header-right { display: flex; align-items: center; gap: 8px; }
     .location-suggestions { background:white; border:1px solid #d1d5db; border-radius:6px; max-height:150px; overflow-y:auto; display:none; }
     .location-suggestions div { padding:6px 10px; cursor:pointer; border-bottom:1px solid #e2e8f0; font-size:0.85rem; }
     .location-suggestions div:hover { background:#e2e8f0; }
-
-    .back-link { display: inline-block; margin-bottom: 16px; color: #2563eb; text-decoration: none; font-weight: 600; }
-    .back-link:hover { text-decoration: underline; }
-
-    @media (max-width: 640px) {
-      .shipping-options { grid-template-columns: 1fr; }
-    }
   </style>
 </head>
 <body>
 
 <div class="header">
   <h1>🛍️ <span id="shopNameHeader">Our Business</span></h1>
-  <div style="display:flex; justify-content:center; align-items:center; gap:15px; flex-wrap:wrap; margin-top:8px;">
+  <div class="header-right">
     <a href="/">Home</a>
-    <a href="/account.html" style="color:#60a5fa;">My Account</a>
-    <a href="#" onclick="logout()" style="color:#ef4444; font-size:0.9rem;">Logout</a>
+    <a href="/account.html">Account</a>
+    <a href="/cart.html" style="position:relative;">
+      <i class="fas fa-shopping-cart" style="font-size:1.2rem;"></i>
+      <span id="cartBadge" style="position:absolute; top:-6px; right:-8px; background:#ef4444; color:white; border-radius:50%; padding:0 5px; font-size:0.55rem; min-width:16px; text-align:center; font-weight:700; display:none;">0</span>
+    </a>
   </div>
 </div>
 
 <div class="cart-page">
   <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Continue Shopping</a>
   <h1>🛒 Your Cart</h1>
-  <p class="sub">Review your items, then place your order.</p>
+  <p class="sub">Review your items, choose shipping & payment, then place your order.</p>
 
-  <!-- Timer -->
   <div id="stockTimer" class="timer" style="display:none;">⏳ Items reserved for <span id="timerDisplay">15:00</span></div>
 
-  <!-- Cart Items -->
   <div id="cartItemsContainer"></div>
 
-  <!-- If cart has items, show checkout sections -->
   <div id="checkoutSections" style="display:none;">
-
     <!-- Delivery Address -->
     <div class="section">
       <h3>📍 Delivery Address</h3>
       <div id="addressList"></div>
-      <div class="address-actions">
-        <button class="btn btn-secondary" onclick="showAddAddress()" style="font-size:0.8rem; padding:4px 12px;">+ Add New</button>
-        <button class="btn btn-primary" onclick="detectLocationForAddress()" style="font-size:0.8rem; padding:4px 12px;"><i class="fas fa-map-marker-alt"></i> Track My Location</button>
+      <div class="address-actions" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+        <button class="btn btn-secondary" onclick="showAddAddress()" style="font-size:0.75rem; padding:4px 10px;">+ Add New</button>
+        <button class="btn btn-primary" onclick="detectLocationForAddress()" style="font-size:0.75rem; padding:4px 10px;"><i class="fas fa-map-marker-alt"></i> Track My Location</button>
       </div>
     </div>
 
     <!-- Shipping Options -->
     <div class="section">
-      <h3>🚚 Shipping Speed</h3>
+      <h3>🚚 Choose Your Shipping Speed</h3>
+      <div id="freeShippingBanner" class="free-shipping-banner">🎉 Your order qualifies for FREE Standard Shipping! (Total ≥ Ksh 40,000)</div>
       <div class="shipping-options" id="shippingOptions"></div>
+      <div class="shipping-info">💡 Shipping fee is based on your order total – the more you buy, the more value you get. One fee for the whole order, not per product.</div>
     </div>
 
     <!-- Promo Code -->
@@ -126,17 +139,17 @@
         <input type="text" id="promoInput" placeholder="Enter promo code">
         <button class="btn btn-primary" onclick="applyPromo()">Apply</button>
       </div>
-      <div id="promoMessage" style="font-size:0.8rem;"></div>
+      <div id="promoMessage" style="font-size:0.75rem;"></div>
     </div>
 
     <!-- Order Notes -->
     <div class="section">
       <h3>📝 Special Instructions</h3>
-      <textarea id="orderNotes" placeholder="e.g., Leave at the back gate, call upon arrival" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px; font-size:0.9rem;"></textarea>
+      <textarea id="orderNotes" placeholder="e.g., Leave at the back gate" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px; font-size:0.85rem;"></textarea>
     </div>
 
-    <!-- Order Summary & Place Order -->
-    <div class="section" style="background: white; border: 2px solid #e2e8f0;">
+    <!-- Summary -->
+    <div class="section" style="background:white; border:2px solid #e2e8f0;">
       <h3>💰 Order Summary</h3>
       <div id="summaryDetails">
         <div class="summary-row"><span>Subtotal</span><span id="subtotalPrice">Ksh 0</span></div>
@@ -150,14 +163,14 @@
     </div>
   </div>
 
-  <!-- Recommended products (always shown) -->
-  <div id="recommendedSection" style="margin-top:30px;">
+  <!-- Recommended -->
+  <div id="recommendedSection" style="margin-top:24px;">
     <h3>You may also like</h3>
-    <div id="recommendedGrid" class="related-grid" style="display:flex; gap:12px; overflow-x:auto; padding:8px 0;"></div>
+    <div id="recommendedGrid" class="related-grid"></div>
   </div>
 </div>
 
-<!-- Add Address Modal -->
+<!-- Address Modal -->
 <div class="modal-overlay" id="addressModal">
   <div class="modal-box">
     <h3>Add New Address</h3>
@@ -177,7 +190,57 @@
   </div>
 </div>
 
-<!-- Location Confirmation Modal -->
+<!-- Payment Modal -->
+<div class="modal-overlay" id="paymentModal">
+  <div class="modal-box">
+    <h3>💳 Choose Payment Method</h3>
+    <div id="paymentBody">
+      <p>Total amount: <strong id="paymentTotal">Ksh 0</strong></p>
+      <div class="payment-methods" id="paymentMethods">
+        <div class="method" onclick="selectPaymentMethod('mpesa')"><i class="fas fa-mobile-alt"></i> M-Pesa</div>
+        <div class="method" onclick="selectPaymentMethod('airtel')"><i class="fas fa-phone"></i> Airtel Money</div>
+        <div class="method" onclick="selectPaymentMethod('paypal')"><i class="fab fa-paypal"></i> PayPal</div>
+        <div class="method" onclick="selectPaymentMethod('bank')"><i class="fas fa-university"></i> Bank Transfer</div>
+      </div>
+      <div id="paymentDetails" style="display:none; margin-top:10px;">
+        <!-- M-Pesa / Airtel fields -->
+        <div id="phoneField" style="display:none;">
+          <label>Phone Number:</label>
+          <input type="text" id="paymentPhone" placeholder="e.g., 0712345678" class="payment-field">
+          <label>PIN:</label>
+          <input type="password" id="paymentPin" placeholder="Enter your PIN" class="payment-field">
+        </div>
+        <!-- Bank fields -->
+        <div id="bankField" style="display:none;">
+          <label>Select your bank:</label>
+          <div class="bank-search-container">
+            <input type="text" id="bankSearch" placeholder="Search for your bank..." oninput="filterBanks()" class="payment-field">
+            <div class="bank-dropdown" id="bankDropdown"></div>
+          </div>
+          <input type="hidden" id="selectedBank">
+          <label>Account Number:</label>
+          <input type="text" id="paymentAccount" placeholder="Account number" class="payment-field">
+          <label>PIN:</label>
+          <input type="password" id="paymentBankPin" placeholder="Enter your PIN" class="payment-field">
+        </div>
+        <!-- PayPal (simplified) -->
+        <div id="paypalField" style="display:none;">
+          <label>PayPal Email:</label>
+          <input type="email" id="paymentPaypalEmail" placeholder="your@email.com" class="payment-field">
+          <label>Password:</label>
+          <input type="password" id="paymentPaypalPin" placeholder="Enter your PayPal password" class="payment-field">
+        </div>
+        <button class="btn btn-success" onclick="submitPayment()" style="margin-top:6px;">Pay Now</button>
+        <div id="paymentStatus" style="margin-top:8px; font-size:0.9rem;"></div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closePaymentModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Location Confirm Modal -->
 <div class="modal-overlay" id="locationConfirmModal">
   <div class="modal-box">
     <h3>📍 Location Detected</h3>
@@ -186,7 +249,7 @@
       <div class="address-display" id="detectedAddressDisplay">Loading...</div>
       <div class="sub-address" id="detectedSubAddress"></div>
       <p style="font-size:0.85rem; color:#64748b; margin-top:6px;">Is this where you want your order delivered?</p>
-      <div class="actions">
+      <div class="actions" style="display:flex; gap:6px; flex-wrap:wrap;">
         <button class="btn btn-success" onclick="confirmDetectedLocation()"><i class="fas fa-check"></i> Yes, that's right</button>
         <button class="btn btn-secondary" onclick="rejectDetectedLocation()"><i class="fas fa-edit"></i> No, type it</button>
       </div>
@@ -203,10 +266,24 @@
   </div>
 </div>
 
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <a href="/"><i class="fas fa-home"></i><span>Home</span></a>
+  <a href="/category.html"><i class="fas fa-th-large"></i><span>Category</span></a>
+  <a href="/account.html"><i class="fas fa-envelope"></i><span>Messages</span></a>
+  <a href="/cart.html" class="active" style="position:relative;">
+    <i class="fas fa-shopping-cart"></i>
+    <span class="nav-badge" id="navCartBadge">0</span>
+    <span>Cart</span>
+  </a>
+  <a href="/account.html"><i class="fas fa-user"></i><span>Account</span></a>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
 <script src="/app.js"></script>
 <script>
   // ============================================================
-  // GLOBALS
+  // CART & PAYMENT LOGIC
   // ============================================================
   let cartItems = [];
   let selectedShippingTier = 'standard';
@@ -219,6 +296,27 @@
   let detectedLng = null;
   let detectedAddress = null;
   let detectedLocationName = null;
+  let selectedPaymentMethod = '';
+  let pendingOrderId = null;
+  let paymentTotal = 0;
+
+  const FREE_SHIPPING_THRESHOLD = 40000;
+  const kenyanBanks = [
+    "Equity Bank Kenya", "KCB Bank Kenya", "Co-operative Bank of Kenya",
+    "NCBA Bank Kenya", "Stanbic Bank Kenya", "Standard Chartered Kenya",
+    "Absa Bank Kenya", "Diamond Trust Bank (DTB)", "I&M Bank Kenya",
+    "Family Bank", "Guaranty Trust Bank (GTBank)", "Bank of Africa Kenya",
+    "Consolidated Bank", "Development Bank of Kenya", "African Banking Corporation (ABC Bank)",
+    "Citi Bank Kenya", "National Bank of Kenya", "Prime Bank Kenya",
+    "Sidian Bank", "Victoria Commercial Bank", "Credit Bank Kenya",
+    "HFC Bank Kenya", "Kingdom Bank", "M-Oriental Bank",
+    "Paramount Bank", "First Community Bank", "Chase Bank (in receivership)",
+    "Spire Bank", "Gulf African Bank", "HABIB Bank AG Zurich",
+    "KASNEB Bank", "NIC Bank (now NCBA)", "Jubilee Bank",
+    "Transnational Bank", "Middle East Bank", "Orient Bank",
+    "Bank of Baroda Kenya", "Bank of India Kenya", "Ecobank Kenya",
+    "United Bank of Africa (UBA)", "Access Bank Kenya", "SBM Bank Kenya"
+  ];
 
   document.addEventListener('DOMContentLoaded', () => {
     loadShopProfile();
@@ -227,9 +325,38 @@
     loadAddresses();
     loadRecommended();
     startReservationTimer();
+    populateBankDropdown();
   });
 
-  // ---- Address suggestions for modal ----
+  function populateBankDropdown() {
+    const dropdown = document.getElementById('bankDropdown');
+    dropdown.innerHTML = kenyanBanks.map(b => `<div class="bank-item" onclick="selectBank('${b}')">${b}</div>`).join('');
+  }
+
+  function filterBanks() {
+    const query = document.getElementById('bankSearch').value.toLowerCase();
+    const dropdown = document.getElementById('bankDropdown');
+    const items = dropdown.querySelectorAll('.bank-item');
+    let hasVisible = false;
+    items.forEach(el => {
+      const name = el.textContent.toLowerCase();
+      if (name.includes(query)) {
+        el.style.display = 'block';
+        hasVisible = true;
+      } else {
+        el.style.display = 'none';
+      }
+    });
+    dropdown.classList.toggle('show', hasVisible || query.length > 0);
+  }
+
+  function selectBank(bank) {
+    document.getElementById('bankSearch').value = bank;
+    document.getElementById('selectedBank').value = bank;
+    document.getElementById('bankDropdown').classList.remove('show');
+  }
+
+  // ---- Address suggestions ----
   document.getElementById('addressInput')?.addEventListener('input', function() {
     const query = this.value.trim();
     const suggestionsDiv = document.getElementById('addressSuggestions');
@@ -268,9 +395,7 @@
       return;
     }
 
-    // Show checkout sections
     checkoutSections.style.display = 'block';
-
     cartItems = cart;
     let html = '';
     let total = 0;
@@ -278,10 +403,14 @@
       const priceNum = parseFloat(item.price.replace(/[^0-9.]/g,'')) || 0;
       const subtotal = priceNum * item.quantity;
       total += subtotal;
+      const variantName = item.variant_name ? ` (${item.variant_name})` : '';
       html += `
         <div class="cart-item" data-id="${item.id}">
           <img src="${item.image || ''}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22 viewBox=%220 0 80 80%22%3E%3Crect width=%2280%22 height=%2280%22 fill=%22%23e2e8f0%22/%3E%3Ctext x=%2240%22 y=%2245%22 font-family=%22sans-serif%22 font-size=%2220%22 text-anchor=%22middle%22 fill=%22%2394a3b8%22%3E📦%3C/text%3E%3C/svg%3E'">
-          <div class="details"><div class="name">${item.name}</div><div class="price">${item.price}</div></div>
+          <div class="details">
+            <div class="name">${item.name}${variantName}</div>
+            <div class="price">${item.price}</div>
+          </div>
           <div class="qty-control">
             <button onclick="updateCartQty(${item.id}, -1)">−</button>
             <span>${item.quantity}</span>
@@ -293,10 +422,8 @@
       `;
     });
     container.innerHTML = html;
-
-    // Update summary and shipping
     updateShippingOptions(total);
-    applyPromo(); // re-apply if code exists
+    applyPromo();
     updateSummary(total);
   }
 
@@ -314,69 +441,84 @@
     } else {
       document.getElementById('discountSummaryRow').style.display = 'none';
     }
+    paymentTotal = grandTotal;
   }
 
   // ---- Shipping options ----
+  function getShippingTiers(subtotal) {
+    let standard, express, overnight;
+    if (subtotal >= FREE_SHIPPING_THRESHOLD) {
+      standard = 0; express = 250; overnight = 350;
+    } else if (subtotal >= 10000) {
+      standard = 150; express = 250; overnight = 300;
+    } else if (subtotal >= 2000) {
+      standard = 120; express = 200; overnight = 250;
+    } else if (subtotal >= 500) {
+      standard = 80; express = 150; overnight = 200;
+    } else {
+      standard = 50; express = 100; overnight = 150;
+    }
+    return { standard, express, overnight };
+  }
+
   function updateShippingOptions(subtotal) {
     const container = document.getElementById('shippingOptions');
-    const tiers = [
-      { id: 'standard', label: 'Standard (3–5 days)', price: 4.99, reason: 'Affordable and reliable. Fully tracked.' },
-      { id: 'express', label: 'Express (1–2 days)', price: 9.99, reason: 'Priority handling, fast air freight.' },
-      { id: 'overnight', label: 'Overnight (Next Day)', price: 19.99, reason: 'Emergency speed. Next day delivery.' }
-    ];
+    const banner = document.getElementById('freeShippingBanner');
+    const freeShipping = subtotal >= FREE_SHIPPING_THRESHOLD;
 
-    const freeThreshold = 50;
-    let freeOption = null;
-    if (subtotal >= freeThreshold) {
-      freeOption = { id: 'free', label: '🚀 FREE Standard', price: 0, reason: 'You qualify for free shipping!' };
+    if (freeShipping) {
+      banner.style.display = 'block';
+      selectedShippingTier = 'standard';
+      shippingCost = 0;
+    } else {
+      banner.style.display = 'none';
     }
 
+    const prices = getShippingTiers(subtotal);
+    const tiers = [
+      { id: 'standard', label: 'Standard (3–5 days)', price: freeShipping ? 0 : prices.standard, reason: 'Affordable ground transport, fully tracked.', why: 'Best when you are not in a hurry.' },
+      { id: 'express', label: 'Express (1–2 days)', price: freeShipping ? 0 : prices.express, reason: 'Air freight, priority handling.', why: 'Great speed at a fair price.' },
+      { id: 'overnight', label: 'Overnight (Next Day)', price: freeShipping ? 0 : prices.overnight, reason: 'Dedicated courier, 60‑minute hand‑off.', why: 'For emergencies – the fastest option.' }
+    ];
+
     let html = '';
-    const totalQty = cartItems.reduce((sum, item) => sum + item.quantity, 0);
     tiers.forEach(tier => {
-      let tierPrice = tier.price;
-      if (totalQty >= 5) tierPrice = tier.price * 0.7;
-      const selected = selectedShippingTier === tier.id ? 'selected' : '';
-      html += `
-        <div class="shipping-option ${selected}" onclick="selectShippingTier('${tier.id}', ${tierPrice})">
-          <div class="tier-name">
-            <span>${tier.label}</span>
-            <span class="tier-price">Ksh ${tierPrice.toFixed(2)}</span>
+      if (freeShipping && tier.id !== 'standard') {
+        html += `
+          <div class="shipping-option disabled" style="opacity:0.5; cursor:not-allowed;">
+            <div class="tier-name"><span>${tier.label}</span><span class="tier-price">Free</span></div>
+            <div class="tier-reason">${tier.reason}</div>
+            <div class="tier-why">💡 ${tier.why}</div>
           </div>
+        `;
+        return;
+      }
+      const selected = selectedShippingTier === tier.id ? 'selected' : '';
+      const priceDisplay = tier.price === 0 ? 'Free' : `Ksh ${tier.price.toFixed(2)}`;
+      const onclick = (!freeShipping || tier.id === 'standard') ? `selectShippingTier('${tier.id}', ${tier.price})` : '';
+      html += `
+        <div class="shipping-option ${selected}" onclick="${onclick}">
+          <div class="tier-name"><span>${tier.label}</span><span class="tier-price">${priceDisplay}</span></div>
           <div class="tier-reason">${tier.reason}</div>
+          <div class="tier-why">💡 ${tier.why}</div>
         </div>
       `;
     });
-    if (freeOption) {
-      const selected = selectedShippingTier === 'free' ? 'selected' : '';
-      html += `
-        <div class="shipping-option ${selected}" onclick="selectShippingTier('free', 0)">
-          <div class="tier-name">
-            <span>${freeOption.label}</span>
-            <span class="tier-price">Free</span>
-          </div>
-          <div class="tier-reason">${freeOption.reason}</div>
-        </div>
-      `;
-    }
     container.innerHTML = html;
-
-    // Bulk banner
-    const existingBanner = document.getElementById('bulkBanner');
-    if (totalQty >= 5) {
-      if (!existingBanner) {
-        const div = document.createElement('div');
-        div.id = 'bulkBanner';
-        div.style.cssText = 'background:#dcfce7; padding:4px 12px; border-radius:6px; margin-top:8px; border-left:4px solid #22c55e; font-size:0.85rem;';
-        div.textContent = '🎉 Bulk order! Discounted shipping applied.';
-        container.parentNode.insertBefore(div, container.nextSibling);
-      }
-    } else {
-      if (existingBanner) existingBanner.remove();
+    if (freeShipping) {
+      selectedShippingTier = 'standard';
+      shippingCost = 0;
+      updateSummary(calculateSubtotal());
     }
   }
 
   function selectShippingTier(tier, price) {
+    const subtotal = calculateSubtotal();
+    const freeShipping = subtotal >= FREE_SHIPPING_THRESHOLD;
+    if (freeShipping && tier !== 'standard') {
+      alert('You have free standard shipping. To use Express or Overnight, you would need to pay extra, but free shipping is automatically applied when your order total exceeds Ksh 40,000.');
+      return;
+    }
     selectedShippingTier = tier;
     shippingCost = price;
     updateSummary(calculateSubtotal());
@@ -396,12 +538,7 @@
   function applyPromo() {
     const input = document.getElementById('promoInput');
     const code = input.value.trim();
-    if (!code) {
-      promoDiscount = 0;
-      document.getElementById('promoMessage').textContent = '';
-      updateSummary(calculateSubtotal());
-      return;
-    }
+    if (!code) { promoDiscount = 0; document.getElementById('promoMessage').textContent = ''; updateSummary(calculateSubtotal()); return; }
     fetch('/api/promo/validate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -430,38 +567,33 @@
   // ---- Address book ----
   function loadAddresses() {
     const token = window.customerToken;
-    if (!token) { 
-      document.getElementById('addressList').innerHTML = '<p style="color:#94a3b8; font-size:0.85rem;">Please login to add addresses.</p>';
-      return; 
-    }
-    fetch('/api/addresses', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    .then(res => res.json())
-    .then(addresses => {
-      const container = document.getElementById('addressList');
-      if (!addresses || addresses.length === 0) {
-        container.innerHTML = '<p style="color:#94a3b8; font-size:0.85rem;">No saved addresses. Add one below.</p>';
-        return;
-      }
-      let html = '';
-      addresses.forEach(addr => {
-        const selected = selectedAddressId === addr.id ? 'selected' : '';
-        const locationTag = addr.location_name ? `<span class="location-tag">📍 ${addr.location_name.substring(0, 25)}</span>` : '';
-        html += `<div class="address-item ${selected}" onclick="selectAddress(${addr.id})">
-          <input type="radio" name="address" ${selected ? 'checked' : ''}>
-          <div>
-            <strong>${addr.label}</strong> ${locationTag}
-            <br><span style="font-size:0.75rem;">${addr.address}</span>
-          </div>
-        </div>`;
-      });
-      container.innerHTML = html;
-      if (!selectedAddressId && addresses.length > 0) {
-        selectAddress(addresses[0].id);
-      }
-    })
-    .catch(() => {});
+    if (!token) { document.getElementById('addressList').innerHTML = '<p style="color:#94a3b8; font-size:0.85rem;">Please login to add addresses.</p>'; return; }
+    fetch('/api/addresses', { headers: { 'Authorization': `Bearer ${token}` } })
+      .then(res => res.json())
+      .then(addresses => {
+        const container = document.getElementById('addressList');
+        if (!addresses || addresses.length === 0) {
+          container.innerHTML = '<p style="color:#94a3b8; font-size:0.85rem;">No saved addresses. Add one below.</p>';
+          return;
+        }
+        let html = '';
+        addresses.forEach(addr => {
+          const selected = selectedAddressId === addr.id ? 'selected' : '';
+          let displayName = addr.location_name || addr.address;
+          if (displayName.length > 40) displayName = displayName.substring(0, 40) + '...';
+          html += `<div class="address-item ${selected}" onclick="selectAddress(${addr.id})">
+            <input type="radio" name="address" ${selected ? 'checked' : ''}>
+            <div>
+              <strong>${addr.label}</strong>
+              ${displayName ? `<span class="location-tag">📍 ${displayName}</span>` : ''}
+              <br><span style="font-size:0.7rem;">${addr.address}</span>
+            </div>
+          </div>`;
+        });
+        container.innerHTML = html;
+        if (!selectedAddressId && addresses.length > 0) selectAddress(addresses[0].id);
+      })
+      .catch(() => {});
   }
 
   function selectAddress(id) {
@@ -479,9 +611,7 @@
     document.getElementById('addressSuggestions').style.display = 'none';
   }
 
-  function closeAddressModal() {
-    document.getElementById('addressModal').classList.remove('active');
-  }
+  function closeAddressModal() { document.getElementById('addressModal').classList.remove('active'); }
 
   function saveAddress() {
     const label = document.getElementById('addressLabel').value;
@@ -509,12 +639,9 @@
     .catch(() => alert('Network error.'));
   }
 
-  // ---- Detect location (human-readable) ----
+  // ---- Detect location ----
   function detectLocationForAddress() {
-    if (!navigator.geolocation) {
-      alert('Geolocation is not supported.');
-      return;
-    }
+    if (!navigator.geolocation) { alert('Geolocation not supported.'); return; }
     document.getElementById('locationConfirmModal').classList.add('active');
     document.getElementById('detectedAddressDisplay').textContent = '⏳ Detecting...';
     document.getElementById('detectedSubAddress').textContent = '';
@@ -551,21 +678,13 @@
   }
 
   function confirmDetectedLocation() {
-    if (!detectedLat || !detectedLng) {
-      alert('Location not detected yet.');
-      return;
-    }
+    if (!detectedLat || !detectedLng) { alert('Location not detected yet.'); return; }
     const token = window.customerToken;
+    let locationName = detectedLocationName || detectedAddress;
     fetch('/api/addresses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({
-        label: 'Home',
-        address: detectedAddress,
-        lat: detectedLat,
-        lng: detectedLng,
-        location_name: detectedLocationName
-      })
+      body: JSON.stringify({ label: 'Home', address: detectedAddress, lat: detectedLat, lng: detectedLng, location_name: locationName })
     })
     .then(res => res.json())
     .then(data => {
@@ -592,7 +711,7 @@
     document.getElementById('manualLocationArea').style.display = 'none';
   }
 
-  // ---- Manual location with suggestions ----
+  // ---- Manual location ----
   document.getElementById('manualLocationInput')?.addEventListener('input', function() {
     const query = this.value.trim();
     const suggestionsDiv = document.getElementById('manualSuggestions');
@@ -655,13 +774,7 @@
     fetch('/api/addresses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({
-        label: 'Home',
-        address: detectedAddress,
-        lat: detectedLat || null,
-        lng: detectedLng || null,
-        location_name: detectedLocationName
-      })
+      body: JSON.stringify({ label: 'Home', address: detectedAddress, lat: detectedLat || null, lng: detectedLng || null, location_name: detectedLocationName })
     })
     .then(res => res.json())
     .then(data => {
@@ -695,15 +808,120 @@
     updateCartBadge();
   }
 
-  function clearCartWithConfirm() {
-    if (confirm('Clear your cart?')) {
-      saveCart([]);
-      renderCartPage();
-      updateCartBadge();
-    }
+  // ---- Payment modal ----
+  function openPaymentModal(amount) {
+    paymentTotal = amount;
+    document.getElementById('paymentTotal').textContent = `Ksh ${amount.toFixed(2)}`;
+    document.getElementById('paymentModal').classList.add('active');
+    document.getElementById('paymentDetails').style.display = 'none';
+    document.getElementById('phoneField').style.display = 'none';
+    document.getElementById('bankField').style.display = 'none';
+    document.getElementById('paypalField').style.display = 'none';
+    selectedPaymentMethod = '';
+    document.querySelectorAll('.method').forEach(el => el.classList.remove('selected'));
+    document.getElementById('paymentStatus').textContent = '';
+    document.getElementById('paymentStatus').style.color = '';
   }
 
-  // ---- Place order ----
+  function selectPaymentMethod(method) {
+    selectedPaymentMethod = method;
+    document.querySelectorAll('.method').forEach(el => el.classList.remove('selected'));
+    document.querySelector(`.method[onclick="selectPaymentMethod('${method}')"]`).classList.add('selected');
+    document.getElementById('paymentDetails').style.display = 'block';
+    document.getElementById('phoneField').style.display = 'none';
+    document.getElementById('bankField').style.display = 'none';
+    document.getElementById('paypalField').style.display = 'none';
+    if (method === 'mpesa' || method === 'airtel') {
+      document.getElementById('phoneField').style.display = 'block';
+      document.getElementById('paymentPhone').placeholder = method === 'mpesa' ? '0712345678' : '0712345678';
+      document.getElementById('paymentPhone').value = '';
+    } else if (method === 'bank') {
+      document.getElementById('bankField').style.display = 'block';
+      document.getElementById('paymentAccount').value = '';
+      document.getElementById('bankSearch').value = '';
+      document.getElementById('selectedBank').value = '';
+    } else if (method === 'paypal') {
+      document.getElementById('paypalField').style.display = 'block';
+      document.getElementById('paymentPaypalEmail').value = '';
+    }
+    document.getElementById('paymentStatus').textContent = '';
+  }
+
+  function submitPayment() {
+    if (!selectedPaymentMethod) {
+      document.getElementById('paymentStatus').textContent = '❌ Please select a payment method.';
+      document.getElementById('paymentStatus').style.color = '#ef4444';
+      return;
+    }
+    let phone = '', account = '', bank = '', pin = '';
+    if (selectedPaymentMethod === 'mpesa' || selectedPaymentMethod === 'airtel') {
+      phone = document.getElementById('paymentPhone').value.trim();
+      pin = document.getElementById('paymentPin').value.trim();
+      if (!phone) { document.getElementById('paymentStatus').textContent = '❌ Phone number required.'; document.getElementById('paymentStatus').style.color = '#ef4444'; return; }
+      if (!pin) { document.getElementById('paymentStatus').textContent = '❌ PIN required.'; document.getElementById('paymentStatus').style.color = '#ef4444'; return; }
+    } else if (selectedPaymentMethod === 'bank') {
+      bank = document.getElementById('selectedBank').value || document.getElementById('bankSearch').value;
+      account = document.getElementById('paymentAccount').value.trim();
+      pin = document.getElementById('paymentBankPin').value.trim();
+      if (!bank) { document.getElementById('paymentStatus').textContent = '❌ Please select a bank.'; document.getElementById('paymentStatus').style.color = '#ef4444'; return; }
+      if (!account) { document.getElementById('paymentStatus').textContent = '❌ Account number required.'; document.getElementById('paymentStatus').style.color = '#ef4444'; return; }
+      if (!pin) { document.getElementById('paymentStatus').textContent = '❌ PIN required.'; document.getElementById('paymentStatus').style.color = '#ef4444'; return; }
+    } else if (selectedPaymentMethod === 'paypal') {
+      const email = document.getElementById('paymentPaypalEmail').value.trim();
+      pin = document.getElementById('paymentPaypalPin').value.trim();
+      if (!email) { document.getElementById('paymentStatus').textContent = '❌ PayPal email required.'; document.getElementById('paymentStatus').style.color = '#ef4444'; return; }
+      if (!pin) { document.getElementById('paymentStatus').textContent = '❌ Password required.'; document.getElementById('paymentStatus').style.color = '#ef4444'; return; }
+    }
+
+    const token = window.customerToken;
+    if (!token) { alert('Please login first.'); return; }
+
+    document.getElementById('paymentStatus').textContent = '⏳ Processing payment...';
+    document.getElementById('paymentStatus').style.color = '#2563eb';
+
+    fetch('/api/payments/initiate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({
+        orderId: pendingOrderId,
+        method: selectedPaymentMethod,
+        amount: paymentTotal,
+        phone: phone,
+        account: account,
+        bank: bank,
+        pin: pin
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        document.getElementById('paymentStatus').textContent = '✅ ' + data.message;
+        document.getElementById('paymentStatus').style.color = '#16a34a';
+        // Payment successful, close modal and redirect to account
+        setTimeout(() => {
+          closePaymentModal();
+          alert('Payment successful! Your order has been confirmed.');
+          window.location.href = '/account.html';
+        }, 1500);
+      } else {
+        document.getElementById('paymentStatus').textContent = '❌ ' + data.message;
+        document.getElementById('paymentStatus').style.color = '#ef4444';
+        // Record failure but allow retry
+      }
+    })
+    .catch(err => {
+      document.getElementById('paymentStatus').textContent = '❌ Network error. Please try again.';
+      document.getElementById('paymentStatus').style.color = '#ef4444';
+      console.error(err);
+    });
+  }
+
+  function closePaymentModal() {
+    document.getElementById('paymentModal').classList.remove('active');
+    document.getElementById('paymentStatus').textContent = '';
+  }
+
+  // ---- Place order (creates order, opens payment) ----
   function placeOrder() {
     if (!isLoggedIn()) {
       alert('Please login to place an order.');
@@ -727,16 +945,19 @@
       alert('Invalid total amount.');
       return;
     }
+
     const items = cart.map(item => ({
       productId: item.id,
       name: item.name,
       price: item.price,
       quantity: item.quantity,
-      image: item.image || ''
+      image: item.image || '',
+      variant_name: item.variant_name || 'Default'
     }));
     const orderNotes = document.getElementById('orderNotes').value.trim();
 
     const token = window.customerToken;
+    // Create order first (status pending_payment)
     fetch('/api/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -754,16 +975,11 @@
     .then(res => res.json())
     .then(data => {
       if (data.success) {
-        alert('✅ Order placed successfully!');
-        saveCart([]);
-        renderCartPage();
-        updateCartBadge();
-        // Optionally offer location update for this order
-        if (confirm('📍 Would you like to confirm your delivery location for this order?')) {
-          detectLocationForAddress();
-        }
+        pendingOrderId = data.order.id;
+        // Open payment modal
+        openPaymentModal(grandTotal);
       } else {
-        alert('❌ Failed to place order: ' + (data.error || 'Unknown error'));
+        alert('❌ Failed to create order: ' + (data.error || 'Unknown error'));
       }
     })
     .catch(() => alert('❌ Network error.'));
@@ -771,10 +987,7 @@
 
   // ---- Timer ----
   function startReservationTimer() {
-    if (getCart().length === 0) {
-      document.getElementById('stockTimer').style.display = 'none';
-      return;
-    }
+    if (getCart().length === 0) { document.getElementById('stockTimer').style.display = 'none'; return; }
     document.getElementById('stockTimer').style.display = 'block';
     let timeLeft = reservationTime;
     const timerDisplay = document.getElementById('timerDisplay');
@@ -783,10 +996,7 @@
       const mins = Math.floor(timeLeft / 60);
       const secs = timeLeft % 60;
       timerDisplay.textContent = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
-      if (timeLeft <= 0) {
-        clearInterval(timerInterval);
-        alert('Items reservation expired. Please refresh cart.');
-      }
+      if (timeLeft <= 0) { clearInterval(timerInterval); alert('Items reservation expired. Please refresh cart.'); }
     }, 1000);
   }
 
@@ -798,11 +1008,11 @@
         const container = document.getElementById('recommendedGrid');
         if (!container) return;
         container.innerHTML = products.slice(0, 6).map(p => `
-          <div class="related-item" onclick="location.href='/product-detail.html?id=${p.id}'" style="flex:0 0 140px; background:#f8fafc; border-radius:8px; overflow:hidden; cursor:pointer;">
-            ${p.image ? `<img src="${p.image}" alt="${p.name}" style="width:100%; height:90px; object-fit:cover;">` : `<div style="height:90px; display:flex; align-items:center; justify-content:center; background:#e2e8f0; font-size:2rem;">📦</div>`}
-            <div style="padding:4px 8px;">
-              <div style="font-weight:600; font-size:0.8rem;">${p.name}</div>
-              <div style="font-size:0.8rem; color:#2563eb;">${p.price}</div>
+          <div class="related-item" onclick="location.href='/product-detail.html?id=${p.id}'">
+            ${p.image ? `<img src="${p.image}" alt="${p.name}">` : `<div class="no-image">📦</div>`}
+            <div class="related-info">
+              <div class="related-name">${p.name}</div>
+              <div class="related-price">${p.price}</div>
             </div>
           </div>
         `).join('');
@@ -810,16 +1020,10 @@
       .catch(() => {});
   }
 
-  function logout() {
-    localStorage.removeItem('customerToken');
-    window.location.href = '/';
-  }
-
   // ---- Expose functions ----
   window.renderCartPage = renderCartPage;
   window.updateCartQty = updateCartQty;
   window.removeItemFromCart = removeItemFromCart;
-  window.clearCartWithConfirm = clearCartWithConfirm;
   window.placeOrder = placeOrder;
   window.selectShippingTier = selectShippingTier;
   window.applyPromo = applyPromo;
@@ -834,6 +1038,11 @@
   window.submitManualLocation = submitManualLocation;
   window.selectManualSuggestion = selectManualSuggestion;
   window.selectAddressSuggestion = selectAddressSuggestion;
+  window.selectPaymentMethod = selectPaymentMethod;
+  window.submitPayment = submitPayment;
+  window.closePaymentModal = closePaymentModal;
+  window.filterBanks = filterBanks;
+  window.selectBank = selectBank;
 </script>
 </body>
 </html>

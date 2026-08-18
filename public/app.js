@@ -40,19 +40,15 @@ function setCurrentUser(user) {
   }
 }
 
-// Load initial user from localStorage
 const storedUser = localStorage.getItem('currentUser');
 if (storedUser) {
   try {
     window.currentUser = JSON.parse(storedUser);
   } catch (e) {}
 }
-if (window.customerToken) {
-  // will be verified later
-}
 
 // ============================================================
-//  CART SYNC FUNCTIONS (NEW)
+//  CART SYNC FUNCTIONS
 // ============================================================
 async function syncCartToServer() {
   if (!isLoggedIn()) return;
@@ -92,7 +88,6 @@ async function loadCartFromServer() {
   }
 }
 
-// ---- Override saveCart to sync ----
 const originalSaveCart = window.saveCart || function(cart) { localStorage.setItem('cart', JSON.stringify(cart)); updateCartBadge(); };
 window.saveCart = function(cart) {
   localStorage.setItem('cart', JSON.stringify(cart));
@@ -101,7 +96,6 @@ window.saveCart = function(cart) {
   if (window.renderCartPage) window.renderCartPage();
 };
 
-// ---- Override login/register to load cart ----
 const originalLogin = window.handleAuthLogin;
 window.handleAuthLogin = async function() {
   await originalLogin.apply(this, arguments);
@@ -115,7 +109,7 @@ window.handleAuthRegister = async function() {
 };
 
 // ============================================================
-//  TYPING EFFECT & DOM READY
+//  DOM READY & MAP TOGGLE
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
   const heroTitle = document.getElementById('heroTitle');
@@ -133,8 +127,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 60);
   }
   updateCartBadge();
+  updateNavCartBadge();
 
-  // ---- MAP TOGGLE ON PUBLIC PAGE ----
   const showMapBtn = document.getElementById('showMapBtn');
   const mapSection = document.getElementById('staticMapSection');
   const liveSection = document.getElementById('liveLocationSection');
@@ -301,6 +295,7 @@ function logout() {
   closeAuthModal();
   renderGrid();
   updateCartBadge();
+  updateNavCartBadge();
   const dropdown = document.getElementById('profileDropdown');
   if (dropdown) dropdown.style.display = 'none';
   if (window.location.pathname === '/account.html') {
@@ -394,6 +389,7 @@ async function handleAuthLogin() {
       await loadCartFromServer();
       renderGrid();
       updateCartBadge();
+      updateNavCartBadge();
       if (chatOpen) {
         showChatPanel();
       }
@@ -450,6 +446,7 @@ async function handleAuthRegister() {
       await loadCartFromServer();
       renderGrid();
       updateCartBadge();
+      updateNavCartBadge();
       if (chatOpen) {
         showChatPanel();
       }
@@ -502,8 +499,22 @@ function updateCartBadge() {
       }
     }
   });
+  updateNavCartBadge();
 }
 window.updateCartBadge = updateCartBadge;
+
+function updateNavCartBadge() {
+  const badge = document.getElementById('navCartBadge');
+  if (badge) {
+    const count = getCartCount();
+    if (count > 0) {
+      badge.textContent = count;
+      badge.classList.add('show');
+    } else {
+      badge.classList.remove('show');
+    }
+  }
+}
 
 function addToCart(productId, quantity = 1) {
   if (!isLoggedIn()) {
@@ -517,16 +528,18 @@ function addToCart(productId, quantity = 1) {
     return;
   }
   const cart = getCart();
-  const existing = cart.find(item => item.id === productId);
+  const existing = cart.find(item => item.id === productId && !item.variant_id);
   if (existing) {
     existing.quantity += quantity;
   } else {
     cart.push({
       id: product.id,
+      variant_id: null,
       name: product.name,
       price: product.price,
       image: product.image || '',
-      quantity: quantity
+      quantity: quantity,
+      variant_name: 'Default'
     });
   }
   saveCart(cart);
@@ -628,7 +641,8 @@ window.addCardToCart = addCardToCart;
 //  HELPER: ROTATE PRODUCTS EVERY 12 HOURS
 // ============================================================
 function getRotatedProducts(products) {
-  if (!products || products.length === 0) return products;
+  if (!products || !Array.isArray(products)) return [];
+  if (products.length === 0) return products;
   const seed = Math.floor(Date.now() / (12 * 60 * 60 * 1000));
   const offset = seed % products.length;
   return products.slice(offset).concat(products.slice(0, offset));
@@ -640,6 +654,7 @@ function getRotatedProducts(products) {
 async function loadShopProfile() {
   try {
     const res = await fetch('/api/shop');
+    if (!res.ok) throw new Error('Failed to load shop');
     const shop = await res.json();
     const nameHeader = document.getElementById('shopNameHeader');
     if (nameHeader) nameHeader.textContent = shop.name || 'Our Business';
@@ -749,12 +764,27 @@ function addImageToSlideshow(imageUrl) {
 }
 
 // ============================================================
-//  LOAD PRODUCTS
+//  LOAD PRODUCTS (with error handling)
 // ============================================================
 async function loadProducts() {
   try {
     const res = await fetch('/api/products');
-    allProducts = await res.json();
+    if (!res.ok) {
+      console.error('Failed to load products:', res.status);
+      allProducts = [];
+      rotatedProducts = [];
+      renderGrid();
+      return;
+    }
+    const data = await res.json();
+    if (!Array.isArray(data)) {
+      console.error('Products API returned invalid data:', data);
+      allProducts = [];
+      rotatedProducts = [];
+      renderGrid();
+      return;
+    }
+    allProducts = data;
     rotatedProducts = getRotatedProducts(allProducts);
     allProducts.forEach(p => {
       if (p.image) addImageToSlideshow(p.image);
@@ -764,6 +794,9 @@ async function loadProducts() {
     updateCartBadge();
   } catch (err) {
     console.error('❌ Error loading products:', err);
+    allProducts = [];
+    rotatedProducts = [];
+    renderGrid();
   }
 }
 
@@ -805,9 +838,9 @@ function changeSlide(direction) {
 window.changeSlide = changeSlide;
 
 // ============================================================
-//  PRODUCT GRID
+//  PRODUCT GRID (with clickable images, hover preview, variants)
 // ============================================================
-function renderGrid() {
+async function renderGrid() {
   const grid = document.getElementById('productGrid');
   if (!grid) return;
   if (!rotatedProducts.length) {
@@ -815,40 +848,77 @@ function renderGrid() {
     return;
   }
 
+  // Fetch variants for each product
+  const variantMap = {};
+  for (let product of rotatedProducts) {
+    try {
+      const res = await fetch(`/api/products/${product.id}/detail`);
+      if (!res.ok) {
+        variantMap[product.id] = [];
+        continue;
+      }
+      const data = await res.json();
+      variantMap[product.id] = data.variants || [];
+    } catch (e) {
+      variantMap[product.id] = [];
+    }
+  }
+
   grid.innerHTML = rotatedProducts.map(p => {
     const cart = getCart();
     const inCart = cart.some(item => item.id === p.id);
-    const btnText = inCart ? '➕ Add More' : '🛒 Add to Cart';
-    const btnClass = inCart ? 'btn btn-success' : 'btn btn-primary';
-    const tickHtml = inCart ? '<span class="green-tick">✔</span>' : '';
+    const btnText = inCart ? 'Add More' : 'Add to Cart';
+    const btnClass = inCart ? 'in-cart' : '';
     const qtyId = `qty-${p.id}`;
 
     let imageHtml = '';
     if (p.image) {
-      imageHtml = `<img src="${p.image}" alt="${p.name}" loading="lazy" onerror="this.style.display='none';this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;background:#e2e8f0;font-size:2rem;\\'>📦</div>'">`;
+      imageHtml = `<img src="${p.image}" alt="${p.name}" loading="lazy" onerror="this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;background:#e2e8f0;font-size:2rem;\\'>📦</div>'">`;
     } else {
       imageHtml = `<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#e2e8f0;font-size:2rem;">📦</div>`;
     }
 
+    // Build hover preview
+    const variants = variantMap[p.id] || [];
+    let swatchesHtml = '';
+    if (variants.length > 0) {
+      swatchesHtml = '<div class="variant-swatches">';
+      variants.forEach(v => {
+        const media = v.media || [];
+        const img = media.find(m => m.type === 'image');
+        const bg = img ? `url(${img.url})` : '';
+        swatchesHtml += `<div class="swatch" style="background-image:${bg};" title="${v.name}" onclick="event.stopPropagation(); location.href='/product-detail.html?id=${p.id}&variant=${v.id}'"></div>`;
+      });
+      swatchesHtml += '</div>';
+    }
+
+    const ratingHtml = p.rating ? `<div class="product-rating"><span>⭐</span>(${p.rating})</div>` : '';
+
     return `
       <div class="product-card">
-        <div class="media-wrap">
-          ${p.video ? `<video src="${p.video}" controls></video>` : imageHtml}
+        <div class="media-wrap" onclick="location.href='/product-detail.html?id=${p.id}'">
+          ${imageHtml}
+          <div class="quick-view-icon"><i class="fas fa-eye"></i></div>
           ${p.isFlashSale ? `<div class="flash-badge">🔥</div>` : ''}
           ${p.isNewArrival ? `<div class="new-badge">🆕</div>` : ''}
+          <div class="hover-preview">
+            <div class="product-name">${p.name}</div>
+            <div class="product-price">${p.price}</div>
+            ${ratingHtml}
+            ${swatchesHtml}
+          </div>
         </div>
         <div class="info">
-          <div class="name">${p.name} ${tickHtml}</div>
+          <div class="name">${p.name} ${inCart ? '<span class="green-tick">✔</span>' : ''}</div>
           <div class="price">${p.price}</div>
           ${p.rating ? `<div class="rating"><span>⭐</span>(${p.rating})</div>` : ''}
-          <div style="display:flex; align-items:center; gap:6px; flex-wrap:nowrap; margin-top:6px;">
-            <button class="btn btn-details" onclick="openDetails(${p.id})">See Details</button>
-            <div style="display:flex; align-items:center; gap:4px; background:#f1f5f9; border-radius:30px; padding:2px 6px; flex-shrink:0;">
-              <button onclick="changeCardQty(${p.id}, -1)" style="width:24px; height:24px; border-radius:50%; border:1px solid #d1d5db; background:white; font-size:1rem; cursor:pointer; line-height:1;">−</button>
-              <span id="${qtyId}" style="font-weight:700; min-width:20px; text-align:center;">1</span>
-              <button onclick="changeCardQty(${p.id}, 1)" style="width:24px; height:24px; border-radius:50%; border:1px solid #d1d5db; background:white; font-size:1rem; cursor:pointer; line-height:1;">+</button>
+          <div class="actions">
+            <div class="qty-control">
+              <button onclick="changeCardQty(${p.id}, -1)">−</button>
+              <span id="${qtyId}">1</span>
+              <button onclick="changeCardQty(${p.id}, 1)">+</button>
             </div>
-            <button class="${btnClass}" style="font-size:0.75rem; padding:4px 12px; white-space:nowrap;" onclick="addCardToCart(${p.id})">
+            <button class="btn-add ${btnClass}" onclick="addCardToCart(${p.id})">
               <i class="fas fa-cart-plus"></i> ${btnText}
             </button>
           </div>
@@ -863,116 +933,12 @@ window.renderGrid = renderGrid;
 //  OPEN DETAILS MODAL
 // ============================================================
 function openDetails(productId) {
-  const product = allProducts.find(p => p.id === productId);
-  if (!product) return;
-  currentModalProductId = productId;
-  modalQty = 1;
-  const qtySpan = document.getElementById('modalQty');
-  if (qtySpan) qtySpan.textContent = '1';
-
-  const img = document.getElementById('detailImage');
-  const vid = document.getElementById('detailVideo');
-  if (img && vid) {
-    if (product.image) {
-      img.src = product.image;
-      img.style.display = 'block';
-      vid.style.display = 'none';
-      img.onerror = function() { this.style.display = 'none'; };
-    } else if (product.video) {
-      vid.src = product.video;
-      vid.style.display = 'block';
-      img.style.display = 'none';
-    } else {
-      img.style.display = 'none';
-      vid.style.display = 'none';
-    }
-  }
-
-  const nameEl = document.getElementById('detailName');
-  const priceEl = document.getElementById('detailPrice');
-  const ratingEl = document.getElementById('detailRating');
-  const descEl = document.getElementById('detailDescription');
-  const contactEl = document.getElementById('detailContact');
-  const shippingEl = document.getElementById('detailShipping');
-  const badgesEl = document.getElementById('detailBadges');
-  const actionsEl = document.getElementById('detailActions');
-
-  if (nameEl) nameEl.textContent = product.name;
-  if (priceEl) priceEl.textContent = product.price;
-  if (ratingEl) ratingEl.textContent = product.rating ? `⭐ ${product.rating}` : '';
-  if (descEl) descEl.textContent = product.description || 'No description available.';
-  if (contactEl) contactEl.textContent = product.contact || 'Contact seller';
-  if (shippingEl) shippingEl.textContent = product.shipping || '';
-
-  if (badgesEl) {
-    badgesEl.innerHTML = `
-      ${product.badge1 ? `<span class="badge badge-green">${product.badge1}</span>` : ''}
-      ${product.badge2 ? `<span class="badge badge-blue">${product.badge2}</span>` : ''}
-      ${product.isFlashSale ? `<span class="tag tag-flash">🔥 Flash Sale</span>` : ''}
-      ${product.isNewArrival ? `<span class="tag tag-new">🆕 New Arrival</span>` : ''}
-    `;
-  }
-
-  const baseUrl = window.location.origin;
-  const productName = encodeURIComponent(product.name);
-  const whatsappLink = `https://wa.me/?text=May%20we%20talk%20about%20this%20${productName}%3F%20View%20here%3A%20${baseUrl}`;
-  if (actionsEl) {
-    actionsEl.innerHTML = `
-      <button class="btn btn-success" onclick="openChatWithProduct('${product.name.replace(/'/g, "\\'")}')">
-        <i class="fas fa-comment-dots"></i> Let's Talk
-      </button>
-      <a href="${whatsappLink}" target="_blank" class="btn btn-whatsapp" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
-      <a href="https://tiktok.com" target="_blank" class="btn btn-tiktok" title="TikTok"><i class="fab fa-tiktok"></i></a>
-      <a href="https://instagram.com" target="_blank" class="btn btn-instagram" title="Instagram"><i class="fab fa-instagram"></i></a>
-      <a href="https://facebook.com" target="_blank" class="btn btn-facebook" title="Facebook"><i class="fab fa-facebook-messenger"></i></a>
-      <a href="#" class="btn btn-phone" title="Call"><i class="fas fa-phone"></i></a>
-    `;
-  }
-
-  updateModalCartButton(productId);
-
-  const container = document.getElementById('relatedProductsContainer');
-  if (container) {
-    container.innerHTML = '<p style="color:#94a3b8;">Loading related products...</p>';
-    fetch(`/api/products/${productId}/related`)
-      .then(res => res.json())
-      .then(related => {
-        if (!related || related.length === 0) {
-          container.innerHTML = '<p style="color:#94a3b8;">No related products found.</p>';
-          return;
-        }
-        container.innerHTML = related.map(p => `
-          <div class="related-item" onclick="openDetails(${p.id})">
-            ${p.image ? `<img src="${p.image}" alt="${p.name}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'no-image\\'>📦</div>'">` : `<div class="no-image">📦</div>`}
-            <div class="related-info">
-              <div class="related-name">${p.name}</div>
-              <div class="related-price">${p.price}</div>
-              <button class="btn btn-details" onclick="event.stopPropagation(); openDetails(${p.id})">See Details</button>
-            </div>
-          </div>
-        `).join('');
-      })
-      .catch(err => {
-        console.error('Error fetching related products:', err);
-        container.innerHTML = '<p style="color:#94a3b8;">Could not load related products.</p>';
-      });
-  }
-
-  const modal = document.getElementById('detailModal');
-  if (modal) modal.classList.add('active');
+  window.location.href = `/product-detail.html?id=${productId}`;
 }
 window.openDetails = openDetails;
 
-function closeDetails() {
-  const modal = document.getElementById('detailModal');
-  if (modal) modal.classList.remove('active');
-  currentModalProductId = null;
-}
+function closeDetails() {}
 window.closeDetails = closeDetails;
-
-document.getElementById('detailModal')?.addEventListener('click', function(e) {
-  if (e.target === this) closeDetails();
-});
 
 // ============================================================
 //  CHAT FUNCTIONS
@@ -1046,10 +1012,8 @@ function renderChatMessages() {
     const sender = msg.from_user === 'Customer' ? msg.customer_name || 'Customer' : 'Seller';
     const isCustomer = msg.from_user === 'Customer';
     return `
-      <div style="background: ${isCustomer ? '#2563eb' : '#e2e8f0'};
-                  color: ${isCustomer ? 'white' : '#1e293b'};
-                  padding: 8px 14px; border-radius: 18px; max-width: 80%; align-self: ${isCustomer ? 'flex-end' : 'flex-start'};">
-        <div style="font-size:0.65rem; opacity:0.7;">${sender} · ${new Date(msg.timestamp).toLocaleString()}</div>
+      <div class="msg ${isCustomer ? 'customer' : 'seller'}">
+        <div class="meta" style="font-size:0.65rem; opacity:0.7;">${sender} · ${new Date(msg.timestamp).toLocaleString()}</div>
         <div>${msg.message}</div>
       </div>
     `;
@@ -1084,6 +1048,7 @@ async function checkLocationStatus() {
     const res = await fetch('/api/customer/location/status', {
       headers: { 'Authorization': `Bearer ${window.customerToken}` }
     });
+    if (!res.ok) return false;
     const data = await res.json();
     if (data.status === 'approved') {
       const liveSection = document.getElementById('liveLocationSection');
@@ -1161,6 +1126,22 @@ function getDistance(lat1, lng1, lat2, lng2) {
 }
 
 // ============================================================
+//  MODAL
+// ============================================================
+function openModal() {
+  const modal = document.getElementById('loginModal');
+  if (modal) modal.style.display = 'flex';
+}
+function closeModal() {
+  const modal = document.getElementById('loginModal');
+  if (modal) modal.style.display = 'none';
+}
+window.onclick = function(e) {
+  const modal = document.getElementById('loginModal');
+  if (modal && e.target === modal) closeModal();
+};
+
+// ============================================================
 //  START
 // ============================================================
 updateUserUI();
@@ -1187,6 +1168,7 @@ window.handleAuthRegister = handleAuthRegister;
 window.getCart = getCart;
 window.saveCart = saveCart;
 window.updateCartBadge = updateCartBadge;
+window.updateNavCartBadge = updateNavCartBadge;
 window.addToCart = addToCart;
 window.addToCartFromModal = addToCartFromModal;
 window.removeFromCart = removeFromCart;
