@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    /* (Same styles as before – kept unchanged) */
+    /* ===== BASE ===== */
     .product-detail-page { max-width: 100%; padding: 0 12px 20px; padding-bottom: 80px; }
     .back-link { display: inline-block; margin: 10px 0; color: #2563eb; text-decoration: none; font-weight: 600; font-size: 0.85rem; }
     .back-link:hover { text-decoration: underline; }
@@ -167,6 +167,7 @@
     }
     .btn-buy-now:hover { background: #d97706; }
 
+    /* ===== LET'S TALK SECTION ===== */
     .lets-talk-section {
       background: linear-gradient(145deg, #f0f9ff, #e0f2fe);
       border-radius: 12px;
@@ -422,19 +423,63 @@
   let allVariants = [];
   let shopData = null;
 
-  // ---- Helper to get shop info ----
+  // ---- Fetch shop data ----
   async function fetchShopData() {
     try {
       const res = await fetch('/api/shop');
       if (!res.ok) throw new Error('Failed to load shop');
       shopData = await res.json();
+      console.log('✅ Shop data loaded:', shopData);
     } catch (err) {
-      console.error('Error loading shop:', err);
+      console.error('❌ Error loading shop:', err);
       shopData = {};
     }
   }
 
-  // ---- Auto social links (UPDATED WhatsApp link) ----
+  // ---- WhatsApp link builder (robust) ----
+  function getWhatsAppLink(phoneNumber, message) {
+    if (!phoneNumber) {
+      console.warn('⚠️ WhatsApp number missing in shop profile.');
+      return '#';
+    }
+    const cleaned = phoneNumber.replace(/[^0-9]/g, '');
+    if (cleaned.length < 9) {
+      console.warn('⚠️ Invalid WhatsApp number:', phoneNumber);
+      return '#';
+    }
+    const encoded = encodeURIComponent(message);
+    const link = `https://wa.me/${cleaned}?text=${encoded}`;
+    console.log('📤 Generated WhatsApp link:', link);
+    return link;
+  }
+
+  // ---- Messenger link builder (pre-fill message) ----
+  function getMessengerLink(pageId, message) {
+    if (!pageId) {
+      console.warn('⚠️ Facebook page ID/username missing.');
+      return '#';
+    }
+    const encoded = encodeURIComponent(message);
+    // Use m.me with pre‑filled text (works on mobile)
+    // Some browsers might not support, but it's the best we have.
+    const link = `https://m.me/${pageId.replace('@', '')}?text=${encoded}`;
+    console.log('📤 Generated Messenger link:', link);
+    return link;
+  }
+
+  // ---- Instagram link (no pre-fill, but we open profile) ----
+  function getInstagramLink(username) {
+    if (!username) return '#';
+    return `https://www.instagram.com/${username.replace('@', '')}/`;
+  }
+
+  // ---- TikTok link ----
+  function getTikTokLink(username) {
+    if (!username) return '#';
+    return `https://www.tiktok.com/@${username.replace('@', '')}`;
+  }
+
+  // ---- Auto social links ----
   function getAutoSocialLinks(product) {
     const shop = shopData || {};
     const whatsappNumber = shop.whatsapp || '';
@@ -447,19 +492,16 @@
     const productPrice = product.price ? ` (${product.price})` : '';
     const message = `Hi, I'm interested in "${productName}"${productPrice}. Could I get more information about this product?`;
 
-    const encodedMessage = encodeURIComponent(message);
-    const cleanedNumber = whatsappNumber.replace(/[^0-9]/g, '');
-
     return {
-      // FIXED: Using api.whatsapp.com/send for reliable pre-filled message
-      whatsapp: cleanedNumber ? `https://api.whatsapp.com/send?phone=${cleanedNumber}&text=${encodedMessage}` : '#',
-      instagram: instagramUser ? `https://www.instagram.com/${instagramUser.replace('@', '')}/` : '#',
-      messenger: facebookUser ? `https://m.me/${facebookUser.replace('@', '')}` : '#',
-      tiktok: tiktokUser ? `https://www.tiktok.com/@${tiktokUser.replace('@', '')}` : '#',
+      whatsapp: getWhatsAppLink(whatsappNumber, message),
+      instagram: getInstagramLink(instagramUser),
+      messenger: getMessengerLink(facebookUser, message),
+      tiktok: getTikTokLink(tiktokUser),
       phone: phone ? `tel:${phone}` : '#'
     };
   }
 
+  // ---- Load product detail ----
   async function loadProductDetail() {
     try {
       await fetchShopData();
@@ -497,34 +539,30 @@
     }
     if (currentMediaIndex >= media.length) currentMediaIndex = 0;
 
-    // Build variant swatches
+    // Variant swatches
     let variantHtml = '';
     if (allVariants.length > 1) {
       variantHtml = `<div class="variant-selector"><span class="label">Color:</span>`;
       allVariants.forEach(v => {
         const active = v.id === currentVariantId ? 'active' : '';
-        const colorName = v.name || 'Default';
-        variantHtml += `<button class="variant-btn ${active}" onclick="selectVariant(${v.id})">${colorName}</button>`;
+        variantHtml += `<button class="variant-btn ${active}" onclick="selectVariant(${v.id})">${v.name}</button>`;
       });
       variantHtml += '</div>';
     } else {
       variantHtml = `<div class="variant-selector"><span class="label">Color:</span> <span style="font-weight:500;">${allVariants[0].name}</span></div>`;
     }
 
-    // Build thumbnails
+    // Thumbnails
     let thumbHtml = '';
     media.forEach((m, idx) => {
       const active = idx === currentMediaIndex ? 'active' : '';
-      thumbHtml += `<div class="thumb ${active}" onclick="selectMedia(${idx})">
-        <img src="${m.url}" alt="Media">
-      </div>`;
+      thumbHtml += `<div class="thumb ${active}" onclick="selectMedia(${idx})"><img src="${m.url}" alt="Media"></div>`;
     });
 
     // Main media
     let mainMediaHtml = '';
     if (media.length > 0 && media[currentMediaIndex]) {
-      const m = media[currentMediaIndex];
-      mainMediaHtml = `<img src="${m.url}" alt="${product.name}">`;
+      mainMediaHtml = `<img src="${media[currentMediaIndex].url}" alt="${product.name}">`;
     } else {
       mainMediaHtml = '<div style="padding:40px; text-align:center; color:#94a3b8;">No media</div>';
     }
@@ -536,12 +574,7 @@
     const btnText = isInCart ? 'Add More' : 'Add to Cart';
     const btnClass = isInCart ? 'in-cart' : '';
 
-    // Services / delivery info
-    let servicesHtml = '';
-    if (product.shipping) {
-      servicesHtml = `<div class="services"><span>Delivery Information:</span> ${product.shipping}</div>`;
-    }
-
+    let servicesHtml = product.shipping ? `<div class="services"><span>Delivery Information:</span> ${product.shipping}</div>` : '';
     let returnPolicyHtml = '';
     if (product.return_enabled !== false) {
       returnPolicyHtml = `<div class="return-policy"><strong>Return Policy:</strong> ${product.return_window_days||14} days, ${product.restocking_fee_percent||0}% fee. Condition: ${product.return_condition||'unopened'}.</div>`;
@@ -549,7 +582,7 @@
       returnPolicyHtml = `<div class="return-policy" style="background:#fee2e2;">Non-returnable (final sale).</div>`;
     }
 
-    // ---- "LET'S TALK" SECTION ----
+    // ---- "LET'S TALK" SECTION (SOCIAL ICONS) ----
     const socialLinks = getAutoSocialLinks(product);
     const messagePreview = `Hi, I'm interested in "${product.name}"${product.price ? ` (${product.price})` : ''}. Could I get more information about this product?`;
 
@@ -558,20 +591,21 @@
         <h3><i class="fas fa-comment-dots"></i> Let's Talk About This Product</h3>
         <p>Get instant answers via WhatsApp, Instagram, or Messenger – we're here to help!</p>
         <div class="social-icons">
-          <a href="${socialLinks.whatsapp}" target="_blank" class="whatsapp"><i class="fab fa-whatsapp"></i> WhatsApp</a>
-          <a href="${socialLinks.instagram}" target="_blank" class="instagram"><i class="fab fa-instagram"></i> Instagram</a>
-          <a href="${socialLinks.messenger}" target="_blank" class="messenger"><i class="fab fa-facebook-messenger"></i> Messenger</a>
-          <a href="${socialLinks.tiktok}" target="_blank" class="tiktok"><i class="fab fa-tiktok"></i> TikTok</a>
-          <a href="${socialLinks.phone}" class="phone"><i class="fas fa-phone"></i> Call</a>
+          <a href="${socialLinks.whatsapp}" target="_blank" class="whatsapp" title="Chat on WhatsApp"><i class="fab fa-whatsapp"></i> WhatsApp</a>
+          <a href="${socialLinks.instagram}" target="_blank" class="instagram" title="Instagram"><i class="fab fa-instagram"></i> Instagram</a>
+          <a href="${socialLinks.messenger}" target="_blank" class="messenger" title="Chat on Messenger"><i class="fab fa-facebook-messenger"></i> Messenger</a>
+          <a href="${socialLinks.tiktok}" target="_blank" class="tiktok" title="TikTok"><i class="fab fa-tiktok"></i> TikTok</a>
+          <a href="${socialLinks.phone}" class="phone" title="Call"><i class="fas fa-phone"></i> Call</a>
         </div>
         <div class="auto-message-preview">
           <div class="label">📨 Auto Message</div>
           <strong>${messagePreview}</strong>
-          <div style="font-size:0.65rem; color:#94a3b8; margin-top:2px;">This message will be pre-filled when you click any chat icon.</div>
+          <div style="font-size:0.65rem; color:#94a3b8; margin-top:2px;">This message will be pre-filled when you click WhatsApp or Messenger.</div>
         </div>
       </div>
     `;
 
+    // Reviews
     let reviewsHtml = '';
     if (reviews && reviews.length > 0) {
       reviewsHtml = reviews.map(r => `
@@ -585,6 +619,7 @@
       reviewsHtml = '<p style="font-size:0.8rem; color:#94a3b8;">No reviews yet.</p>';
     }
 
+    // Related
     let relatedHtml = '';
     if (related && related.length > 0) {
       relatedHtml = related.map(p => `
@@ -600,9 +635,7 @@
 
     container.innerHTML = `
       <div class="detail-container">
-        <div class="detail-main-media">
-          ${mainMediaHtml}
-        </div>
+        <div class="detail-main-media">${mainMediaHtml}</div>
         ${thumbHtml ? `<div class="media-thumbnails">${thumbHtml}</div>` : ''}
         ${variantHtml}
         <div class="detail-info">
@@ -655,6 +688,7 @@
     `;
   }
 
+  // ---- Variant & media functions ----
   function selectVariant(variantId) {
     currentVariantId = variantId;
     currentMediaIndex = 0;
@@ -739,14 +773,14 @@
     .catch(() => showToast('❌ Network error.', 'error'));
   }
 
-  // ---- Load on page ready ----
+  // ---- Initial load ----
   document.addEventListener('DOMContentLoaded', () => {
     loadProductDetail();
     updateCartBadge();
     updateNavCartBadge();
   });
 
-  // Expose functions globally
+  // Expose globals for inline onclick
   window.selectVariant = selectVariant;
   window.selectMedia = selectMedia;
   window.changeDetailQty = changeDetailQty;
