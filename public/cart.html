@@ -7,91 +7,437 @@
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
+    /* ===== CART PAGE STYLES ===== */
     .cart-page { max-width: 100%; padding: 0 12px 20px; padding-bottom: 80px; }
     .cart-page h1 { font-size: 1.3rem; font-weight: 800; }
     .cart-page .sub { font-size: 0.8rem; color: #64748b; margin-bottom: 12px; }
     .back-link { display: inline-block; margin-bottom: 12px; color: #2563eb; text-decoration: none; font-weight: 600; font-size: 0.85rem; }
-    .cart-item { display: flex; gap: 12px; padding: 10px 0; align-items: center; background: white; padding: 10px 12px; border-radius: 10px; margin-bottom: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); }
-    .cart-item img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; background: #f8fafc; }
+    .back-link:hover { text-decoration: underline; }
+
+    /* ===== CART ITEMS ===== */
+    .cart-item {
+      display: flex;
+      gap: 12px;
+      padding: 10px 0;
+      align-items: center;
+      background: white;
+      padding: 10px 12px;
+      border-radius: 10px;
+      margin-bottom: 6px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    }
+    .cart-item img {
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 8px;
+      background: #f8fafc;
+    }
     .cart-item .details { flex: 1; }
     .cart-item .details .name { font-weight: 600; font-size: 0.85rem; }
     .cart-item .details .variant { font-size: 0.65rem; color: #64748b; }
     .cart-item .details .price { font-weight: 700; font-size: 0.8rem; color: #0f172a; }
     .cart-item .qty-control { display: flex; align-items: center; gap: 4px; }
-    .cart-item .qty-control button { width: 26px; height: 26px; border-radius: 50%; border: none; background: #e2e8f0; font-weight: 700; cursor: pointer; }
+    .cart-item .qty-control button {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: none;
+      background: #e2e8f0;
+      font-weight: 700;
+      cursor: pointer;
+    }
     .cart-item .qty-control button:hover { background: #2563eb; color: white; }
     .cart-item .qty-control span { font-weight: 700; min-width: 18px; text-align: center; font-size: 0.85rem; }
     .cart-item .subtotal { font-weight: 700; font-size: 0.8rem; min-width: 60px; text-align: right; }
-    .cart-item .remove-btn { background: none; border: none; color: #ef4444; font-size: 1rem; cursor: pointer; padding: 4px; }
-    .section { background: white; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
-    .section h3 { font-weight: 700; font-size: 0.9rem; margin: 0 0 6px 0; border-bottom: 1px solid #e8ecf1; padding-bottom: 6px; }
+    .cart-item .remove-btn {
+      background: none;
+      border: none;
+      color: #ef4444;
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    /* ===== SECTIONS ===== */
+    .section {
+      background: white;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+    .section h3 {
+      font-weight: 700;
+      font-size: 0.9rem;
+      margin: 0 0 6px 0;
+      border-bottom: 1px solid #e8ecf1;
+      padding-bottom: 6px;
+    }
+    .section .sub-text {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+
+    /* ===== ADDRESS / PICKUP SELECTION ===== */
+    .delivery-toggle {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .delivery-toggle button {
+      flex: 1;
+      padding: 8px 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      background: white;
+      font-weight: 600;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .delivery-toggle button.active {
+      border-color: #2563eb;
+      background: #eff6ff;
+      color: #2563eb;
+    }
+    .delivery-toggle button:hover { border-color: #2563eb; }
+
+    .address-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      margin-bottom: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    .address-item.selected {
+      border-color: #2563eb;
+      background: #eff6ff;
+    }
+    .address-item .location-tag {
+      font-size: 0.6rem;
+      color: #2563eb;
+      background: #dbeafe;
+      padding: 0 6px;
+      border-radius: 8px;
+    }
+
+    .pickup-station-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      margin-bottom: 4px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .pickup-station-item:hover { border-color: #2563eb; }
+    .pickup-station-item.selected {
+      border-color: #2563eb;
+      background: #eff6ff;
+    }
+    .pickup-station-item .info { flex: 1; }
+    .pickup-station-item .info .name { font-weight: 600; font-size: 0.85rem; }
+    .pickup-station-item .info .address { font-size: 0.7rem; color: #475569; }
+    .pickup-station-item .info .hours { font-size: 0.65rem; color: #94a3b8; }
+    .pickup-station-item .distance {
+      font-size: 0.7rem;
+      color: #2563eb;
+      font-weight: 600;
+    }
+
+    .recipient-fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .recipient-fields input,
+    .recipient-fields select {
+      padding: 8px 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+
+    .location-selectors {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin: 8px 0;
+    }
+    .location-selectors select {
+      padding: 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+
+    /* ===== SHIPPING OPTIONS ===== */
     .shipping-options { display: grid; grid-template-columns: 1fr; gap: 6px; }
-    .shipping-option { border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; cursor: pointer; transition: 0.2s; }
+    .shipping-option {
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 8px 10px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
     .shipping-option:hover { border-color: #2563eb; }
-    .shipping-option.selected { border-color: #2563eb; background: #eff6ff; }
-    .shipping-option .tier-name { font-weight: 700; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; }
+    .shipping-option.selected {
+      border-color: #2563eb;
+      background: #eff6ff;
+    }
+    .shipping-option .tier-name {
+      font-weight: 700;
+      font-size: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
     .shipping-option .tier-price { font-size: 0.9rem; color: #2563eb; font-weight: 700; }
     .shipping-option .tier-reason { font-size: 0.7rem; color: #475569; margin-top: 2px; line-height: 1.4; }
-    .shipping-option .tier-why { font-size: 0.65rem; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 10px; margin-top: 2px; display: inline-block; }
-    .free-shipping-banner { background: #dcfce7; padding: 8px 12px; border-radius: 8px; border-left: 4px solid #22c55e; margin-bottom: 8px; font-size: 0.85rem; font-weight: 600; color: #166534; display: none; }
-    .shipping-info { font-size: 0.7rem; color: #64748b; margin-top: 4px; padding: 6px 10px; background: #f8fafc; border-radius: 6px; }
-    .address-item { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 4px; cursor: pointer; font-size: 0.8rem; }
-    .address-item.selected { border-color: #2563eb; background: #eff6ff; }
-    .address-item .location-tag { font-size: 0.6rem; color: #2563eb; background: #dbeafe; padding: 0 6px; border-radius: 8px; }
+    .shipping-option .tier-why {
+      font-size: 0.65rem;
+      color: #64748b;
+      background: #f1f5f9;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-top: 2px;
+      display: inline-block;
+    }
+
+    .free-shipping-banner {
+      background: #dcfce7;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border-left: 4px solid #22c55e;
+      margin-bottom: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #166534;
+      display: none;
+    }
+
+    .shipping-info {
+      font-size: 0.7rem;
+      color: #64748b;
+      margin-top: 4px;
+      padding: 6px 10px;
+      background: #f8fafc;
+      border-radius: 6px;
+    }
+
+    /* ===== PROMO & SUMMARY ===== */
     .promo-input { display: flex; gap: 6px; margin: 6px 0; }
     .promo-input input { flex:1; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.8rem; }
     .promo-input button { padding: 6px 12px; font-size: 0.75rem; }
-    .summary-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 0.85rem; }
-    .summary-row.total { font-weight: 800; font-size: 1.05rem; border-top: 2px solid #e2e8f0; padding-top: 8px; margin-top: 6px; }
-    .btn-place { width: 100%; padding: 14px; font-size: 1rem; background: #22c55e; color: white; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 0;
+      font-size: 0.85rem;
+    }
+    .summary-row.total {
+      font-weight: 800;
+      font-size: 1.05rem;
+      border-top: 2px solid #e2e8f0;
+      padding-top: 8px;
+      margin-top: 6px;
+    }
+    .btn-place {
+      width: 100%;
+      padding: 14px;
+      font-size: 1rem;
+      background: #22c55e;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.2s;
+    }
     .btn-place:hover { background: #16a34a; }
+
     .timer { color: #ef4444; font-weight: 700; font-size:0.9rem; margin-bottom: 12px; }
-    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; display: none; align-items: center; justify-content: center; padding: 16px; }
+
+    /* ===== MODAL ===== */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
     .modal-overlay.active { display: flex; }
-    .modal-box { background: white; max-width: 100%; width: 100%; max-height: 90vh; overflow-y: auto; padding: 20px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+    .modal-box {
+      background: white;
+      max-width: 100%;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
     .modal-box .btn-row { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end; flex-wrap: wrap; }
     .modal-box .payment-methods { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
-    .modal-box .payment-methods .method { padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
+    .modal-box .payment-methods .method {
+      padding: 8px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
     .modal-box .payment-methods .method:hover { border-color: #2563eb; }
     .modal-box .payment-methods .method.selected { border-color: #2563eb; background: #eff6ff; }
     .modal-box .payment-methods .method i { font-size: 1.2rem; width: 24px; }
-    .modal-box .payment-details input, .modal-box .payment-details select { width: 100%; padding: 8px; margin: 4px 0; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem; }
-    .bank-search-container { position: relative; }
-    .bank-search-container input { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; }
-    .bank-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #d1d5db; border-radius: 6px; max-height: 150px; overflow-y: auto; z-index: 10; display: none; }
-    .bank-dropdown.show { display: block; }
-    .bank-dropdown .bank-item { padding: 6px 10px; cursor: pointer; font-size: 0.85rem; }
-    .bank-dropdown .bank-item:hover { background: #f1f5f9; }
-    .cart-empty { text-align: center; padding: 40px 20px; }
-    .cart-empty i { font-size: 3rem; color: #94a3b8; margin-bottom: 12px; }
-    .cart-empty h2 { font-size: 1.2rem; color: #1e293b; }
-    .cart-empty p { color: #64748b; margin: 8px 0 16px; font-size: 0.9rem; }
-    .cart-empty .btn { padding: 10px 24px; }
-    .related-grid { display: flex; gap: 10px; overflow-x: auto; padding: 4px 0 10px; -webkit-overflow-scrolling: touch; }
-    .related-item { flex: 0 0 110px; background: #f8fafc; border-radius: 8px; overflow: hidden; cursor: pointer; }
-    .related-item img { width: 100%; height: 90px; object-fit: cover; }
-    .related-item .no-image { height: 90px; display: flex; align-items: center; justify-content: center; font-size: 2rem; background: #e2e8f0; }
-    .related-item .related-info { padding: 4px 6px; }
-    .related-item .related-name { font-weight: 600; font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .related-item .related-price { font-weight: 700; font-size: 0.7rem; color: #2563eb; }
-    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #e8ecf1; display: flex; justify-content: space-around; align-items: center; padding: 6px 0 env(safe-area-inset-bottom, 6px) 0; z-index: 1000; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
-    .bottom-nav a { display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #94a3b8; font-size: 0.55rem; font-weight: 600; padding: 2px 8px; position: relative; }
+    .modal-box .payment-details input,
+    .modal-box .payment-details select {
+      width: 100%;
+      padding: 8px;
+      margin: 4px 0;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+
+    /* ===== BOTTOM NAV ===== */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      border-top: 1px solid #e8ecf1;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 6px 0 env(safe-area-inset-bottom, 6px) 0;
+      z-index: 1000;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+    }
+    .bottom-nav a {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-decoration: none;
+      color: #94a3b8;
+      font-size: 0.55rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      position: relative;
+    }
     .bottom-nav a i { font-size: 1.3rem; margin-bottom: 1px; }
     .bottom-nav a.active { color: #2563eb; }
-    .bottom-nav a .nav-badge { position: absolute; top: -2px; right: 0; background: #ef4444; color: white; border-radius: 50%; padding: 0 5px; font-size: 0.5rem; min-width: 16px; text-align: center; font-weight: 700; display: none; }
+    .bottom-nav a .nav-badge {
+      position: absolute;
+      top: -2px;
+      right: 0;
+      background: #ef4444;
+      color: white;
+      border-radius: 50%;
+      padding: 0 5px;
+      font-size: 0.5rem;
+      min-width: 16px;
+      text-align: center;
+      font-weight: 700;
+      display: none;
+    }
     .bottom-nav a .nav-badge.show { display: block; }
-    .header { background: #ffffff; color: #1e293b; padding: 10px 14px; border-bottom: 1px solid #e8ecf1; position: sticky; top: 0; z-index: 99; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+
+    .header {
+      background: #ffffff;
+      color: #1e293b;
+      padding: 10px 14px;
+      border-bottom: 1px solid #e8ecf1;
+      position: sticky;
+      top: 0;
+      z-index: 99;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
     .header h1 { font-weight: 800; font-size: 1.1rem; color: #0f172a; }
     .header a { color: #64748b; margin: 0 8px; text-decoration: none; font-weight: 600; font-size: 0.75rem; }
     .header a:hover { color: #2563eb; }
     .header .header-right { display: flex; align-items: center; gap: 8px; }
-    .location-suggestions { background:white; border:1px solid #d1d5db; border-radius:6px; max-height:150px; overflow-y:auto; display:none; }
-    .location-suggestions div { padding:6px 10px; cursor:pointer; border-bottom:1px solid #e2e8f0; font-size:0.85rem; }
-    .location-suggestions div:hover { background:#e2e8f0; }
+
+    /* ===== LOCATION SUGGESTIONS ===== */
+    .location-suggestions {
+      background: white;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      max-height: 150px;
+      overflow-y: auto;
+      display: none;
+    }
+    .location-suggestions div {
+      padding: 6px 10px;
+      cursor: pointer;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 0.85rem;
+    }
+    .location-suggestions div:hover { background: #e2e8f0; }
+
+    .cart-empty {
+      text-align: center;
+      padding: 40px 20px;
+    }
+    .cart-empty i { font-size: 3rem; color: #94a3b8; margin-bottom: 12px; }
+    .cart-empty h2 { font-size: 1.2rem; color: #1e293b; }
+    .cart-empty p { color: #64748b; margin: 8px 0 16px; font-size: 0.9rem; }
+    .cart-empty .btn { padding: 10px 24px; }
+
+    .related-grid {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding: 4px 0 10px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .related-item {
+      flex: 0 0 110px;
+      background: #f8fafc;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .related-item img {
+      width: 100%;
+      height: 90px;
+      object-fit: cover;
+    }
+    .related-item .no-image {
+      height: 90px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      background: #e2e8f0;
+    }
+    .related-item .related-info { padding: 4px 6px; }
+    .related-item .related-name { font-weight: 600; font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .related-item .related-price { font-weight: 700; font-size: 0.7rem; color: #2563eb; }
   </style>
 </head>
 <body>
 
+<!-- ===== HEADER ===== -->
 <div class="header">
   <h1>🛍️ <span id="shopNameHeader">Our Business</span></h1>
   <div class="header-right">
@@ -104,35 +450,60 @@
   </div>
 </div>
 
+<!-- ===== CART PAGE ===== -->
 <div class="cart-page">
   <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Continue Shopping</a>
   <h1>🛒 Your Cart</h1>
-  <p class="sub">Review your items, choose shipping & payment, then place your order.</p>
+  <p class="sub">Review your items, choose delivery method, then place your order.</p>
 
   <div id="stockTimer" class="timer" style="display:none;">⏳ Items reserved for <span id="timerDisplay">15:00</span></div>
 
   <div id="cartItemsContainer"></div>
 
   <div id="checkoutSections" style="display:none;">
-    <!-- Delivery Address -->
+    <!-- ===== DELIVERY METHOD TOGGLE ===== -->
     <div class="section">
-      <h3>📍 Delivery Address</h3>
-      <div id="addressList"></div>
-      <div class="address-actions" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
-        <button class="btn btn-secondary" onclick="showAddAddress()" style="font-size:0.75rem; padding:4px 10px;">+ Add New</button>
-        <button class="btn btn-primary" onclick="detectLocationForAddress()" style="font-size:0.75rem; padding:4px 10px;"><i class="fas fa-map-marker-alt"></i> Track My Location</button>
+      <h3>📍 Delivery Method</h3>
+      <div class="delivery-toggle" id="deliveryToggle">
+        <button class="active" onclick="setDeliveryMethod('doorstep')">
+          <i class="fas fa-home"></i> Doorstep Delivery
+        </button>
+        <button onclick="setDeliveryMethod('pickup')">
+          <i class="fas fa-store"></i> Pickup Station
+        </button>
       </div>
     </div>
 
-    <!-- Shipping Options -->
+    <!-- ===== ADDRESS / PICKUP SELECTION ===== -->
+    <div class="section" id="addressSection">
+      <h3 id="addressSectionTitle">📍 Delivery Address</h3>
+      <div id="addressListContainer"></div>
+      <div class="address-actions" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+        <button class="btn btn-secondary" onclick="showAddAddress()" style="font-size:0.75rem; padding:4px 10px;">+ Add New Address</button>
+        <button class="btn btn-primary" onclick="detectLocation()" style="font-size:0.75rem; padding:4px 10px;"><i class="fas fa-map-marker-alt"></i> Use My Location</button>
+      </div>
+    </div>
+
+    <!-- ===== PICKUP STATIONS (hidden by default) ===== -->
+    <div class="section" id="pickupSection" style="display:none;">
+      <h3>📍 Pickup Stations Near You</h3>
+      <p class="sub-text">Select a pickup station where you'll collect your order.</p>
+      <div id="pickupStationsList"></div>
+      <div class="recipient-fields">
+        <input type="text" id="pickupRecipientName" placeholder="Recipient Name" />
+        <input type="text" id="pickupRecipientPhone" placeholder="Phone Number" />
+      </div>
+    </div>
+
+    <!-- ===== SHIPPING OPTIONS ===== -->
     <div class="section">
       <h3>🚚 Choose Your Shipping Speed</h3>
       <div id="freeShippingBanner" class="free-shipping-banner">🎉 Your order qualifies for FREE Standard Shipping! (Total ≥ Ksh 40,000)</div>
       <div class="shipping-options" id="shippingOptions"></div>
-      <div class="shipping-info">💡 Shipping fee is based on your order total – the more you buy, the more value you get. One fee for the whole order, not per product.</div>
+      <div class="shipping-info">💡 Shipping fee is based on your order total – the more you buy, the more value you get.</div>
     </div>
 
-    <!-- Promo Code -->
+    <!-- ===== PROMO CODE ===== -->
     <div class="section">
       <h3>🎁 Promo Code</h3>
       <div class="promo-input">
@@ -142,17 +513,18 @@
       <div id="promoMessage" style="font-size:0.75rem;"></div>
     </div>
 
-    <!-- Order Notes -->
+    <!-- ===== ORDER NOTES ===== -->
     <div class="section">
       <h3>📝 Special Instructions</h3>
-      <textarea id="orderNotes" placeholder="e.g., Leave at the back gate" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px; font-size:0.85rem;"></textarea>
+      <textarea id="orderNotes" placeholder="e.g., Leave at the gate, call on arrival" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px; font-size:0.85rem;"></textarea>
     </div>
 
-    <!-- Summary -->
+    <!-- ===== SUMMARY ===== -->
     <div class="section" style="background:white; border:2px solid #e2e8f0;">
       <h3>💰 Order Summary</h3>
       <div id="summaryDetails">
         <div class="summary-row"><span>Subtotal</span><span id="subtotalPrice">Ksh 0</span></div>
+        <div id="deliveryFeeRow" class="summary-row"><span>Delivery Fee</span><span id="deliveryFee">Ksh 0</span></div>
         <div id="shippingSummaryRow" class="summary-row"><span>Shipping</span><span id="shippingPrice">Ksh 0</span></div>
         <div id="discountSummaryRow" class="summary-row" style="display:none;"><span>Discount</span><span id="discountAmount">-Ksh 0</span></div>
         <div class="summary-row total"><span>Total</span><span id="cartTotal">Ksh 0</span></div>
@@ -163,34 +535,113 @@
     </div>
   </div>
 
-  <!-- Recommended -->
+  <!-- ===== RECOMMENDED ===== -->
   <div id="recommendedSection" style="margin-top:24px;">
     <h3>You may also like</h3>
     <div id="recommendedGrid" class="related-grid"></div>
   </div>
 </div>
 
-<!-- Address Modal -->
+<!-- ===== ADDRESS MODAL ===== -->
 <div class="modal-overlay" id="addressModal">
   <div class="modal-box">
     <h3>Add New Address</h3>
-    <label>Label: <select id="addressLabel"><option>Home</option><option>Office</option><option>Other</option></select></label><br><br>
-    <label>Address: <input type="text" id="addressInput" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px;"></label><br>
-    <div id="addressSuggestions" class="location-suggestions"></div>
-    <label style="margin-top:8px;">GPS (optional):</label>
-    <div style="display:flex; gap:6px; margin-top:4px;">
-      <input type="text" id="addressLat" placeholder="Latitude" style="flex:1; padding:6px; border:1px solid #d1d5db; border-radius:4px; font-size:0.8rem;">
-      <input type="text" id="addressLng" placeholder="Longitude" style="flex:1; padding:6px; border:1px solid #d1d5db; border-radius:4px; font-size:0.8rem;">
+    <div class="delivery-toggle" style="margin-bottom:10px;">
+      <button class="active" onclick="setModalDeliveryType('doorstep')" id="modalDoorstepBtn">
+        <i class="fas fa-home"></i> Doorstep
+      </button>
+      <button onclick="setModalDeliveryType('pickup')" id="modalPickupBtn">
+        <i class="fas fa-store"></i> Pickup Station
+      </button>
     </div>
-    <input type="hidden" id="addressLocationName">
+
+    <!-- Doorstep Fields -->
+    <div id="modalDoorstepFields">
+      <label>Recipient Name</label>
+      <input type="text" id="modalRecipientName" placeholder="Full name" />
+
+      <label>Phone Number</label>
+      <input type="text" id="modalRecipientPhone" placeholder="0712345678" />
+
+      <label>County</label>
+      <select id="modalCounty" onchange="loadSubCounties()">
+        <option value="">Select County</option>
+      </select>
+
+      <label>Sub-County</label>
+      <select id="modalSubCounty" onchange="loadWards()">
+        <option value="">Select Sub-County</option>
+      </select>
+
+      <label>Ward / Area</label>
+      <select id="modalWard">
+        <option value="">Select Ward</option>
+      </select>
+
+      <label>Building Name</label>
+      <input type="text" id="modalBuilding" placeholder="e.g., Lenana Tower" />
+
+      <label>Floor / Room</label>
+      <input type="text" id="modalFloorRoom" placeholder="e.g., 3rd floor, Room 310" />
+
+      <label>Road / Street</label>
+      <input type="text" id="modalRoad" placeholder="e.g., Lenana Road" />
+
+      <label>Estate / Neighborhood</label>
+      <input type="text" id="modalEstate" placeholder="e.g., Kilimani" />
+
+      <label>Nearest Landmark</label>
+      <input type="text" id="modalLandmark" placeholder="e.g., Near Equity Bank" />
+
+      <label>Delivery Instructions</label>
+      <textarea id="modalInstructions" placeholder="e.g., Call on arrival, leave at gate" rows="2"></textarea>
+
+      <label>GPS Coordinates (optional)</label>
+      <div style="display:flex; gap:6px;">
+        <input type="text" id="modalLat" placeholder="Latitude" style="flex:1;" />
+        <input type="text" id="modalLng" placeholder="Longitude" style="flex:1;" />
+      </div>
+    </div>
+
+    <!-- Pickup Station Fields -->
+    <div id="modalPickupFields" style="display:none;">
+      <label>Recipient Name</label>
+      <input type="text" id="modalPickupRecipientName" placeholder="Full name" />
+
+      <label>Phone Number</label>
+      <input type="text" id="modalPickupRecipientPhone" placeholder="0712345678" />
+
+      <label>County</label>
+      <select id="modalPickupCounty" onchange="loadPickupSubCounties()">
+        <option value="">Select County</option>
+      </select>
+
+      <label>Sub-County</label>
+      <select id="modalPickupSubCounty" onchange="loadPickupWards()">
+        <option value="">Select Sub-County</option>
+      </select>
+
+      <label>Ward / Area</label>
+      <select id="modalPickupWard">
+        <option value="">Select Ward</option>
+      </select>
+
+      <label>Nearest Landmark (optional)</label>
+      <input type="text" id="modalPickupLandmark" placeholder="e.g., Near Equity Bank" />
+    </div>
+
+    <div style="margin-top:10px;">
+      <label><input type="checkbox" id="modalSetDefault" /> Set as default address</label>
+    </div>
+
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="closeAddressModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveAddress()">Save</button>
+      <button class="btn btn-primary" onclick="saveAddress()">Save Address</button>
     </div>
   </div>
 </div>
 
-<!-- Payment Modal -->
+<!-- ===== PAYMENT MODAL ===== -->
 <div class="modal-overlay" id="paymentModal">
   <div class="modal-box">
     <h3>💳 Choose Payment Method</h3>
@@ -203,14 +654,12 @@
         <div class="method" onclick="selectPaymentMethod('bank')"><i class="fas fa-university"></i> Bank Transfer</div>
       </div>
       <div id="paymentDetails" style="display:none; margin-top:10px;">
-        <!-- M-Pesa / Airtel fields -->
         <div id="phoneField" style="display:none;">
           <label>Phone Number:</label>
-          <input type="text" id="paymentPhone" placeholder="e.g., 0712345678" class="payment-field">
+          <input type="text" id="paymentPhone" placeholder="0712345678" class="payment-field">
           <label>PIN:</label>
           <input type="password" id="paymentPin" placeholder="Enter your PIN" class="payment-field">
         </div>
-        <!-- Bank fields -->
         <div id="bankField" style="display:none;">
           <label>Select your bank:</label>
           <div class="bank-search-container">
@@ -223,7 +672,6 @@
           <label>PIN:</label>
           <input type="password" id="paymentBankPin" placeholder="Enter your PIN" class="payment-field">
         </div>
-        <!-- PayPal (simplified) -->
         <div id="paypalField" style="display:none;">
           <label>PayPal Email:</label>
           <input type="email" id="paymentPaypalEmail" placeholder="your@email.com" class="payment-field">
@@ -240,33 +688,7 @@
   </div>
 </div>
 
-<!-- Location Confirm Modal -->
-<div class="modal-overlay" id="locationConfirmModal">
-  <div class="modal-box">
-    <h3>📍 Location Detected</h3>
-    <div class="location-confirm">
-      <p style="font-weight:600; color:#16a34a;">✅ Your location was detected!</p>
-      <div class="address-display" id="detectedAddressDisplay">Loading...</div>
-      <div class="sub-address" id="detectedSubAddress"></div>
-      <p style="font-size:0.85rem; color:#64748b; margin-top:6px;">Is this where you want your order delivered?</p>
-      <div class="actions" style="display:flex; gap:6px; flex-wrap:wrap;">
-        <button class="btn btn-success" onclick="confirmDetectedLocation()"><i class="fas fa-check"></i> Yes, that's right</button>
-        <button class="btn btn-secondary" onclick="rejectDetectedLocation()"><i class="fas fa-edit"></i> No, type it</button>
-      </div>
-    </div>
-    <div id="manualLocationArea" style="display:none; margin-top:10px;">
-      <label>Type your location:</label>
-      <input type="text" id="manualLocationInput" placeholder="Start typing..." style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px; margin-top:4px;">
-      <div id="manualSuggestions" class="location-suggestions"></div>
-      <button class="btn btn-primary" onclick="submitManualLocation()" style="margin-top:6px;">Confirm</button>
-    </div>
-    <div class="btn-row">
-      <button class="btn btn-secondary" onclick="closeLocationConfirmModal()">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<!-- Bottom Nav -->
+<!-- ===== BOTTOM NAV ===== -->
 <div class="bottom-nav">
   <a href="/"><i class="fas fa-home"></i><span>Home</span></a>
   <a href="/category.html"><i class="fas fa-th-large"></i><span>Category</span></a>
@@ -282,25 +704,26 @@
 <script src="/socket.io/socket.io.js"></script>
 <script src="/app.js"></script>
 <script>
-  // ============================================================
-  // CART & PAYMENT LOGIC
-  // ============================================================
+  // ================================================================
+  //  CART & CHECKOUT LOGIC (Kilimall-style Address System)
+  // ================================================================
+
   let cartItems = [];
   let selectedShippingTier = 'standard';
   let shippingCost = 0;
+  let deliveryFee = 0;
   let promoDiscount = 0;
   let selectedAddressId = null;
+  let selectedPickupStationId = null;
+  let deliveryMethod = 'doorstep'; // 'doorstep' or 'pickup'
   let timerInterval = null;
   let reservationTime = 15 * 60;
-  let detectedLat = null;
-  let detectedLng = null;
-  let detectedAddress = null;
-  let detectedLocationName = null;
-  let selectedPaymentMethod = '';
   let pendingOrderId = null;
   let paymentTotal = 0;
 
   const FREE_SHIPPING_THRESHOLD = 40000;
+
+  // ---- Kenyan Banks ----
   const kenyanBanks = [
     "Equity Bank Kenya", "KCB Bank Kenya", "Co-operative Bank of Kenya",
     "NCBA Bank Kenya", "Stanbic Bank Kenya", "Standard Chartered Kenya",
@@ -318,8 +741,13 @@
     "United Bank of Africa (UBA)", "Access Bank Kenya", "SBM Bank Kenya"
   ];
 
+  // ================================================================
+  //  INIT
+  // ================================================================
   document.addEventListener('DOMContentLoaded', () => {
     loadShopProfile();
+    loadCounties();
+    loadPickupStations();
     renderCartPage();
     updateCartBadge();
     loadAddresses();
@@ -328,62 +756,392 @@
     populateBankDropdown();
   });
 
-  function populateBankDropdown() {
-    const dropdown = document.getElementById('bankDropdown');
-    dropdown.innerHTML = kenyanBanks.map(b => `<div class="bank-item" onclick="selectBank('${b}')">${b}</div>`).join('');
+  // ================================================================
+  //  DELIVERY METHOD
+  // ================================================================
+  function setDeliveryMethod(method) {
+    deliveryMethod = method;
+    document.querySelectorAll('#deliveryToggle button').forEach(btn => btn.classList.remove('active'));
+    if (method === 'doorstep') {
+      document.getElementById('deliveryToggle').querySelector('button:first-child').classList.add('active');
+      document.getElementById('addressSection').style.display = 'block';
+      document.getElementById('pickupSection').style.display = 'none';
+      document.getElementById('addressSectionTitle').textContent = '📍 Delivery Address';
+      loadAddresses();
+    } else {
+      document.getElementById('deliveryToggle').querySelector('button:last-child').classList.add('active');
+      document.getElementById('addressSection').style.display = 'none';
+      document.getElementById('pickupSection').style.display = 'block';
+      document.getElementById('addressSectionTitle').textContent = '📍 Pickup Station';
+      loadPickupStations();
+    }
+    updateSummary(calculateSubtotal());
   }
 
-  function filterBanks() {
-    const query = document.getElementById('bankSearch').value.toLowerCase();
-    const dropdown = document.getElementById('bankDropdown');
-    const items = dropdown.querySelectorAll('.bank-item');
-    let hasVisible = false;
-    items.forEach(el => {
-      const name = el.textContent.toLowerCase();
-      if (name.includes(query)) {
-        el.style.display = 'block';
-        hasVisible = true;
-      } else {
-        el.style.display = 'none';
+  // ================================================================
+  //  COUNTIES (Location Hierarchy)
+  // ================================================================
+  async function loadCounties() {
+    try {
+      const res = await fetch('/api/counties');
+      const counties = await res.json();
+      const selects = ['modalCounty', 'modalPickupCounty'];
+      selects.forEach(id => {
+        const select = document.getElementById(id);
+        if (select) {
+          select.innerHTML = '<option value="">Select County</option>';
+          counties.forEach(c => {
+            select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+          });
+        }
+      });
+    } catch (err) {
+      console.error('Error loading counties:', err);
+    }
+  }
+
+  async function loadSubCounties() {
+    const countyId = document.getElementById('modalCounty').value;
+    if (!countyId) return;
+    try {
+      const res = await fetch(`/api/sub-counties/${countyId}`);
+      const subCounties = await res.json();
+      const select = document.getElementById('modalSubCounty');
+      select.innerHTML = '<option value="">Select Sub-County</option>';
+      subCounties.forEach(sc => {
+        select.innerHTML += `<option value="${sc.id}">${sc.name}</option>`;
+      });
+    } catch (err) {
+      console.error('Error loading sub-counties:', err);
+    }
+  }
+
+  async function loadWards() {
+    const subCountyId = document.getElementById('modalSubCounty').value;
+    if (!subCountyId) return;
+    try {
+      const res = await fetch(`/api/wards/${subCountyId}`);
+      const wards = await res.json();
+      const select = document.getElementById('modalWard');
+      select.innerHTML = '<option value="">Select Ward</option>';
+      wards.forEach(w => {
+        select.innerHTML += `<option value="${w.id}">${w.name}</option>`;
+      });
+    } catch (err) {
+      console.error('Error loading wards:', err);
+    }
+  }
+
+  async function loadPickupSubCounties() {
+    const countyId = document.getElementById('modalPickupCounty').value;
+    if (!countyId) return;
+    try {
+      const res = await fetch(`/api/sub-counties/${countyId}`);
+      const subCounties = await res.json();
+      const select = document.getElementById('modalPickupSubCounty');
+      select.innerHTML = '<option value="">Select Sub-County</option>';
+      subCounties.forEach(sc => {
+        select.innerHTML += `<option value="${sc.id}">${sc.name}</option>`;
+      });
+    } catch (err) {
+      console.error('Error loading pickup sub-counties:', err);
+    }
+  }
+
+  async function loadPickupWards() {
+    const subCountyId = document.getElementById('modalPickupSubCounty').value;
+    if (!subCountyId) return;
+    try {
+      const res = await fetch(`/api/wards/${subCountyId}`);
+      const wards = await res.json();
+      const select = document.getElementById('modalPickupWard');
+      select.innerHTML = '<option value="">Select Ward</option>';
+      wards.forEach(w => {
+        select.innerHTML += `<option value="${w.id}">${w.name}</option>`;
+      });
+    } catch (err) {
+      console.error('Error loading pickup wards:', err);
+    }
+  }
+
+  // ================================================================
+  //  PICKUP STATIONS
+  // ================================================================
+  async function loadPickupStations() {
+    try {
+      const res = await fetch('/api/pickup-stations');
+      const stations = await res.json();
+      const container = document.getElementById('pickupStationsList');
+      if (!stations || stations.length === 0) {
+        container.innerHTML = '<p style="color:#94a3b8; font-size:0.85rem;">No pickup stations available near you.</p>';
+        return;
       }
-    });
-    dropdown.classList.toggle('show', hasVisible || query.length > 0);
-  }
-
-  function selectBank(bank) {
-    document.getElementById('bankSearch').value = bank;
-    document.getElementById('selectedBank').value = bank;
-    document.getElementById('bankDropdown').classList.remove('show');
-  }
-
-  // ---- Address suggestions ----
-  document.getElementById('addressInput')?.addEventListener('input', function() {
-    const query = this.value.trim();
-    const suggestionsDiv = document.getElementById('addressSuggestions');
-    if (query.length < 3) { suggestionsDiv.style.display = 'none'; return; }
-    fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5`)
-      .then(res => res.json())
-      .then(data => {
-        if (!data.length) { suggestionsDiv.style.display = 'none'; return; }
-        suggestionsDiv.style.display = 'block';
-        suggestionsDiv.innerHTML = data.map(item => `
-          <div onclick="selectAddressSuggestion('${item.display_name.replace(/'/g, "\\'")}', '${item.lat}', '${item.lon}')">
-            ${item.display_name}
+      container.innerHTML = stations.map(s => `
+        <div class="pickup-station-item" onclick="selectPickupStation(${s.id})" data-id="${s.id}">
+          <div class="info">
+            <div class="name">${s.name}</div>
+            <div class="address">${s.address}</div>
+            <div class="hours">${s.operating_hours || 'Mon - Sat 09:00-18:00'}</div>
           </div>
-        `).join('');
-      })
-      .catch(() => { suggestionsDiv.style.display = 'none'; });
-  });
-
-  function selectAddressSuggestion(address, lat, lng) {
-    document.getElementById('addressInput').value = address;
-    document.getElementById('addressLat').value = lat;
-    document.getElementById('addressLng').value = lng;
-    document.getElementById('addressLocationName').value = address;
-    document.getElementById('addressSuggestions').style.display = 'none';
+          <div class="distance">${s.distance || ''}</div>
+        </div>
+      `).join('');
+    } catch (err) {
+      console.error('Error loading pickup stations:', err);
+    }
   }
 
-  // ---- Render cart ----
+  function selectPickupStation(id) {
+    selectedPickupStationId = id;
+    document.querySelectorAll('.pickup-station-item').forEach(el => {
+      el.classList.toggle('selected', parseInt(el.dataset.id) === id);
+    });
+    updateSummary(calculateSubtotal());
+  }
+
+  // ================================================================
+  //  ADDRESS BOOK
+  // ================================================================
+  async function loadAddresses() {
+    const token = window.customerToken;
+    if (!token) {
+      document.getElementById('addressListContainer').innerHTML = '<p style="color:#94a3b8; font-size:0.85rem;">Please login to add addresses.</p>';
+      return;
+    }
+    try {
+      const res = await fetch('/api/addresses', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const addresses = await res.json();
+      const container = document.getElementById('addressListContainer');
+      if (!addresses || addresses.length === 0) {
+        container.innerHTML = '<p style="color:#94a3b8; font-size:0.85rem;">No saved addresses. Add one below.</p>';
+        return;
+      }
+      container.innerHTML = addresses.map(addr => {
+        const selected = selectedAddressId === addr.id ? 'selected' : '';
+        let displayName = addr.location_name || addr.address || '';
+        if (displayName.length > 50) displayName = displayName.substring(0, 50) + '...';
+        return `
+          <div class="address-item ${selected}" onclick="selectAddress(${addr.id})">
+            <input type="radio" name="address" ${selected ? 'checked' : ''}>
+            <div>
+              <strong>${addr.label}</strong>
+              ${addr.address_type ? ` <span style="font-size:0.55rem; background:#e2e8f0; padding:0 6px; border-radius:8px;">${addr.address_type}</span>` : ''}
+              ${displayName ? `<span class="location-tag">📍 ${displayName}</span>` : ''}
+              <br><span style="font-size:0.7rem;">${addr.address}</span>
+              ${addr.recipient_name ? `<br><span style="font-size:0.65rem; color:#64748b;">${addr.recipient_name} · ${addr.recipient_phone}</span>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+      if (!selectedAddressId && addresses.length > 0) {
+        selectAddress(addresses[0].id);
+      }
+    } catch (err) {
+      console.error('Error loading addresses:', err);
+    }
+  }
+
+  function selectAddress(id) {
+    selectedAddressId = id;
+    loadAddresses();
+    updateSummary(calculateSubtotal());
+  }
+
+  // ================================================================
+  //  ADDRESS MODAL
+  // ================================================================
+  function showAddAddress() {
+    document.getElementById('addressModal').classList.add('active');
+    resetModalFields();
+    loadCounties();
+  }
+
+  function closeAddressModal() {
+    document.getElementById('addressModal').classList.remove('active');
+  }
+
+  function setModalDeliveryType(type) {
+    document.getElementById('modalDoorstepFields').style.display = type === 'doorstep' ? 'block' : 'none';
+    document.getElementById('modalPickupFields').style.display = type === 'pickup' ? 'block' : 'none';
+    document.getElementById('modalDoorstepBtn').classList.toggle('active', type === 'doorstep');
+    document.getElementById('modalPickupBtn').classList.toggle('active', type === 'pickup');
+  }
+
+  function resetModalFields() {
+    document.getElementById('modalRecipientName').value = '';
+    document.getElementById('modalRecipientPhone').value = '';
+    document.getElementById('modalBuilding').value = '';
+    document.getElementById('modalFloorRoom').value = '';
+    document.getElementById('modalRoad').value = '';
+    document.getElementById('modalEstate').value = '';
+    document.getElementById('modalLandmark').value = '';
+    document.getElementById('modalInstructions').value = '';
+    document.getElementById('modalLat').value = '';
+    document.getElementById('modalLng').value = '';
+    document.getElementById('modalPickupRecipientName').value = '';
+    document.getElementById('modalPickupRecipientPhone').value = '';
+    document.getElementById('modalPickupLandmark').value = '';
+    document.getElementById('modalSetDefault').checked = false;
+    setModalDeliveryType('doorstep');
+  }
+
+  async function saveAddress() {
+    const token = window.customerToken;
+    if (!token) { alert('Please login first.'); return; }
+
+    const type = document.getElementById('modalDoorstepFields').style.display !== 'none' ? 'doorstep' : 'pickup';
+
+    let data = {
+      address_type: type,
+      label: type === 'doorstep' ? 'Home' : 'Pickup',
+      set_default: document.getElementById('modalSetDefault').checked
+    };
+
+    if (type === 'doorstep') {
+      const recipientName = document.getElementById('modalRecipientName').value.trim();
+      const recipientPhone = document.getElementById('modalRecipientPhone').value.trim();
+      const countyId = document.getElementById('modalCounty').value;
+      const subCountyId = document.getElementById('modalSubCounty').value;
+      const wardId = document.getElementById('modalWard').value;
+      const building = document.getElementById('modalBuilding').value.trim();
+      const floorRoom = document.getElementById('modalFloorRoom').value.trim();
+      const road = document.getElementById('modalRoad').value.trim();
+      const estate = document.getElementById('modalEstate').value.trim();
+      const landmark = document.getElementById('modalLandmark').value.trim();
+      const instructions = document.getElementById('modalInstructions').value.trim();
+      const lat = document.getElementById('modalLat').value.trim();
+      const lng = document.getElementById('modalLng').value.trim();
+
+      if (!recipientName) { alert('Recipient name is required.'); return; }
+      if (!recipientPhone) { alert('Phone number is required.'); return; }
+      if (!countyId) { alert('Please select a county.'); return; }
+
+      // Build full address
+      const addressParts = [];
+      if (building) addressParts.push(building);
+      if (floorRoom) addressParts.push(floorRoom);
+      if (road) addressParts.push(road);
+      if (estate) addressParts.push(estate);
+      if (landmark) addressParts.push(`Near ${landmark}`);
+      const address = addressParts.join(', ') || 'Address';
+
+      data = {
+        ...data,
+        recipient_name: recipientName,
+        recipient_phone: recipientPhone,
+        county_id: countyId,
+        sub_county_id: subCountyId,
+        ward_id: wardId,
+        address: address,
+        building_name: building,
+        floor_room: floorRoom,
+        road: road,
+        estate: estate,
+        nearest_landmark: landmark,
+        delivery_instructions: instructions,
+        lat: lat,
+        lng: lng,
+        location_name: address
+      };
+    } else {
+      // Pickup station
+      const recipientName = document.getElementById('modalPickupRecipientName').value.trim();
+      const recipientPhone = document.getElementById('modalPickupRecipientPhone').value.trim();
+      const countyId = document.getElementById('modalPickupCounty').value;
+      const subCountyId = document.getElementById('modalPickupSubCounty').value;
+      const wardId = document.getElementById('modalPickupWard').value;
+      const landmark = document.getElementById('modalPickupLandmark').value.trim();
+
+      if (!recipientName) { alert('Recipient name is required.'); return; }
+      if (!recipientPhone) { alert('Phone number is required.'); return; }
+      if (!countyId) { alert('Please select a county.'); return; }
+
+      data = {
+        ...data,
+        recipient_name: recipientName,
+        recipient_phone: recipientPhone,
+        county_id: countyId,
+        sub_county_id: subCountyId,
+        ward_id: wardId,
+        nearest_landmark: landmark,
+        address: `Pickup Station - ${landmark || 'Selected Station'}`
+      };
+    }
+
+    try {
+      const res = await fetch('/api/addresses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+      if (result.success) {
+        showToast('✅ Address saved successfully!', 'success');
+        closeAddressModal();
+        loadAddresses();
+        loadPickupStations();
+      } else {
+        showToast('❌ Failed to save address: ' + (result.error || 'Unknown error'), 'error');
+      }
+    } catch (err) {
+      showToast('❌ Network error: ' + err.message, 'error');
+    }
+  }
+
+  // ================================================================
+  //  DETECT LOCATION
+  // ================================================================
+  function detectLocation() {
+    if (!navigator.geolocation) {
+      showToast('❌ Geolocation is not supported by your browser.', 'error');
+      return;
+    }
+    showToast('⏳ Detecting your location...', 'info');
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        // Reverse geocode to get address
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+          const data = await res.json();
+          const address = data.display_name || `${lat}, ${lng}`;
+          document.getElementById('modalLat').value = lat;
+          document.getElementById('modalLng').value = lng;
+          document.getElementById('modalLandmark').value = address.substring(0, 100);
+          // Try to extract county from address
+          const parts = address.split(',');
+          if (parts.length > 2) {
+            const county = parts[parts.length - 3]?.trim() || '';
+            // Match county to our list
+            const countySelect = document.getElementById('modalCounty');
+            for (let option of countySelect.options) {
+              if (option.text.toLowerCase().includes(county.toLowerCase())) {
+                countySelect.value = option.value;
+                loadSubCounties();
+                break;
+              }
+            }
+          }
+          showToast('✅ Location detected! Please complete the address details.', 'success');
+          showAddAddress();
+        } catch (err) {
+          showToast('✅ Location detected! Please complete the address manually.', 'info');
+          showAddAddress();
+        }
+      },
+      (err) => {
+        showToast('❌ Could not detect location: ' + err.message, 'error');
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
+  // ================================================================
+  //  CART RENDER
+  // ================================================================
   function renderCartPage() {
     const cart = getCart();
     const container = document.getElementById('cartItemsContainer');
@@ -400,7 +1158,7 @@
     let html = '';
     let total = 0;
     cart.forEach(item => {
-      const priceNum = parseFloat(item.price.replace(/[^0-9.]/g,'')) || 0;
+      const priceNum = parseFloat(item.price.replace(/[^0-9.]/g, '')) || 0;
       const subtotal = priceNum * item.quantity;
       total += subtotal;
       const variantName = item.variant_name ? ` (${item.variant_name})` : '';
@@ -430,9 +1188,11 @@
   function updateSummary(total) {
     const subtotal = total;
     const shipping = shippingCost;
+    const deliveryFeeAmount = deliveryMethod === 'pickup' ? 0 : deliveryFee;
     const discount = promoDiscount;
-    const grandTotal = subtotal + shipping - discount;
+    const grandTotal = subtotal + shipping + deliveryFeeAmount - discount;
     document.getElementById('subtotalPrice').textContent = `Ksh ${subtotal.toFixed(2)}`;
+    document.getElementById('deliveryFee').textContent = `Ksh ${deliveryFeeAmount.toFixed(2)}`;
     document.getElementById('shippingPrice').textContent = `Ksh ${shipping.toFixed(2)}`;
     document.getElementById('cartTotal').textContent = `Ksh ${grandTotal.toFixed(2)}`;
     if (discount > 0) {
@@ -444,19 +1204,40 @@
     paymentTotal = grandTotal;
   }
 
-  // ---- Shipping options ----
+  function calculateSubtotal() {
+    let total = 0;
+    cartItems.forEach(item => {
+      const priceNum = parseFloat(item.price.replace(/[^0-9.]/g, '')) || 0;
+      total += priceNum * item.quantity;
+    });
+    return total;
+  }
+
+  // ================================================================
+  //  SHIPPING OPTIONS
+  // ================================================================
   function getShippingTiers(subtotal) {
     let standard, express, overnight;
     if (subtotal >= FREE_SHIPPING_THRESHOLD) {
-      standard = 0; express = 250; overnight = 350;
+      standard = 0;
+      express = 250;
+      overnight = 350;
     } else if (subtotal >= 10000) {
-      standard = 150; express = 250; overnight = 300;
+      standard = 150;
+      express = 250;
+      overnight = 300;
     } else if (subtotal >= 2000) {
-      standard = 120; express = 200; overnight = 250;
+      standard = 120;
+      express = 200;
+      overnight = 250;
     } else if (subtotal >= 500) {
-      standard = 80; express = 150; overnight = 200;
+      standard = 80;
+      express = 150;
+      overnight = 200;
     } else {
-      standard = 50; express = 100; overnight = 150;
+      standard = 50;
+      express = 100;
+      overnight = 150;
     }
     return { standard, express, overnight };
   }
@@ -495,9 +1276,8 @@
       }
       const selected = selectedShippingTier === tier.id ? 'selected' : '';
       const priceDisplay = tier.price === 0 ? 'Free' : `Ksh ${tier.price.toFixed(2)}`;
-      const onclick = (!freeShipping || tier.id === 'standard') ? `selectShippingTier('${tier.id}', ${tier.price})` : '';
       html += `
-        <div class="shipping-option ${selected}" onclick="${onclick}">
+        <div class="shipping-option ${selected}" onclick="selectShippingTier('${tier.id}', ${tier.price})">
           <div class="tier-name"><span>${tier.label}</span><span class="tier-price">${priceDisplay}</span></div>
           <div class="tier-reason">${tier.reason}</div>
           <div class="tier-why">💡 ${tier.why}</div>
@@ -516,7 +1296,7 @@
     const subtotal = calculateSubtotal();
     const freeShipping = subtotal >= FREE_SHIPPING_THRESHOLD;
     if (freeShipping && tier !== 'standard') {
-      alert('You have free standard shipping. To use Express or Overnight, you would need to pay extra, but free shipping is automatically applied when your order total exceeds Ksh 40,000.');
+      showToast('You have free standard shipping. To use Express or Overnight, you would need to pay extra.', 'info');
       return;
     }
     selectedShippingTier = tier;
@@ -525,16 +1305,9 @@
     updateShippingOptions(calculateSubtotal());
   }
 
-  function calculateSubtotal() {
-    let total = 0;
-    cartItems.forEach(item => {
-      const priceNum = parseFloat(item.price.replace(/[^0-9.]/g,'')) || 0;
-      total += priceNum * item.quantity;
-    });
-    return total;
-  }
-
-  // ---- Promo ----
+  // ================================================================
+  //  PROMO CODE
+  // ================================================================
   function applyPromo() {
     const input = document.getElementById('promoInput');
     const code = input.value.trim();
@@ -544,252 +1317,29 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code, subtotal: calculateSubtotal() })
     })
-    .then(res => res.json())
-    .then(data => {
-      if (data.valid) {
-        promoDiscount = data.discount;
-        document.getElementById('promoMessage').textContent = '✅ Promo applied!';
-        document.getElementById('promoMessage').style.color = '#16a34a';
-      } else {
-        promoDiscount = 0;
-        document.getElementById('promoMessage').textContent = '❌ ' + data.message;
-        document.getElementById('promoMessage').style.color = '#ef4444';
-      }
-      updateSummary(calculateSubtotal());
-    })
-    .catch(() => {
-      promoDiscount = 0;
-      document.getElementById('promoMessage').textContent = 'Error validating promo.';
-      updateSummary(calculateSubtotal());
-    });
-  }
-
-  // ---- Address book ----
-  function loadAddresses() {
-    const token = window.customerToken;
-    if (!token) { document.getElementById('addressList').innerHTML = '<p style="color:#94a3b8; font-size:0.85rem;">Please login to add addresses.</p>'; return; }
-    fetch('/api/addresses', { headers: { 'Authorization': `Bearer ${token}` } })
-      .then(res => res.json())
-      .then(addresses => {
-        const container = document.getElementById('addressList');
-        if (!addresses || addresses.length === 0) {
-          container.innerHTML = '<p style="color:#94a3b8; font-size:0.85rem;">No saved addresses. Add one below.</p>';
-          return;
-        }
-        let html = '';
-        addresses.forEach(addr => {
-          const selected = selectedAddressId === addr.id ? 'selected' : '';
-          let displayName = addr.location_name || addr.address;
-          if (displayName.length > 40) displayName = displayName.substring(0, 40) + '...';
-          html += `<div class="address-item ${selected}" onclick="selectAddress(${addr.id})">
-            <input type="radio" name="address" ${selected ? 'checked' : ''}>
-            <div>
-              <strong>${addr.label}</strong>
-              ${displayName ? `<span class="location-tag">📍 ${displayName}</span>` : ''}
-              <br><span style="font-size:0.7rem;">${addr.address}</span>
-            </div>
-          </div>`;
-        });
-        container.innerHTML = html;
-        if (!selectedAddressId && addresses.length > 0) selectAddress(addresses[0].id);
-      })
-      .catch(() => {});
-  }
-
-  function selectAddress(id) {
-    selectedAddressId = id;
-    loadAddresses();
-  }
-
-  // ---- Add address modal ----
-  function showAddAddress() {
-    document.getElementById('addressModal').classList.add('active');
-    document.getElementById('addressInput').value = '';
-    document.getElementById('addressLat').value = '';
-    document.getElementById('addressLng').value = '';
-    document.getElementById('addressLocationName').value = '';
-    document.getElementById('addressSuggestions').style.display = 'none';
-  }
-
-  function closeAddressModal() { document.getElementById('addressModal').classList.remove('active'); }
-
-  function saveAddress() {
-    const label = document.getElementById('addressLabel').value;
-    const address = document.getElementById('addressInput').value.trim();
-    const lat = document.getElementById('addressLat').value.trim();
-    const lng = document.getElementById('addressLng').value.trim();
-    const location_name = document.getElementById('addressLocationName').value.trim() || address;
-    if (!address) { alert('Please enter an address.'); return; }
-    const token = window.customerToken;
-    fetch('/api/addresses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ label, address, lat, lng, location_name })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        alert('Address saved!');
-        closeAddressModal();
-        loadAddresses();
-      } else {
-        alert('Failed to save address.');
-      }
-    })
-    .catch(() => alert('Network error.'));
-  }
-
-  // ---- Detect location ----
-  function detectLocationForAddress() {
-    if (!navigator.geolocation) { alert('Geolocation not supported.'); return; }
-    document.getElementById('locationConfirmModal').classList.add('active');
-    document.getElementById('detectedAddressDisplay').textContent = '⏳ Detecting...';
-    document.getElementById('detectedSubAddress').textContent = '';
-    document.getElementById('manualLocationArea').style.display = 'none';
-    detectedLat = null; detectedLng = null; detectedAddress = null; detectedLocationName = null;
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        detectedLat = pos.coords.latitude;
-        detectedLng = pos.coords.longitude;
-        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${detectedLat}&lon=${detectedLng}&format=json`)
-          .then(res => res.json())
-          .then(data => {
-            const displayName = data.display_name || `Lat: ${detectedLat.toFixed(4)}, Lng: ${detectedLng.toFixed(4)}`;
-            detectedAddress = displayName;
-            detectedLocationName = displayName;
-            document.getElementById('detectedAddressDisplay').textContent = displayName;
-            const parts = displayName.split(',');
-            document.getElementById('detectedSubAddress').textContent = parts.slice(0, 3).join(', ');
-          })
-          .catch(() => {
-            document.getElementById('detectedAddressDisplay').textContent = 'Location detected';
-            document.getElementById('detectedSubAddress').textContent = `Coordinates: ${detectedLat.toFixed(4)}, ${detectedLng.toFixed(4)}`;
-            detectedAddress = `Coordinates: ${detectedLat}, ${detectedLng}`;
-            detectedLocationName = detectedAddress;
-          });
-      },
-      (err) => {
-        document.getElementById('detectedAddressDisplay').textContent = '❌ Could not detect: ' + err.message;
-        document.getElementById('manualLocationArea').style.display = 'block';
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  }
-
-  function confirmDetectedLocation() {
-    if (!detectedLat || !detectedLng) { alert('Location not detected yet.'); return; }
-    const token = window.customerToken;
-    let locationName = detectedLocationName || detectedAddress;
-    fetch('/api/addresses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ label: 'Home', address: detectedAddress, lat: detectedLat, lng: detectedLng, location_name: locationName })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        alert('✅ Location saved!');
-        closeLocationConfirmModal();
-        loadAddresses();
-      } else {
-        alert('Failed to save.');
-      }
-    })
-    .catch(() => alert('Network error.'));
-  }
-
-  function rejectDetectedLocation() {
-    document.getElementById('manualLocationArea').style.display = 'block';
-    document.querySelector('.location-confirm').style.display = 'none';
-    document.getElementById('manualLocationInput').focus();
-  }
-
-  function closeLocationConfirmModal() {
-    document.getElementById('locationConfirmModal').classList.remove('active');
-    document.querySelector('.location-confirm').style.display = 'block';
-    document.getElementById('manualLocationArea').style.display = 'none';
-  }
-
-  // ---- Manual location ----
-  document.getElementById('manualLocationInput')?.addEventListener('input', function() {
-    const query = this.value.trim();
-    const suggestionsDiv = document.getElementById('manualSuggestions');
-    if (query.length < 3) { suggestionsDiv.style.display = 'none'; return; }
-    fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5`)
       .then(res => res.json())
       .then(data => {
-        if (!data.length) { suggestionsDiv.style.display = 'none'; return; }
-        suggestionsDiv.style.display = 'block';
-        suggestionsDiv.innerHTML = data.map(item => `
-          <div onclick="selectManualSuggestion('${item.display_name.replace(/'/g, "\\'")}', '${item.lat}', '${item.lon}')">
-            ${item.display_name}
-          </div>
-        `).join('');
+        if (data.valid) {
+          promoDiscount = data.discount;
+          document.getElementById('promoMessage').textContent = '✅ Promo applied!';
+          document.getElementById('promoMessage').style.color = '#16a34a';
+        } else {
+          promoDiscount = 0;
+          document.getElementById('promoMessage').textContent = '❌ ' + data.message;
+          document.getElementById('promoMessage').style.color = '#ef4444';
+        }
+        updateSummary(calculateSubtotal());
       })
-      .catch(() => { suggestionsDiv.style.display = 'none'; });
-  });
-
-  function selectManualSuggestion(address, lat, lng) {
-    document.getElementById('manualLocationInput').value = address;
-    document.getElementById('manualSuggestions').style.display = 'none';
-    detectedLat = parseFloat(lat);
-    detectedLng = parseFloat(lng);
-    detectedAddress = address;
-    detectedLocationName = address;
-    submitManualLocation();
+      .catch(() => {
+        promoDiscount = 0;
+        document.getElementById('promoMessage').textContent = 'Error validating promo.';
+        updateSummary(calculateSubtotal());
+      });
   }
 
-  function submitManualLocation() {
-    const input = document.getElementById('manualLocationInput');
-    const address = input.value.trim();
-    if (!address) { alert('Please enter a location.'); return; }
-    if (!detectedLat || !detectedLng) {
-      fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.length > 0) {
-            detectedLat = parseFloat(data[0].lat);
-            detectedLng = parseFloat(data[0].lon);
-            detectedAddress = data[0].display_name;
-            detectedLocationName = detectedAddress;
-          } else {
-            detectedAddress = address;
-            detectedLocationName = address;
-          }
-          saveManualLocation();
-        })
-        .catch(() => {
-          detectedAddress = address;
-          detectedLocationName = address;
-          saveManualLocation();
-        });
-    } else {
-      saveManualLocation();
-    }
-  }
-
-  function saveManualLocation() {
-    const token = window.customerToken;
-    fetch('/api/addresses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ label: 'Home', address: detectedAddress, lat: detectedLat || null, lng: detectedLng || null, location_name: detectedLocationName })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        alert('✅ Location saved!');
-        closeLocationConfirmModal();
-        loadAddresses();
-      } else {
-        alert('Failed to save.');
-      }
-    })
-    .catch(() => alert('Network error.'));
-  }
-
-  // ---- Cart actions ----
+  // ================================================================
+  //  CART ACTIONS
+  // ================================================================
   function updateCartQty(id, delta) {
     const cart = getCart();
     const item = cart.find(i => i.id === id);
@@ -808,7 +1358,9 @@
     updateCartBadge();
   }
 
-  // ---- Payment modal ----
+  // ================================================================
+  //  PAYMENT MODAL
+  // ================================================================
   function openPaymentModal(amount) {
     paymentTotal = amount;
     document.getElementById('paymentTotal').textContent = `Ksh ${amount.toFixed(2)}`;
@@ -817,10 +1369,10 @@
     document.getElementById('phoneField').style.display = 'none';
     document.getElementById('bankField').style.display = 'none';
     document.getElementById('paypalField').style.display = 'none';
-    selectedPaymentMethod = '';
     document.querySelectorAll('.method').forEach(el => el.classList.remove('selected'));
     document.getElementById('paymentStatus').textContent = '';
     document.getElementById('paymentStatus').style.color = '';
+    populateBankDropdown();
   }
 
   function selectPaymentMethod(method) {
@@ -847,13 +1399,44 @@
     document.getElementById('paymentStatus').textContent = '';
   }
 
+  function populateBankDropdown() {
+    const dropdown = document.getElementById('bankDropdown');
+    dropdown.innerHTML = kenyanBanks.map(b => `<div class="bank-item" onclick="selectBank('${b}')">${b}</div>`).join('');
+  }
+
+  function filterBanks() {
+    const query = document.getElementById('bankSearch').value.toLowerCase();
+    const dropdown = document.getElementById('bankDropdown');
+    const items = dropdown.querySelectorAll('.bank-item');
+    let hasVisible = false;
+    items.forEach(el => {
+      const name = el.textContent.toLowerCase();
+      if (name.includes(query)) {
+        el.style.display = 'block';
+        hasVisible = true;
+      } else {
+        el.style.display = 'none';
+      }
+    });
+    dropdown.classList.toggle('show', hasVisible || query.length > 0);
+  }
+
+  function selectBank(bank) {
+    document.getElementById('bankSearch').value = bank;
+    document.getElementById('selectedBank').value = bank;
+    document.getElementById('bankDropdown').classList.remove('show');
+  }
+
   function submitPayment() {
     if (!selectedPaymentMethod) {
       document.getElementById('paymentStatus').textContent = '❌ Please select a payment method.';
       document.getElementById('paymentStatus').style.color = '#ef4444';
       return;
     }
-    let phone = '', account = '', bank = '', pin = '';
+    let phone = '',
+      account = '',
+      bank = '',
+      pin = '';
     if (selectedPaymentMethod === 'mpesa' || selectedPaymentMethod === 'airtel') {
       phone = document.getElementById('paymentPhone').value.trim();
       pin = document.getElementById('paymentPin').value.trim();
@@ -879,41 +1462,51 @@
     document.getElementById('paymentStatus').textContent = '⏳ Processing payment...';
     document.getElementById('paymentStatus').style.color = '#2563eb';
 
+    // Build address data based on delivery method
+    let addressData = {};
+    if (deliveryMethod === 'doorstep' && selectedAddressId) {
+      addressData.address_id = selectedAddressId;
+    } else if (deliveryMethod === 'pickup' && selectedPickupStationId) {
+      addressData.pickup_station_id = selectedPickupStationId;
+      addressData.recipient_name = document.getElementById('pickupRecipientName').value.trim();
+      addressData.recipient_phone = document.getElementById('pickupRecipientPhone').value.trim();
+    }
+
     fetch('/api/payments/initiate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({
-        orderId: pendingOrderId,
-        method: selectedPaymentMethod,
-        amount: paymentTotal,
-        phone: phone,
-        account: account,
-        bank: bank,
-        pin: pin
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          orderId: pendingOrderId,
+          method: selectedPaymentMethod,
+          amount: paymentTotal,
+          phone: phone,
+          account: account,
+          bank: bank,
+          pin: pin,
+          delivery_method: deliveryMethod,
+          address_data: addressData
+        })
       })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        document.getElementById('paymentStatus').textContent = '✅ ' + data.message;
-        document.getElementById('paymentStatus').style.color = '#16a34a';
-        // Payment successful, close modal and redirect to account
-        setTimeout(() => {
-          closePaymentModal();
-          alert('Payment successful! Your order has been confirmed.');
-          window.location.href = '/account.html';
-        }, 1500);
-      } else {
-        document.getElementById('paymentStatus').textContent = '❌ ' + data.message;
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('paymentStatus').textContent = '✅ ' + data.message;
+          document.getElementById('paymentStatus').style.color = '#16a34a';
+          setTimeout(() => {
+            closePaymentModal();
+            showToast('Payment successful! Your order has been confirmed.', 'success');
+            window.location.href = '/account.html';
+          }, 1500);
+        } else {
+          document.getElementById('paymentStatus').textContent = '❌ ' + data.message;
+          document.getElementById('paymentStatus').style.color = '#ef4444';
+        }
+      })
+      .catch(err => {
+        document.getElementById('paymentStatus').textContent = '❌ Network error. Please try again.';
         document.getElementById('paymentStatus').style.color = '#ef4444';
-        // Record failure but allow retry
-      }
-    })
-    .catch(err => {
-      document.getElementById('paymentStatus').textContent = '❌ Network error. Please try again.';
-      document.getElementById('paymentStatus').style.color = '#ef4444';
-      console.error(err);
-    });
+        console.error(err);
+      });
   }
 
   function closePaymentModal() {
@@ -921,7 +1514,9 @@
     document.getElementById('paymentStatus').textContent = '';
   }
 
-  // ---- Place order (creates order, opens payment) ----
+  // ================================================================
+  //  PLACE ORDER
+  // ================================================================
   function placeOrder() {
     if (!isLoggedIn()) {
       alert('Please login to place an order.');
@@ -933,14 +1528,31 @@
       alert('Your cart is empty.');
       return;
     }
-    if (!selectedAddressId) {
-      alert('Please select a delivery address.');
-      return;
+
+    // Validate address/pickup
+    if (deliveryMethod === 'doorstep') {
+      if (!selectedAddressId) {
+        alert('Please select a delivery address.');
+        return;
+      }
+    } else {
+      if (!selectedPickupStationId) {
+        alert('Please select a pickup station.');
+        return;
+      }
+      const recipientName = document.getElementById('pickupRecipientName').value.trim();
+      const recipientPhone = document.getElementById('pickupRecipientPhone').value.trim();
+      if (!recipientName || !recipientPhone) {
+        alert('Please enter recipient name and phone for pickup.');
+        return;
+      }
     }
+
     let total = calculateSubtotal();
     const shipping = shippingCost;
+    const deliveryFeeAmount = deliveryMethod === 'pickup' ? 0 : deliveryFee;
     const discount = promoDiscount;
-    const grandTotal = total + shipping - discount;
+    const grandTotal = total + shipping + deliveryFeeAmount - discount;
     if (grandTotal <= 0) {
       alert('Invalid total amount.');
       return;
@@ -952,40 +1564,54 @@
       price: item.price,
       quantity: item.quantity,
       image: item.image || '',
-      variant_name: item.variant_name || 'Default'
+      variant_name: item.variant_name || 'Default',
+      variant_id: item.variant_id || null
     }));
     const orderNotes = document.getElementById('orderNotes').value.trim();
 
     const token = window.customerToken;
-    // Create order first (status pending_payment)
+
+    // Build address data
+    let addressData = {};
+    if (deliveryMethod === 'doorstep') {
+      addressData.address_id = selectedAddressId;
+    } else {
+      addressData.pickup_station_id = selectedPickupStationId;
+      addressData.recipient_name = document.getElementById('pickupRecipientName').value.trim();
+      addressData.recipient_phone = document.getElementById('pickupRecipientPhone').value.trim();
+    }
+
     fetch('/api/orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({
-        items,
-        total: grandTotal,
-        shipping_tier: selectedShippingTier,
-        shipping_cost: shipping,
-        order_notes: orderNotes,
-        address_id: selectedAddressId,
-        promo_code: document.getElementById('promoInput').value.trim(),
-        discount: discount
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          items,
+          total: grandTotal,
+          shipping_tier: selectedShippingTier,
+          shipping_cost: shipping,
+          order_notes: orderNotes,
+          promo_code: document.getElementById('promoInput').value.trim(),
+          discount: discount,
+          delivery_method: deliveryMethod,
+          address_data: addressData,
+          delivery_fee: deliveryFeeAmount
+        })
       })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        pendingOrderId = data.order.id;
-        // Open payment modal
-        openPaymentModal(grandTotal);
-      } else {
-        alert('❌ Failed to create order: ' + (data.error || 'Unknown error'));
-      }
-    })
-    .catch(() => alert('❌ Network error.'));
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          pendingOrderId = data.order.id;
+          openPaymentModal(grandTotal);
+        } else {
+          alert('❌ Failed to create order: ' + (data.error || 'Unknown error'));
+        }
+      })
+      .catch(() => alert('❌ Network error.'));
   }
 
-  // ---- Timer ----
+  // ================================================================
+  //  TIMER
+  // ================================================================
   function startReservationTimer() {
     if (getCart().length === 0) { document.getElementById('stockTimer').style.display = 'none'; return; }
     document.getElementById('stockTimer').style.display = 'block';
@@ -995,12 +1621,14 @@
       timeLeft--;
       const mins = Math.floor(timeLeft / 60);
       const secs = timeLeft % 60;
-      timerDisplay.textContent = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+      timerDisplay.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
       if (timeLeft <= 0) { clearInterval(timerInterval); alert('Items reservation expired. Please refresh cart.'); }
     }, 1000);
   }
 
-  // ---- Recommended ----
+  // ================================================================
+  //  RECOMMENDED
+  // ================================================================
   function loadRecommended() {
     fetch('/api/products?limit=6')
       .then(res => res.json())
@@ -1020,7 +1648,9 @@
       .catch(() => {});
   }
 
-  // ---- Expose functions ----
+  // ================================================================
+  //  EXPOSE GLOBALS
+  // ================================================================
   window.renderCartPage = renderCartPage;
   window.updateCartQty = updateCartQty;
   window.removeItemFromCart = removeItemFromCart;
@@ -1031,13 +1661,14 @@
   window.closeAddressModal = closeAddressModal;
   window.saveAddress = saveAddress;
   window.selectAddress = selectAddress;
-  window.detectLocationForAddress = detectLocationForAddress;
-  window.confirmDetectedLocation = confirmDetectedLocation;
-  window.rejectDetectedLocation = rejectDetectedLocation;
-  window.closeLocationConfirmModal = closeLocationConfirmModal;
-  window.submitManualLocation = submitManualLocation;
-  window.selectManualSuggestion = selectManualSuggestion;
-  window.selectAddressSuggestion = selectAddressSuggestion;
+  window.detectLocation = detectLocation;
+  window.selectPickupStation = selectPickupStation;
+  window.setDeliveryMethod = setDeliveryMethod;
+  window.setModalDeliveryType = setModalDeliveryType;
+  window.loadSubCounties = loadSubCounties;
+  window.loadWards = loadWards;
+  window.loadPickupSubCounties = loadPickupSubCounties;
+  window.loadPickupWards = loadPickupWards;
   window.selectPaymentMethod = selectPaymentMethod;
   window.submitPayment = submitPayment;
   window.closePaymentModal = closePaymentModal;
