@@ -9,9 +9,22 @@
   <script src="/socket.io/socket.io.js"></script>
   <style>
     /* ===== BASE STYLES ===== */
-    .product-detail-page { max-width: 100%; padding: 0 12px 20px; padding-bottom: 80px; }
-    .back-link { display: inline-block; margin: 10px 0; color: #2563eb; text-decoration: none; font-weight: 600; font-size: 0.85rem; }
-    .back-link:hover { text-decoration: underline; }
+    .product-detail-page {
+      max-width: 100%;
+      padding: 0 12px 20px;
+      padding-bottom: 80px;
+    }
+    .back-link {
+      display: inline-block;
+      margin: 10px 0;
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+    .back-link:hover {
+      text-decoration: underline;
+    }
 
     .detail-container {
       background: white;
@@ -30,7 +43,8 @@
       align-items: center;
       justify-content: center;
     }
-    .detail-main-media img, .detail-main-media video {
+    .detail-main-media img,
+    .detail-main-media video {
       width: 100%;
       max-height: 400px;
       object-fit: contain;
@@ -57,7 +71,8 @@
       border-color: #2563eb;
       transform: scale(1.05);
     }
-    .media-thumbnails .thumb img, .media-thumbnails .thumb video {
+    .media-thumbnails .thumb img,
+    .media-thumbnails .thumb video {
       width: 100%;
       height: 100%;
       object-fit: cover;
@@ -97,21 +112,75 @@
       transition: 0.2s;
       font-weight: 500;
     }
-    .variant-btn:hover { border-color: #2563eb; }
-    .variant-btn.active { border-color: #2563eb; background: #eff6ff; color: #2563eb; }
+    .variant-btn:hover {
+      border-color: #2563eb;
+    }
+    .variant-btn.active {
+      border-color: #2563eb;
+      background: #eff6ff;
+      color: #2563eb;
+    }
 
-    .detail-info .name { font-size: 1.2rem; font-weight: 700; }
-    .detail-info .price { font-size: 1.4rem; font-weight: 800; color: #2563eb; margin: 4px 0; }
-    .detail-info .stock { font-size: 0.75rem; color: #64748b; }
-    .detail-info .description { font-size: 0.9rem; color: #475569; line-height: 1.5; margin: 8px 0; }
-    .detail-info .badges { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
-    .detail-info .badges .badge { font-size: 0.6rem; padding: 2px 10px; border-radius: 12px; font-weight: 600; }
-    .detail-info .badges .badge-green { background: #dcfce7; color: #166534; }
-    .detail-info .badges .badge-blue { background: #dbeafe; color: #1e40af; }
-    .detail-info .badges .tag-flash { background: #ff6b6b; color: white; }
-    .detail-info .badges .tag-new { background: #48dbfb; color: #0f172a; }
-    .detail-info .services { font-size: 0.8rem; color: #475569; margin: 6px 0; padding: 6px 0; border-top: 1px solid #e8ecf1; border-bottom: 1px solid #e8ecf1; }
-    .detail-info .services span { font-weight: 600; color: #0f172a; }
+    .detail-info .name {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+    .detail-info .price {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #2563eb;
+      margin: 4px 0;
+    }
+    .detail-info .stock {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+    .detail-info .description {
+      font-size: 0.9rem;
+      color: #475569;
+      line-height: 1.5;
+      margin: 8px 0;
+    }
+    .detail-info .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin: 6px 0;
+    }
+    .detail-info .badges .badge {
+      font-size: 0.6rem;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+    .detail-info .badges .badge-green {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .detail-info .badges .badge-blue {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .detail-info .badges .tag-flash {
+      background: #ff6b6b;
+      color: white;
+    }
+    .detail-info .badges .tag-new {
+      background: #48dbfb;
+      color: #0f172a;
+    }
+    .detail-info .services {
+      font-size: 0.8rem;
+      color: #475569;
+      margin: 6px 0;
+      padding: 6px 0;
+      border-top: 1px solid #e8ecf1;
+      border-bottom: 1px solid #e8ecf1;
+    }
+    .detail-info .services span {
+      font-weight: 600;
+      color: #0f172a;
+    }
     .detail-info .return-policy {
       background: #f8fafc;
       padding: 8px 12px;
@@ -135,8 +204,17 @@
       cursor: pointer;
       transition: 0.2s;
     }
-    .detail-info .qty-selector button:hover { background: #2563eb; color: white; border-color: #2563eb; }
-    .detail-info .qty-selector span { font-weight: 700; font-size: 1rem; min-width: 24px; text-align: center; }
+    .detail-info .qty-selector button:hover {
+      background: #2563eb;
+      color: white;
+      border-color: #2563eb;
+    }
+    .detail-info .qty-selector span {
+      font-weight: 700;
+      font-size: 1rem;
+      min-width: 24px;
+      text-align: center;
+    }
     .btn-add-large {
       width: 100%;
       padding: 12px;
@@ -149,8 +227,12 @@
       cursor: pointer;
       transition: 0.2s;
     }
-    .btn-add-large:hover { background: #1d4ed8; }
-    .btn-add-large.in-cart { background: #22c55e; }
+    .btn-add-large:hover {
+      background: #1d4ed8;
+    }
+    .btn-add-large.in-cart {
+      background: #22c55e;
+    }
 
     .btn-buy-now {
       width: 100%;
@@ -165,7 +247,9 @@
       transition: 0.2s;
       margin-top: 8px;
     }
-    .btn-buy-now:hover { background: #d97706; }
+    .btn-buy-now:hover {
+      background: #d97706;
+    }
 
     /* ===== LET'S TALK SECTION ===== */
     .lets-talk-section {
@@ -213,11 +297,21 @@
       transform: scale(1.05);
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
-    .lets-talk-section .social-icons .whatsapp { background: #25D366; }
-    .lets-talk-section .social-icons .instagram { background: #E4405F; }
-    .lets-talk-section .social-icons .messenger { background: #1877F2; }
-    .lets-talk-section .social-icons .tiktok { background: #000000; }
-    .lets-talk-section .social-icons .phone { background: #2563eb; }
+    .lets-talk-section .social-icons .whatsapp {
+      background: #25D366;
+    }
+    .lets-talk-section .social-icons .instagram {
+      background: #E4405F;
+    }
+    .lets-talk-section .social-icons .messenger {
+      background: #1877F2;
+    }
+    .lets-talk-section .social-icons .tiktok {
+      background: #000000;
+    }
+    .lets-talk-section .social-icons .phone {
+      background: #2563eb;
+    }
 
     .lets-talk-section .auto-message-preview {
       margin-top: 10px;
@@ -239,14 +333,16 @@
       letter-spacing: 0.5px;
     }
 
-    .reviews-section, .related-products {
+    .reviews-section,
+    .related-products {
       margin-top: 16px;
       background: white;
       border-radius: 12px;
       padding: 14px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
-    .reviews-section h3, .related-products h3 {
+    .reviews-section h3,
+    .related-products h3 {
       font-size: 1rem;
       font-weight: 700;
       margin-bottom: 8px;
@@ -255,9 +351,19 @@
       border-bottom: 1px solid #f1f4f8;
       padding: 10px 0;
     }
-    .review-item .rating { color: #f59e0b; font-size: 0.8rem; }
-    .review-item p { font-size: 0.8rem; color: #475569; margin: 4px 0; }
-    .review-item .time { font-size: 0.65rem; color: #94a3b8; }
+    .review-item .rating {
+      color: #f59e0b;
+      font-size: 0.8rem;
+    }
+    .review-item p {
+      font-size: 0.8rem;
+      color: #475569;
+      margin: 4px 0;
+    }
+    .review-item .time {
+      font-size: 0.65rem;
+      color: #94a3b8;
+    }
 
     .related-grid {
       display: flex;
@@ -288,9 +394,21 @@
       font-size: 2rem;
       background: #e2e8f0;
     }
-    .related-item .related-info { padding: 4px 6px; }
-    .related-item .related-name { font-weight: 600; font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .related-item .related-price { font-weight: 700; font-size: 0.7rem; color: #2563eb; }
+    .related-item .related-info {
+      padding: 4px 6px;
+    }
+    .related-item .related-name {
+      font-weight: 600;
+      font-size: 0.65rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .related-item .related-price {
+      font-weight: 700;
+      font-size: 0.7rem;
+      color: #2563eb;
+    }
 
     .write-review {
       margin-top: 12px;
@@ -298,11 +416,35 @@
       border-radius: 12px;
       padding: 14px;
     }
-    .write-review h4 { font-size: 0.9rem; font-weight: 700; }
-    .write-review .stars { font-size: 1.4rem; cursor: pointer; color: #d1d5db; }
-    .write-review .stars .active { color: #f59e0b; }
-    .write-review textarea { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.85rem; margin: 6px 0; }
-    .write-review .btn { padding: 8px 20px; border-radius: 8px; border: none; background: #2563eb; color: white; font-weight: 600; cursor: pointer; }
+    .write-review h4 {
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+    .write-review .stars {
+      font-size: 1.4rem;
+      cursor: pointer;
+      color: #d1d5db;
+    }
+    .write-review .stars .active {
+      color: #f59e0b;
+    }
+    .write-review textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      margin: 6px 0;
+    }
+    .write-review .btn {
+      padding: 8px 20px;
+      border-radius: 8px;
+      border: none;
+      background: #2563eb;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
 
     .bottom-nav {
       position: fixed;
@@ -329,8 +471,13 @@
       padding: 2px 8px;
       position: relative;
     }
-    .bottom-nav a i { font-size: 1.3rem; margin-bottom: 1px; }
-    .bottom-nav a.active { color: #2563eb; }
+    .bottom-nav a i {
+      font-size: 1.3rem;
+      margin-bottom: 1px;
+    }
+    .bottom-nav a.active {
+      color: #2563eb;
+    }
     .bottom-nav a .nav-badge {
       position: absolute;
       top: -2px;
@@ -345,7 +492,9 @@
       font-weight: 700;
       display: none;
     }
-    .bottom-nav a .nav-badge.show { display: block; }
+    .bottom-nav a .nav-badge.show {
+      display: block;
+    }
 
     .header {
       background: #ffffff;
@@ -372,8 +521,14 @@
       font-weight: 600;
       font-size: 0.75rem;
     }
-    .header a:hover { color: #2563eb; }
-    .header .header-right { display: flex; align-items: center; gap: 8px; }
+    .header a:hover {
+      color: #2563eb;
+    }
+    .header .header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
   </style>
 </head>
 <body>
@@ -409,6 +564,10 @@
 
 <script src="/app.js"></script>
 <script>
+  // ================================================================
+  //  PRODUCT DETAIL LOGIC
+  // ================================================================
+
   const urlParams = new URLSearchParams(window.location.search);
   const productId = urlParams.get('id');
   if (!productId) {
@@ -423,7 +582,7 @@
   let allVariants = [];
   let shopData = null;
 
-  // ---- Fetch shop data ----
+  // ---- Fetch shop data (social links come from admin) ----
   async function fetchShopData() {
     try {
       const res = await fetch('/api/shop');
@@ -435,7 +594,7 @@
     }
   }
 
-  // ---- Build the full product message with details ----
+  // ---- Build the product message (auto-message for WhatsApp and Messenger) ----
   function buildProductMessage(product) {
     const name = product.name || 'this product';
     const price = product.price ? `Ksh ${product.price}` : '';
@@ -444,19 +603,13 @@
     const productUrl = `${window.location.origin}/product-detail.html?id=${product.id}`;
 
     let msg = `Hi, I'm interested in "${name}"${price ? ` (${price})` : ''}. Could I get more information about this product?\n\n`;
-
-    if (description) {
-      msg += `📄 Description: ${description}\n`;
-    }
-    if (image) {
-      msg += `📷 Product Image: ${image}\n`;
-    }
+    if (description) msg += `📄 Description: ${description}\n`;
+    if (image) msg += `📷 Product Image: ${image}\n`;
     msg += `🔗 Product Link: ${productUrl}`;
-
     return msg;
   }
 
-  // ---- WhatsApp link ----
+  // ---- WhatsApp link (auto-message) ----
   function getWhatsAppLink(phoneNumber, message) {
     if (!phoneNumber) return '#';
     const cleaned = phoneNumber.replace(/[^0-9]/g, '');
@@ -465,51 +618,43 @@
     return `https://wa.me/${cleaned}?text=${encoded}`;
   }
 
-  // ---- Messenger link ----
+  // ---- Messenger link (auto-message) ----
   function getMessengerLink(pageId, message) {
     if (!pageId) return '#';
     const encoded = encodeURIComponent(message);
     return `https://m.me/${pageId.replace('@', '')}?text=${encoded}`;
   }
 
-  // ---- Instagram link ----
+  // ---- Instagram link (profile) ----
   function getInstagramLink(username) {
     if (!username) return '#';
-    // Remove @ and spaces
     const cleaned = username.replace('@', '').trim();
     return `https://www.instagram.com/${cleaned}/`;
   }
 
-  // ---- TikTok link (FIXED) ----
+  // ---- TikTok link (profile, no auto-message) ----
   function getTikTokLink(username) {
     if (!username) return '#';
-    // Remove @, spaces, and clean
     const cleaned = username.replace('@', '').trim();
     if (!cleaned) return '#';
     return `https://www.tiktok.com/@${cleaned}`;
   }
 
-  // ---- Auto social links ----
+  // ---- Generate all social links for the product ----
   function getAutoSocialLinks(product) {
     const shop = shopData || {};
-    const whatsappNumber = shop.whatsapp || '';
-    const instagramUser = shop.instagram || '';
-    const facebookUser = shop.facebook || '';
-    const tiktokUser = shop.tiktok || '';
-    const phone = shop.phone || '';
-
     const message = buildProductMessage(product);
 
     return {
-      whatsapp: getWhatsAppLink(whatsappNumber, message),
-      instagram: getInstagramLink(instagramUser),
-      messenger: getMessengerLink(facebookUser, message),
-      tiktok: getTikTokLink(tiktokUser),
-      phone: phone ? `tel:${phone}` : '#'
+      whatsapp: getWhatsAppLink(shop.whatsapp, message),
+      instagram: getInstagramLink(shop.instagram),
+      messenger: getMessengerLink(shop.facebook, message),
+      tiktok: getTikTokLink(shop.tiktok),
+      phone: shop.phone ? `tel:${shop.phone}` : '#'
     };
   }
 
-  // ---- Render detail ----
+  // ---- Load and render product detail ----
   async function loadProductDetail() {
     try {
       await fetchShopData();
@@ -537,12 +682,14 @@
   function renderDetail(product, reviews, related) {
     const container = document.getElementById('detailContent');
 
+    // ---- Current variant and media ----
     let variant = allVariants.find(v => v.id === currentVariantId) || allVariants[0];
     let media = [];
     if (variant.image) media.push({ id: null, type: 'image', url: variant.image });
     if (product.image && !media.length) media.push({ id: null, type: 'image', url: product.image });
     if (currentMediaIndex >= media.length) currentMediaIndex = 0;
 
+    // ---- Variant swatches ----
     let variantHtml = '';
     if (allVariants.length > 1) {
       variantHtml = `<div class="variant-selector"><span class="label">Color:</span>`;
@@ -555,12 +702,14 @@
       variantHtml = `<div class="variant-selector"><span class="label">Color:</span> <span style="font-weight:500;">${allVariants[0].name}</span></div>`;
     }
 
+    // ---- Thumbnails ----
     let thumbHtml = '';
     media.forEach((m, idx) => {
       const active = idx === currentMediaIndex ? 'active' : '';
       thumbHtml += `<div class="thumb ${active}" onclick="selectMedia(${idx})"><img src="${m.url}" alt="Media"></div>`;
     });
 
+    // ---- Main media ----
     let mainMediaHtml = '';
     if (media.length > 0 && media[currentMediaIndex]) {
       mainMediaHtml = `<img src="${media[currentMediaIndex].url}" alt="${product.name}">`;
@@ -582,7 +731,7 @@
       returnPolicyHtml = `<div class="return-policy" style="background:#fee2e2;">Non-returnable (final sale).</div>`;
     }
 
-    // ---- LET'S TALK ----
+    // ---- LET'S TALK SECTION (SOCIAL ICONS) ----
     const socialLinks = getAutoSocialLinks(product);
     const previewMessage = buildProductMessage(product).replace(/\n/g, ' ');
 
@@ -605,7 +754,7 @@
       </div>
     `;
 
-    // Reviews
+    // ---- Reviews ----
     let reviewsHtml = '';
     if (reviews && reviews.length > 0) {
       reviewsHtml = reviews.map(r => `
@@ -619,6 +768,7 @@
       reviewsHtml = '<p style="font-size:0.8rem; color:#94a3b8;">No reviews yet.</p>';
     }
 
+    // ---- Related Products ----
     let relatedHtml = '';
     if (related && related.length > 0) {
       relatedHtml = related.map(p => `
@@ -632,6 +782,7 @@
       `).join('');
     }
 
+    // ---- Render everything ----
     container.innerHTML = `
       <div class="detail-container">
         <div class="detail-main-media">${mainMediaHtml}</div>
@@ -687,7 +838,7 @@
     `;
   }
 
-  // ---- Variant & Media functions ----
+  // ---- Variant / Media / Cart functions ----
   function selectVariant(variantId) {
     currentVariantId = variantId;
     currentMediaIndex = 0;
@@ -758,18 +909,18 @@
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify({ rating: reviewRating, review_text: text })
     })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        showToast('✅ Review submitted!', 'success');
-        document.getElementById('reviewText').value = '';
-        setRating(0);
-        loadProductDetail();
-      } else {
-        showToast('❌ Failed to submit review.', 'error');
-      }
-    })
-    .catch(() => showToast('❌ Network error.', 'error'));
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          showToast('✅ Review submitted!', 'success');
+          document.getElementById('reviewText').value = '';
+          setRating(0);
+          loadProductDetail();
+        } else {
+          showToast('❌ Failed to submit review.', 'error');
+        }
+      })
+      .catch(() => showToast('❌ Network error.', 'error'));
   }
 
   // ---- Initial load ----
@@ -779,6 +930,7 @@
     updateNavCartBadge();
   });
 
+  // ---- Expose functions globally (for inline onclick) ----
   window.selectVariant = selectVariant;
   window.selectMedia = selectMedia;
   window.changeDetailQty = changeDetailQty;
