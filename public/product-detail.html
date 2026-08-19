@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    /* ===== BASE STYLES (unchanged) ===== */
+    /* ===== BASE STYLES ===== */
     .product-detail-page { max-width: 100%; padding: 0 12px 20px; padding-bottom: 80px; }
     .back-link { display: inline-block; margin: 10px 0; color: #2563eb; text-decoration: none; font-weight: 600; font-size: 0.85rem; }
     .back-link:hover { text-decoration: underline; }
@@ -475,13 +475,18 @@
   // ---- Instagram link ----
   function getInstagramLink(username) {
     if (!username) return '#';
-    return `https://www.instagram.com/${username.replace('@', '')}/`;
+    // Remove @ and spaces
+    const cleaned = username.replace('@', '').trim();
+    return `https://www.instagram.com/${cleaned}/`;
   }
 
-  // ---- TikTok link ----
+  // ---- TikTok link (FIXED) ----
   function getTikTokLink(username) {
     if (!username) return '#';
-    return `https://www.tiktok.com/@${username.replace('@', '')}`;
+    // Remove @, spaces, and clean
+    const cleaned = username.replace('@', '').trim();
+    if (!cleaned) return '#';
+    return `https://www.tiktok.com/@${cleaned}`;
   }
 
   // ---- Auto social links ----
