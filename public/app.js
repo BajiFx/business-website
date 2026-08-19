@@ -543,7 +543,7 @@ function addToCart(productId, quantity = 1) {
     });
   }
   saveCart(cart);
-  alert(`✅ Added ${quantity} "${product.name}" to cart!`);
+  showToast(`✅ Added ${quantity} "${product.name}" to cart!`, 'success');
   updateCartBadge();
   updateModalCartButton(productId);
   renderGrid();
@@ -730,11 +730,181 @@ async function loadShopProfile() {
     if (iconFacebook) iconFacebook.href = shop.facebook ? `https://facebook.com/messages/t/${shop.facebook.replace('@','')}` : '#';
     if (iconPhone) iconPhone.href = shop.phone ? `tel:${shop.phone}` : '#';
 
+    // Store shop data for auto social messages
+    localStorage.setItem('shop', JSON.stringify(shop));
+
     updateCartBadge();
   } catch (err) {
     console.error('❌ Error loading shop profile:', err);
   }
 }
+
+// ============================================================
+//  AUTO SOCIAL MESSAGES
+// ============================================================
+function getAutoSocialLinks(product) {
+  const shop = JSON.parse(localStorage.getItem('shop')) || {};
+  const whatsappNumber = shop.whatsapp || '';
+  const instagramUser = shop.instagram || '';
+  const facebookUser = shop.facebook || '';
+  const tiktokUser = shop.tiktok || '';
+
+  // Build default message with product details
+  const productName = product.name || 'this product';
+  const productPrice = product.price ? ` (${product.price})` : '';
+  const message = `Hi, I'm interested in "${productName}"${productPrice}. Could I get more information about this product?`;
+
+  const encodedMessage = encodeURIComponent(message);
+
+  const links = {
+    whatsapp: whatsappNumber ? `https://wa.me/${whatsappNumber.replace(/[^0-9]/g, '')}?text=${encodedMessage}` : '#',
+    instagram: instagramUser ? `https://www.instagram.com/${instagramUser.replace('@', '')}/` : '#',
+    messenger: facebookUser ? `https://m.me/${facebookUser.replace('@', '')}` : '#',
+    tiktok: tiktokUser ? `https://www.tiktok.com/@${tiktokUser.replace('@', '')}` : '#',
+    phone: shop.phone ? `tel:${shop.phone}` : '#'
+  };
+
+  return links;
+}
+window.getAutoSocialLinks = getAutoSocialLinks;
+
+// ============================================================
+//  TOAST NOTIFICATIONS
+// ============================================================
+function showToast(message, type = 'success') {
+  // Remove existing toast
+  const existing = document.querySelector('.toast-container');
+  if (existing) existing.remove();
+
+  const container = document.createElement('div');
+  container.className = 'toast-container';
+  container.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 99999;
+    max-width: 400px;
+    width: 100%;
+  `;
+
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.style.cssText = `
+    background: ${type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : type === 'warning' ? '#f59e0b' : '#2563eb'};
+    color: white;
+    padding: 14px 20px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideIn 0.3s ease;
+    margin-bottom: 8px;
+    transform: translateX(0);
+    transition: transform 0.3s;
+  `;
+
+  const icon = document.createElement('span');
+  icon.innerHTML = type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️';
+  icon.style.fontSize = '1.2rem';
+
+  const text = document.createElement('span');
+  text.textContent = message;
+
+  const closeBtn = document.createElement('button');
+  closeBtn.innerHTML = '✕';
+  closeBtn.style.cssText = `
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-left: auto;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  `;
+  closeBtn.onmouseover = () => closeBtn.style.opacity = '1';
+  closeBtn.onclick = () => {
+    toast.style.transform = 'translateX(120%)';
+    setTimeout(() => container.remove(), 300);
+  };
+
+  toast.appendChild(icon);
+  toast.appendChild(text);
+  toast.appendChild(closeBtn);
+  container.appendChild(toast);
+  document.body.appendChild(container);
+
+  // Auto dismiss
+  setTimeout(() => {
+    if (document.body.contains(container)) {
+      toast.style.transform = 'translateX(120%)';
+      setTimeout(() => container.remove(), 300);
+    }
+  }, 5000);
+}
+window.showToast = showToast;
+
+// Add CSS animation
+const toastStyle = document.createElement('style');
+toastStyle.textContent = `
+  @keyframes slideIn {
+    from { transform: translateX(120%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(120%); opacity: 0; }
+  }
+`;
+document.head.appendChild(toastStyle);
+
+// ============================================================
+//  LOADING SPINNER
+// ============================================================
+function showSpinner(element) {
+  if (!element) return;
+  const originalHtml = element.innerHTML;
+  element.disabled = true;
+  element.innerHTML = `
+    <span class="spinner" style="
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top: 2px solid white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    "></span>
+    Loading...
+  `;
+  element._originalHtml = originalHtml;
+  return element;
+}
+window.showSpinner = showSpinner;
+
+function hideSpinner(element) {
+  if (!element) return;
+  element.disabled = false;
+  if (element._originalHtml) {
+    element.innerHTML = element._originalHtml;
+  }
+}
+window.hideSpinner = hideSpinner;
+
+// Add spin animation
+const spinStyle = document.createElement('style');
+spinStyle.textContent = `
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+`;
+document.head.appendChild(spinStyle);
 
 // ============================================================
 //  HERO SLIDESHOW
@@ -884,10 +1054,9 @@ async function renderGrid() {
     if (variants.length > 0) {
       swatchesHtml = '<div class="variant-swatches">';
       variants.forEach(v => {
-        const media = v.media || [];
-        const img = media.find(m => m.type === 'image');
-        const bg = img ? `url(${img.url})` : '';
-        swatchesHtml += `<div class="swatch" style="background-image:${bg};" title="${v.name}" onclick="event.stopPropagation(); location.href='/product-detail.html?id=${p.id}&variant=${v.id}'"></div>`;
+        const bg = v.image ? `url(${v.image})` : '';
+        const colorLabel = v.name || '';
+        swatchesHtml += `<div class="swatch" style="background-image:${bg};" title="${colorLabel}" onclick="event.stopPropagation(); location.href='/product-detail.html?id=${p.id}&variant=${v.id}'"></div>`;
       });
       swatchesHtml += '</div>';
     }

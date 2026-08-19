@@ -6,8 +6,9 @@
   <title>Product Detail</title>
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="/socket.io/socket.io.js"></script>
   <style>
-    .product-detail-page { max-width: 100%; padding: 0 12px 20px; }
+    .product-detail-page { max-width: 100%; padding: 0 12px 20px; padding-bottom: 80px; }
     .back-link { display: inline-block; margin: 10px 0; color: #2563eb; text-decoration: none; font-weight: 600; font-size: 0.85rem; }
     .back-link:hover { text-decoration: underline; }
 
@@ -17,8 +18,6 @@
       padding: 16px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
-
-    /* Main image area */
     .detail-main-media {
       width: 100%;
       background: #f8fafc;
@@ -35,8 +34,6 @@
       max-height: 400px;
       object-fit: contain;
     }
-
-    /* Thumbnails below main image */
     .media-thumbnails {
       display: flex;
       gap: 8px;
@@ -76,7 +73,6 @@
       padding: 4px 6px;
     }
 
-    /* Color swatches (variants) – like Kilimall */
     .variant-selector {
       display: flex;
       flex-wrap: wrap;
@@ -113,18 +109,8 @@
     .detail-info .badges .badge-blue { background: #dbeafe; color: #1e40af; }
     .detail-info .badges .tag-flash { background: #ff6b6b; color: white; }
     .detail-info .badges .tag-new { background: #48dbfb; color: #0f172a; }
-
-    /* Services / delivery info */
-    .detail-info .services {
-      font-size: 0.8rem;
-      color: #475569;
-      margin: 6px 0;
-      padding: 6px 0;
-      border-top: 1px solid #e8ecf1;
-      border-bottom: 1px solid #e8ecf1;
-    }
+    .detail-info .services { font-size: 0.8rem; color: #475569; margin: 6px 0; padding: 6px 0; border-top: 1px solid #e8ecf1; border-bottom: 1px solid #e8ecf1; }
     .detail-info .services span { font-weight: 600; color: #0f172a; }
-
     .detail-info .return-policy {
       background: #f8fafc;
       padding: 8px 12px;
@@ -179,6 +165,78 @@
       margin-top: 8px;
     }
     .btn-buy-now:hover { background: #d97706; }
+
+    /* ===== "LET'S TALK" SECTION ===== */
+    .lets-talk-section {
+      background: linear-gradient(145deg, #f0f9ff, #e0f2fe);
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin: 16px 0 8px 0;
+      border: 1px solid #bae6fd;
+      text-align: center;
+    }
+    .lets-talk-section h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+    .lets-talk-section h3 i {
+      color: #2563eb;
+      margin-right: 6px;
+    }
+    .lets-talk-section p {
+      font-size: 0.8rem;
+      color: #475569;
+      margin-bottom: 10px;
+    }
+    .lets-talk-section .social-icons {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .lets-talk-section .social-icons a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 30px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: white;
+      transition: transform 0.2s, box-shadow 0.2s;
+      text-decoration: none;
+    }
+    .lets-talk-section .social-icons a:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .lets-talk-section .social-icons .whatsapp { background: #25D366; }
+    .lets-talk-section .social-icons .instagram { background: #E4405F; }
+    .lets-talk-section .social-icons .messenger { background: #1877F2; }
+    .lets-talk-section .social-icons .tiktok { background: #000000; }
+    .lets-talk-section .social-icons .phone { background: #2563eb; }
+
+    .lets-talk-section .auto-message-preview {
+      margin-top: 10px;
+      padding: 10px 14px;
+      background: white;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      color: #475569;
+      border-left: 3px solid #2563eb;
+      text-align: left;
+    }
+    .lets-talk-section .auto-message-preview strong {
+      color: #0f172a;
+    }
+    .lets-talk-section .auto-message-preview .label {
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      color: #94a3b8;
+      letter-spacing: 0.5px;
+    }
 
     .reviews-section, .related-products {
       margin-top: 16px;
@@ -245,7 +303,6 @@
     .write-review textarea { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.85rem; margin: 6px 0; }
     .write-review .btn { padding: 8px 20px; border-radius: 8px; border: none; background: #2563eb; color: white; font-weight: 600; cursor: pointer; }
 
-    /* Bottom nav */
     .bottom-nav {
       position: fixed;
       bottom: 0;
@@ -288,6 +345,34 @@
       display: none;
     }
     .bottom-nav a .nav-badge.show { display: block; }
+
+    .header {
+      background: #ffffff;
+      color: #1e293b;
+      padding: 10px 14px;
+      border-bottom: 1px solid #e8ecf1;
+      position: sticky;
+      top: 0;
+      z-index: 99;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .header h1 {
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: #0f172a;
+    }
+    .header a {
+      color: #64748b;
+      margin: 0 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.75rem;
+    }
+    .header a:hover { color: #2563eb; }
+    .header .header-right { display: flex; align-items: center; gap: 8px; }
   </style>
 </head>
 <body>
@@ -335,9 +420,47 @@
   let currentMediaIndex = 0;
   let currentProduct = null;
   let allVariants = [];
+  let shopData = null;
+
+  // ---- Helper to get shop info ----
+  async function fetchShopData() {
+    try {
+      const res = await fetch('/api/shop');
+      if (!res.ok) throw new Error('Failed to load shop');
+      shopData = await res.json();
+    } catch (err) {
+      console.error('Error loading shop:', err);
+      shopData = {};
+    }
+  }
+
+  // ---- Auto social links ----
+  function getAutoSocialLinks(product) {
+    const shop = shopData || {};
+    const whatsappNumber = shop.whatsapp || '';
+    const instagramUser = shop.instagram || '';
+    const facebookUser = shop.facebook || '';
+    const tiktokUser = shop.tiktok || '';
+    const phone = shop.phone || '';
+
+    const productName = product.name || 'this product';
+    const productPrice = product.price ? ` (${product.price})` : '';
+    const message = `Hi, I'm interested in "${productName}"${productPrice}. Could I get more information about this product?`;
+
+    const encodedMessage = encodeURIComponent(message);
+
+    return {
+      whatsapp: whatsappNumber ? `https://wa.me/${whatsappNumber.replace(/[^0-9]/g, '')}?text=${encodedMessage}` : '#',
+      instagram: instagramUser ? `https://www.instagram.com/${instagramUser.replace('@', '')}/` : '#',
+      messenger: facebookUser ? `https://m.me/${facebookUser.replace('@', '')}` : '#',
+      tiktok: tiktokUser ? `https://www.tiktok.com/@${tiktokUser.replace('@', '')}` : '#',
+      phone: phone ? `tel:${phone}` : '#'
+    };
+  }
 
   async function loadProductDetail() {
     try {
+      await fetchShopData();
       const res = await fetch(`/api/products/${productId}/detail`);
       if (!res.ok) throw new Error('Product not found');
       const data = await res.json();
@@ -349,7 +472,7 @@
           name: 'Default',
           price: data.product.price,
           stock: 999,
-          media: data.product.image ? [{ id: null, type: 'image', url: data.product.image }] : []
+          image: data.product.image || ''
         }];
       }
       currentVariantId = allVariants[0].id;
@@ -363,25 +486,26 @@
     const container = document.getElementById('detailContent');
 
     let variant = allVariants.find(v => v.id === currentVariantId) || allVariants[0];
-    let media = variant.media || [];
-    if (media.length === 0 && product.image) {
-      media = [{ id: null, type: 'image', url: product.image }];
+    let media = [];
+    if (variant.image) {
+      media.push({ id: null, type: 'image', url: variant.image });
+    }
+    if (product.image && !media.length) {
+      media.push({ id: null, type: 'image', url: product.image });
     }
     if (currentMediaIndex >= media.length) currentMediaIndex = 0;
 
-    // Build variant swatches (color buttons)
+    // Build variant swatches
     let variantHtml = '';
     if (allVariants.length > 1) {
       variantHtml = `<div class="variant-selector"><span class="label">Color:</span>`;
       allVariants.forEach(v => {
         const active = v.id === currentVariantId ? 'active' : '';
-        // Try to extract color name from variant name
-        const colorName = v.name;
+        const colorName = v.name || 'Default';
         variantHtml += `<button class="variant-btn ${active}" onclick="selectVariant(${v.id})">${colorName}</button>`;
       });
       variantHtml += '</div>';
     } else {
-      // Single variant – still show the name but not as a selector
       variantHtml = `<div class="variant-selector"><span class="label">Color:</span> <span style="font-weight:500;">${allVariants[0].name}</span></div>`;
     }
 
@@ -389,27 +513,16 @@
     let thumbHtml = '';
     media.forEach((m, idx) => {
       const active = idx === currentMediaIndex ? 'active' : '';
-      if (m.type === 'video') {
-        thumbHtml += `<div class="thumb ${active}" onclick="selectMedia(${idx})">
-          <video src="${m.url}" muted></video>
-          <div class="play-icon"><i class="fas fa-play"></i></div>
-        </div>`;
-      } else {
-        thumbHtml += `<div class="thumb ${active}" onclick="selectMedia(${idx})">
-          <img src="${m.url}" alt="Media">
-        </div>`;
-      }
+      thumbHtml += `<div class="thumb ${active}" onclick="selectMedia(${idx})">
+        <img src="${m.url}" alt="Media">
+      </div>`;
     });
 
     // Main media
     let mainMediaHtml = '';
     if (media.length > 0 && media[currentMediaIndex]) {
       const m = media[currentMediaIndex];
-      if (m.type === 'video') {
-        mainMediaHtml = `<video src="${m.url}" controls autoplay></video>`;
-      } else {
-        mainMediaHtml = `<img src="${m.url}" alt="${product.name}">`;
-      }
+      mainMediaHtml = `<img src="${m.url}" alt="${product.name}">`;
     } else {
       mainMediaHtml = '<div style="padding:40px; text-align:center; color:#94a3b8;">No media</div>';
     }
@@ -433,6 +546,29 @@
     } else {
       returnPolicyHtml = `<div class="return-policy" style="background:#fee2e2;">Non-returnable (final sale).</div>`;
     }
+
+    // ---- "LET'S TALK" SECTION ----
+    const socialLinks = getAutoSocialLinks(product);
+    const messagePreview = `Hi, I'm interested in "${product.name}"${product.price ? ` (${product.price})` : ''}. Could I get more information about this product?`;
+
+    let letsTalkHtml = `
+      <div class="lets-talk-section">
+        <h3><i class="fas fa-comment-dots"></i> Let's Talk About This Product</h3>
+        <p>Get instant answers via WhatsApp, Instagram, or Messenger – we're here to help!</p>
+        <div class="social-icons">
+          <a href="${socialLinks.whatsapp}" target="_blank" class="whatsapp"><i class="fab fa-whatsapp"></i> WhatsApp</a>
+          <a href="${socialLinks.instagram}" target="_blank" class="instagram"><i class="fab fa-instagram"></i> Instagram</a>
+          <a href="${socialLinks.messenger}" target="_blank" class="messenger"><i class="fab fa-facebook-messenger"></i> Messenger</a>
+          <a href="${socialLinks.tiktok}" target="_blank" class="tiktok"><i class="fab fa-tiktok"></i> TikTok</a>
+          <a href="${socialLinks.phone}" class="phone"><i class="fas fa-phone"></i> Call</a>
+        </div>
+        <div class="auto-message-preview">
+          <div class="label">📨 Auto Message</div>
+          <strong>${messagePreview}</strong>
+          <div style="font-size:0.65rem; color:#94a3b8; margin-top:2px;">This message will be pre-filled when you click any chat icon.</div>
+        </div>
+      </div>
+    `;
 
     let reviewsHtml = '';
     if (reviews && reviews.length > 0) {
@@ -465,9 +601,7 @@
         <div class="detail-main-media">
           ${mainMediaHtml}
         </div>
-        <div class="media-thumbnails">
-          ${thumbHtml}
-        </div>
+        ${thumbHtml ? `<div class="media-thumbnails">${thumbHtml}</div>` : ''}
         ${variantHtml}
         <div class="detail-info">
           <div class="name">${product.name}</div>
@@ -491,6 +625,8 @@
           <button class="btn-buy-now" onclick="buyNow()">Buy Now</button>
         </div>
       </div>
+
+      ${letsTalkHtml}
 
       <div class="write-review">
         <h4>Write a Review</h4>
@@ -539,7 +675,7 @@
     const price = variant.price || currentProduct.price;
     const variantId = variant.id;
     const variantName = variant.name || 'Default';
-    const image = (variant.media && variant.media.length > 0) ? variant.media[0].url : currentProduct.image;
+    const image = variant.image || currentProduct.image;
     let cart = getCart();
     const existing = cart.find(item => item.id === currentProduct.id && item.variant_id === variantId);
     if (existing) {
@@ -557,7 +693,7 @@
     }
     saveCart(cart);
     updateCartBadge();
-    alert(`✅ Added ${detailQty} "${currentProduct.name} (${variantName})" to cart!`);
+    showToast(`✅ Added ${detailQty} "${currentProduct.name} (${variantName})" to cart!`, 'success');
     detailQty = 1;
     document.getElementById('detailQty').textContent = '1';
     loadProductDetail();
@@ -590,23 +726,33 @@
     .then(res => res.json())
     .then(data => {
       if (data.success) {
-        alert('Review submitted!');
+        showToast('✅ Review submitted!', 'success');
         document.getElementById('reviewText').value = '';
         setRating(0);
         loadProductDetail();
       } else {
-        alert('Failed to submit review.');
+        showToast('❌ Failed to submit review.', 'error');
       }
     })
-    .catch(() => alert('Network error.'));
+    .catch(() => showToast('❌ Network error.', 'error'));
   }
 
-  loadProductDetail();
-
+  // ---- Load on page ready ----
   document.addEventListener('DOMContentLoaded', () => {
+    loadProductDetail();
     updateCartBadge();
     updateNavCartBadge();
   });
+
+  // Expose functions globally
+  window.selectVariant = selectVariant;
+  window.selectMedia = selectMedia;
+  window.changeDetailQty = changeDetailQty;
+  window.addVariantToCart = addVariantToCart;
+  window.buyNow = buyNow;
+  window.setRating = setRating;
+  window.submitReview = submitReview;
+  window.loadProductDetail = loadProductDetail;
 </script>
 </body>
 </html>

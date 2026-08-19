@@ -3,71 +3,119 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Dashboard</title>
+  <title>Admin Panel</title>
   <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    /* ===== RESET & BASE ===== */
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #f1f5f9; font-family: 'Segoe UI', system-ui, sans-serif; padding-bottom: 20px; }
-
-    /* ===== HEADER ===== */
+    /* ===== ADMIN HEADER ===== */
     .admin-header {
-      background: #0f172a; color: white; padding: 8px 16px;
-      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;
+      background: #0f172a;
+      color: white;
+      padding: 8px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
     .admin-header h1 { font-size: 1rem; font-weight: 700; }
     .admin-header h1 i { color: #facc15; margin-right: 6px; }
     .admin-header .nav-links {
-      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
     }
     .admin-header .nav-links a {
-      color: #94a3b8; text-decoration: none; font-weight: 600; font-size: 0.75rem;
+      color: #94a3b8;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.75rem;
     }
     .admin-header .nav-links a:hover { color: white; }
     .admin-header .nav-links a.active { color: #facc15; }
     .logout-btn {
-      background: #ef4444; color: white; border: none; padding: 3px 12px;
-      border-radius: 20px; font-weight: 600; font-size: 0.75rem; cursor: pointer;
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 3px 12px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.75rem;
+      cursor: pointer;
     }
     .logout-btn:hover { background: #dc2626; }
 
     /* ===== DASHBOARD LAYOUT ===== */
     .dashboard-container {
-      max-width: 1500px; margin: 10px auto; padding: 0 12px;
-      display: flex; gap: 12px; align-items: flex-start;
+      max-width: 1400px;
+      margin: 10px auto;
+      padding: 0 12px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
     }
-
-    /* ===== LEFT SIDEBAR – CARDS ===== */
     .sidebar-cards {
-      flex: 0 0 120px; display: flex; flex-direction: column; gap: 6px;
+      flex: 0 0 120px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
     .stat-card {
-      border-radius: 8px; padding: 6px 4px; color: #1e293b;
-      cursor: pointer; transition: transform 0.15s, box-shadow 0.2s;
+      border-radius: 8px;
+      padding: 4px 4px;
+      color: #1e293b;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.2s;
       box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-      display: flex; flex-direction: column; align-items: center; text-align: center;
-      border: none; min-height: 48px; justify-content: center;
-      position: relative; overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      border: none;
+      font-size: 0.6rem;
+      min-height: 44px;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
     }
     .stat-card::after {
-      content: ''; position: absolute; top: -50%; right: -50%;
-      width: 100%; height: 100%; background: rgba(255,255,255,0.3);
-      border-radius: 50%; transform: scale(0); transition: transform 0.3s;
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 100%;
+      height: 100%;
+      background: rgba(255,255,255,0.08);
+      border-radius: 50%;
+      transform: scale(0);
+      transition: transform 0.3s;
     }
-    .stat-card:hover { transform: translateY(-1px) scale(1.02); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+    .stat-card:hover {
+      transform: translateY(-1px) scale(1.02);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
     .stat-card:hover::after { transform: scale(2); }
-    .stat-card .icon { font-size: 0.9rem; opacity: 0.8; margin-bottom: 1px; }
-    .stat-card .number { font-size: 1.2rem; font-weight: 800; line-height: 1.2; }
+    .stat-card .icon { font-size: 0.8rem; opacity: 0.9; margin-bottom: 1px; }
+    .stat-card .number { font-size: 1rem; font-weight: 800; line-height: 1.1; }
     .stat-card .label {
-      font-size: 0.65rem; font-weight: 600; text-transform: uppercase;
-      letter-spacing: 0.3px; margin-top: 1px;
+      font-size: 0.45rem;
+      font-weight: 600;
+      opacity: 0.9;
+      text-transform: uppercase;
+      letter-spacing: 0.2px;
+      margin-top: 1px;
     }
     .stat-card .blink-dot {
-      display: inline-block; width: 8px; height: 8px; border-radius: 50%;
-      background: #facc15; margin-left: 4px;
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #facc15;
+      margin-left: 3px;
       animation: pulse-blink 1.2s infinite;
     }
     .stat-card .blink-dot.hidden { display: none; }
@@ -77,7 +125,6 @@
       100% { opacity: 1; transform: scale(1); }
     }
 
-    /* Card Colors – lighter gradients for black text */
     .stat-card.pending { background: linear-gradient(145deg, #fde68a, #fcd34d); }
     .stat-card.confirmed { background: linear-gradient(145deg, #86efac, #4ade80); }
     .stat-card.shipped { background: linear-gradient(145deg, #93c5fd, #60a5fa); }
@@ -87,60 +134,96 @@
     .stat-card.replacements { background: linear-gradient(145deg, #fdba74, #fb923c); }
     .stat-card.refunds { background: linear-gradient(145deg, #f9a8d4, #f472b6); }
     .stat-card.urgent { background: linear-gradient(145deg, #fca5a5, #f87171); }
-    .stat-card.total { background: linear-gradient(145deg, #e2e8f0, #cbd5e1); }
     .stat-card.returns { background: linear-gradient(145deg, #a5f3fc, #67e8f9); }
+    .stat-card.total { background: linear-gradient(145deg, #e2e8f0, #cbd5e1); }
 
-    /* ===== MAIN CONTENT – ORDER / RETURN PANEL ===== */
+    /* ===== ORDER PANEL ===== */
     .order-panel {
-      flex: 1; background: white; border-radius: 12px;
-      padding: 12px 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.04);
-      border: 1px solid #e2e8f0; min-height: 300px;
+      flex: 1;
+      background: white;
+      border-radius: 12px;
+      padding: 12px 14px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+      border: 1px solid #e2e8f0;
+      min-height: 300px;
     }
     .order-panel .panel-header {
-      display: flex; justify-content: space-between; align-items: center;
-      border-bottom: 2px solid #e2e8f0; padding-bottom: 6px;
-      margin-bottom: 12px; flex-wrap: wrap; gap: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 6px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 6px;
     }
     .order-panel .panel-header h2 {
-      font-size: 0.95rem; font-weight: 700; color: #0f172a;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #0f172a;
     }
     .order-panel .panel-header .badge {
-      background: #2563eb; color: white; font-size: 0.6rem;
-      padding: 1px 8px; border-radius: 20px; font-weight: 600;
+      background: #2563eb;
+      color: white;
+      font-size: 0.6rem;
+      padding: 1px 8px;
+      border-radius: 20px;
+      font-weight: 600;
     }
     .order-panel .panel-header .refresh-btn {
-      background: #e2e8f0; border: none; padding: 2px 10px;
-      border-radius: 20px; font-weight: 600; font-size: 0.7rem; cursor: pointer;
+      background: #e2e8f0;
+      border: none;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.7rem;
+      cursor: pointer;
     }
     .order-panel .panel-header .refresh-btn:hover { background: #cbd5e1; }
 
-    /* ===== ORDER LIST ===== */
-    .order-list { display: flex; flex-direction: column; gap: 6px; }
     .order-row {
-      background: #f8fafc; border-radius: 8px; padding: 8px 10px;
-      border-left: 3px solid #94a3b8; transition: background 0.2s;
-      display: flex; flex-direction: column; gap: 4px;
+      background: #f8fafc;
+      border-radius: 8px;
+      padding: 8px 10px;
+      border-left: 3px solid #94a3b8;
+      transition: background 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 6px;
     }
     .order-row:hover { background: #f1f5f9; }
     .order-row .order-header {
-      display: flex; justify-content: space-between; align-items: center;
-      flex-wrap: wrap; gap: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
     }
     .order-row .order-header .ref {
-      font-weight: 700; color: #0f172a; font-size: 0.8rem;
+      font-weight: 700;
+      color: #0f172a;
+      font-size: 0.8rem;
     }
     .order-row .order-header .customer {
-      color: #475569; font-size: 0.75rem;
+      color: #475569;
+      font-size: 0.75rem;
     }
     .order-row .order-header .date {
-      color: #94a3b8; font-size: 0.65rem;
+      color: #94a3b8;
+      font-size: 0.65rem;
     }
     .order-row .order-header .total {
-      font-weight: 700; color: #2563eb; font-size: 0.85rem;
+      font-weight: 700;
+      color: #2563eb;
+      font-size: 0.85rem;
     }
     .order-row .order-header .status-badge {
-      font-size: 0.55rem; font-weight: 600; padding: 1px 8px;
-      border-radius: 20px; text-transform: uppercase;
+      font-size: 0.55rem;
+      font-weight: 600;
+      padding: 1px 8px;
+      border-radius: 20px;
+      text-transform: uppercase;
     }
     .status-pending { background: #fef3c7; color: #92400e; }
     .status-confirmed { background: #d1fae5; color: #065f46; }
@@ -150,17 +233,28 @@
     .status-cancelled { background: #fee2e2; color: #991b1b; }
 
     .order-row .order-actions {
-      display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      align-items: center;
     }
     .order-row .order-actions select,
     .order-row .order-actions input {
-      padding: 2px 6px; border: 1px solid #d1d5db; border-radius: 4px;
-      font-size: 0.6rem; background: white;
+      padding: 2px 6px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 0.6rem;
+      background: white;
     }
     .order-row .order-actions button {
-      padding: 2px 8px; border: none; border-radius: 14px;
-      font-weight: 600; font-size: 0.55rem; cursor: pointer;
-      transition: background 0.2s; white-space: nowrap;
+      padding: 2px 8px;
+      border: none;
+      border-radius: 14px;
+      font-weight: 600;
+      font-size: 0.55rem;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
     }
     .btn-confirm { background: #22c55e; color: white; }
     .btn-confirm:hover { background: #16a34a; }
@@ -178,46 +272,167 @@
     .btn-replace-reject { background: #ef4444; color: white; }
     .btn-cancel { background: #ef4444; color: white; }
     .btn-cancel:hover { background: #dc2626; }
-    .btn-return-approve { background: #22c55e; color: white; }
-    .btn-return-reject { background: #ef4444; color: white; }
     .empty-msg {
-      color: #94a3b8; text-align: center; padding: 30px 0; font-size: 0.85rem;
+      color: #94a3b8;
+      text-align: center;
+      padding: 30px 0;
+      font-size: 0.85rem;
     }
 
-    /* ===== RESPONSIVE ===== */
-    @media (max-width: 768px) {
-      .dashboard-container { flex-direction: column; }
-      .sidebar-cards {
-        flex: 1; flex-direction: row; flex-wrap: wrap; gap: 4px;
-      }
-      .stat-card {
-        flex: 1 0 80px; min-height: 40px; padding: 4px 2px;
-      }
-      .stat-card .number { font-size: 1rem; }
-      .stat-card .label { font-size: 0.55rem; }
-      .stat-card .icon { font-size: 0.8rem; }
+    /* ===== SHOP PROFILE & SETTINGS ===== */
+    .settings-section {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+      border: 1px solid #e2e8f0;
     }
+    .settings-section h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 8px;
+    }
+    .settings-section .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .settings-section .form-row .full { grid-column: 1 / -1; }
+    .settings-section label {
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: #334155;
+      display: block;
+      margin-bottom: 2px;
+    }
+    .settings-section input,
+    .settings-section textarea,
+    .settings-section select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+    }
+    .settings-section input:focus,
+    .settings-section textarea:focus {
+      border-color: #2563eb;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+    .settings-section .checkbox-group {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin: 6px 0 12px;
+    }
+    .settings-section .checkbox-group label {
+      font-weight: normal;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+    .settings-section .btn-save {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 12px;
+    }
+    .settings-section .btn-save:hover { background: #1d4ed8; }
 
-    /* ===== AUTH (unchanged) ===== */
-    .auth-container { max-width: 380px; margin: 30px auto; background: white; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.06); overflow: hidden; }
+    /* ===== AUTH ===== */
+    .auth-container {
+      max-width: 380px;
+      margin: 30px auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+      overflow: hidden;
+    }
     .auth-tabs { display: flex; border-bottom: 1px solid #e2e8f0; }
-    .auth-tabs button { flex: 1; padding: 12px; border: none; background: #f8fafc; font-weight: 600; cursor: pointer; font-size: 0.9rem; }
-    .auth-tabs button.active { background: white; color: #2563eb; border-bottom: 3px solid #2563eb; }
+    .auth-tabs button {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      background: #f8fafc;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .auth-tabs button.active {
+      background: white;
+      color: #2563eb;
+      border-bottom: 3px solid #2563eb;
+    }
     .auth-form { padding: 24px; display: none; }
     .auth-form.active { display: block; }
     .auth-form h2 { margin-bottom: 4px; font-size: 1.1rem; }
     .auth-form .sub { color: #64748b; font-size: 0.8rem; margin-bottom: 16px; }
     .form-group { margin-bottom: 12px; position: relative; }
     .form-group label { display: block; font-weight: 600; font-size: 0.75rem; color: #334155; margin-bottom: 2px; }
-    .form-group input { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem; }
+    .form-group input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
     .form-group input:focus { border-color: #2563eb; outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-    .form-group .toggle-pwd { position: absolute; right: 10px; bottom: 10px; cursor: pointer; color: #94a3b8; background: none; border: none; }
-    .btn-primary { width: 100%; padding: 10px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
+    .form-group .toggle-pwd {
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      cursor: pointer;
+      color: #94a3b8;
+      background: none;
+      border: none;
+    }
+    .btn-primary {
+      width: 100%;
+      padding: 10px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
     .btn-primary:hover { background: #1d4ed8; }
     .auth-status { text-align: center; font-size: 0.8rem; margin-top: 10px; padding: 6px; border-radius: 6px; }
     .auth-status.error { color: #ef4444; background: #fef2f2; }
     .auth-status.success { color: #16a34a; background: #f0fdf4; }
     .hidden { display: none !important; }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      .dashboard-container { flex-direction: column; }
+      .sidebar-cards {
+        flex: 1;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      .stat-card {
+        flex: 1 0 70px;
+        min-height: 36px;
+        padding: 3px 2px;
+      }
+      .stat-card .number { font-size: 0.9rem; }
+      .stat-card .label { font-size: 0.4rem; }
+      .stat-card .icon { font-size: 0.7rem; }
+      .settings-section .form-row { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -243,7 +458,11 @@
     <h2>Welcome Back</h2>
     <p class="sub">Login to manage your business.</p>
     <div class="form-group"><label>Email</label><input type="email" id="loginEmail" placeholder="your@email.com" /></div>
-    <div class="form-group" style="position:relative;"><label>Password</label><input type="password" id="loginPassword" placeholder="Enter your password" /><button class="toggle-pwd" onclick="togglePassword('loginPassword', this)"><i class="fas fa-eye"></i></button></div>
+    <div class="form-group" style="position:relative;">
+      <label>Password</label>
+      <input type="password" id="loginPassword" placeholder="Enter your password" />
+      <button class="toggle-pwd" onclick="togglePassword('loginPassword', this)"><i class="fas fa-eye"></i></button>
+    </div>
     <button class="btn-primary" id="loginBtn">Login</button>
     <div id="loginStatus" class="auth-status"></div>
   </div>
@@ -251,8 +470,16 @@
     <h2>Create Admin Account</h2>
     <p class="sub">One-time setup only.</p>
     <div class="form-group"><label>Email</label><input type="email" id="regEmail" placeholder="your@email.com" /></div>
-    <div class="form-group" style="position:relative;"><label>Password</label><input type="password" id="regPassword" placeholder="Min 6 characters" /><button class="toggle-pwd" onclick="togglePassword('regPassword', this)"><i class="fas fa-eye"></i></button></div>
-    <div class="form-group" style="position:relative;"><label>Confirm Password</label><input type="password" id="regConfirm" placeholder="Re-enter" /><button class="toggle-pwd" onclick="togglePassword('regConfirm', this)"><i class="fas fa-eye"></i></button></div>
+    <div class="form-group" style="position:relative;">
+      <label>Password</label>
+      <input type="password" id="regPassword" placeholder="Min 6 characters" />
+      <button class="toggle-pwd" onclick="togglePassword('regPassword', this)"><i class="fas fa-eye"></i></button>
+    </div>
+    <div class="form-group" style="position:relative;">
+      <label>Confirm Password</label>
+      <input type="password" id="regConfirm" placeholder="Re-enter" />
+      <button class="toggle-pwd" onclick="togglePassword('regConfirm', this)"><i class="fas fa-eye"></i></button>
+    </div>
     <button class="btn-primary" id="registerBtn">Create Account</button>
     <div id="registerStatus" class="auth-status"></div>
   </div>
@@ -260,10 +487,10 @@
 
 <!-- ===== DASHBOARD ===== -->
 <div id="dashboardContainer" class="hidden dashboard-container">
-  <!-- Left Sidebar – Cards -->
+  <!-- Sidebar Cards -->
   <div class="sidebar-cards" id="statsGrid"></div>
 
-  <!-- Right Panel – Orders / Returns -->
+  <!-- Order Panel -->
   <div class="order-panel" id="orderPanel">
     <div class="panel-header">
       <h2 id="panelTitle">📋 Orders <span class="badge" id="panelBadge">Click a card</span></h2>
@@ -275,9 +502,108 @@
   </div>
 </div>
 
+<!-- ===== SHOP PROFILE & SETTINGS ===== -->
+<div id="settingsContainer" class="hidden settings-section" style="max-width: 1200px; margin: 20px auto; padding: 0 12px;">
+  <h2>🏪 Shop Profile & Payment Settings</h2>
+  <form id="shopForm" enctype="multipart/form-data">
+    <div class="form-row">
+      <!-- Basic Info -->
+      <div class="full"><label>Shop Name</label><input type="text" id="shopName" name="name" placeholder="My Shop" /></div>
+      <div class="full"><label>Location</label><input type="text" id="shopLocation" name="location" placeholder="Nairobi, Kenya" /></div>
+      <div class="full"><label>Address</label><input type="text" id="shopAddress" name="address" placeholder="Street, Building" /></div>
+      <div class="full"><label>GPS Coordinates</label>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <input type="text" id="shopLatitude" name="latitude" placeholder="Latitude" />
+          <input type="text" id="shopLongitude" name="longitude" placeholder="Longitude" />
+        </div>
+      </div>
+
+      <!-- Logo & Cover -->
+      <div class="full">
+        <label>Logo</label>
+        <input type="file" id="shopLogo" name="logo" accept="image/*" />
+        <div id="logoPreview" style="margin-top:8px; width:100px; height:100px; border-radius:50%; overflow:hidden; background:#f1f5f9; border:1px solid #e2e8f0;">
+          <img id="logoPreviewImg" src="" alt="Logo" style="width:100%; height:100%; object-fit:cover; display:none;" />
+        </div>
+      </div>
+      <div class="full">
+        <label>Cover Image</label>
+        <input type="file" id="shopHero" name="heroImage" accept="image/*" />
+        <div id="coverPreview" style="margin-top:8px; width:100%; height:150px; border-radius:8px; overflow:hidden; background:#f1f5f9; border:1px solid #e2e8f0;">
+          <img id="coverPreviewImg" src="" alt="Cover" style="width:100%; height:100%; object-fit:cover; display:none;" />
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="full"><label>Description</label><textarea id="shopDesc" name="description" rows="3" placeholder="Describe your business..."></textarea></div>
+      <div><label>Mission</label><textarea id="shopMission" name="mission" rows="2" placeholder="Your mission..."></textarea></div>
+      <div><label>Vision</label><textarea id="shopVision" name="vision" rows="2" placeholder="Your vision..."></textarea></div>
+
+      <!-- Social Links -->
+      <div class="full"><label><i class="fab fa-whatsapp"></i> WhatsApp</label><input type="text" id="shopWhatsapp" name="whatsapp" placeholder="254712345678" /></div>
+      <div><label><i class="fab fa-tiktok"></i> TikTok</label><input type="text" id="shopTiktok" name="tiktok" placeholder="@myshop" /></div>
+      <div><label><i class="fab fa-instagram"></i> Instagram</label><input type="text" id="shopInstagram" name="instagram" placeholder="@myshop" /></div>
+      <div><label><i class="fab fa-facebook"></i> Facebook</label><input type="text" id="shopFacebook" name="facebook" placeholder="username" /></div>
+      <div><label><i class="fas fa-phone"></i> Phone</label><input type="text" id="shopPhone" name="phone" placeholder="+254700000000" /></div>
+
+      <!-- ===== PAYMENT SETTINGS ===== -->
+      <div class="full" style="border-top: 2px solid #e2e8f0; padding-top: 16px; margin-top: 8px;">
+        <h3 style="font-size:1rem; font-weight:700; margin-bottom:12px;">💳 Payment Methods</h3>
+      </div>
+
+      <!-- M-Pesa -->
+      <div class="full">
+        <div class="checkbox-group">
+          <label><input type="checkbox" id="mpesaEnabled" name="mpesa_enabled" /> Enable M-Pesa</label>
+        </div>
+        <label>M-Pesa Paybill Number</label>
+        <input type="text" id="mpesaNumber" name="mpesa_number" placeholder="e.g., 123456" />
+      </div>
+
+      <!-- Airtel Money -->
+      <div class="full">
+        <div class="checkbox-group">
+          <label><input type="checkbox" id="airtelEnabled" name="airtel_enabled" /> Enable Airtel Money</label>
+        </div>
+        <label>Airtel Money Number</label>
+        <input type="text" id="airtelNumber" name="airtel_number" placeholder="e.g., 0712345678" />
+      </div>
+
+      <!-- Bank Transfer -->
+      <div class="full">
+        <div class="checkbox-group">
+          <label><input type="checkbox" id="bankEnabled" name="bank_enabled" /> Enable Bank Transfer</label>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <div><label>Bank Name</label><input type="text" id="bankName" name="bank_name" placeholder="Equity Bank" /></div>
+          <div><label>Account Number</label><input type="text" id="bankAccount" name="bank_account" placeholder="1234567890" /></div>
+        </div>
+        <label>Account Holder Name</label>
+        <input type="text" id="bankAccountName" name="bank_account_name" placeholder="Your Business Name" />
+      </div>
+
+      <!-- PayPal -->
+      <div class="full">
+        <div class="checkbox-group">
+          <label><input type="checkbox" id="paypalEnabled" name="paypal_enabled" /> Enable PayPal</label>
+        </div>
+        <label>PayPal Email</label>
+        <input type="email" id="paypalEmail" name="paypal_email" placeholder="your@email.com" />
+      </div>
+
+      <!-- Submit -->
+      <div class="full">
+        <button type="submit" class="btn-save">💾 Save Shop & Payment Settings</button>
+        <div id="settingsStatus" style="margin-top:8px; font-size:0.9rem;"></div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 // ============================================================
-// AUTH & DASHBOARD LOGIC (same as before, with Returns added)
+// AUTH & DASHBOARD LOGIC
 // ============================================================
 let token = localStorage.getItem('token');
 let currentStatus = null;
@@ -413,6 +739,7 @@ function logout() {
   token = null;
   document.getElementById('authContainer').style.display = 'block';
   document.getElementById('dashboardContainer').classList.add('hidden');
+  document.getElementById('settingsContainer').classList.add('hidden');
   document.getElementById('logoutBtn').classList.add('hidden');
   if (socket) { socket.disconnect(); socket = null; }
   window.location.href = '/admin.html';
@@ -421,15 +748,17 @@ function logout() {
 function showDashboard() {
   document.getElementById('authContainer').style.display = 'none';
   document.getElementById('dashboardContainer').classList.remove('hidden');
+  document.getElementById('settingsContainer').classList.remove('hidden');
   document.getElementById('logoutBtn').classList.remove('hidden');
   initSocket();
   loadDashboardStats();
+  loadShopProfile();
 }
 
 function initSocket() {
   if (socket) return;
   socket = io({ auth: { token } });
-  socket.on('new-order-chat-message', (msg) => {
+  socket.on('new-order-chat-message', () => {
     if (currentStatus) loadOrdersByStatus(currentStatus);
   });
   socket.on('order-status-updated', () => {
@@ -439,10 +768,13 @@ function initSocket() {
     loadDashboardStats();
     if (currentStatus) loadOrdersByStatus(currentStatus);
   });
+  socket.on('bank-transfer-pending', () => {
+    loadDashboardStats();
+  });
 }
 
 // ============================================================
-// DASHBOARD STATS & CARDS (includes Returns)
+// DASHBOARD STATS & CARDS
 // ============================================================
 function loadDashboardStats() {
   fetch('/api/admin/dashboard', { headers: authHeaders() })
@@ -491,7 +823,7 @@ function renderCards(stats) {
 }
 
 // ============================================================
-// HANDLE CARD CLICK – LOAD ORDERS OR RETURNS
+// HANDLE CARD CLICK – LOAD ORDERS
 // ============================================================
 function handleCardClick(status) {
   currentStatus = status;
@@ -560,7 +892,6 @@ function loadOrdersByStatus(status) {
     });
 }
 
-// ---- Render Returns (new) ----
 function loadReturns() {
   const container = document.getElementById('orderListContainer');
   const title = document.getElementById('panelTitle');
@@ -578,7 +909,7 @@ function loadReturns() {
         container.innerHTML = `<p class="empty-msg">No returns found.</p>`;
         return;
       }
-      let html = `<div class="order-list">`;
+      let html = '';
       returns.forEach(r => {
         html += `
           <div class="order-row">
@@ -592,15 +923,14 @@ function loadReturns() {
             <div style="font-size:0.7rem; color:#475569;"><strong>Reason:</strong> ${r.reason}</div>
             <div class="order-actions">
               ${r.status === 'pending' ? `
-                <button class="btn-return-approve" onclick="handleReturn(${r.id},'approve')">Approve</button>
-                <button class="btn-return-reject" onclick="handleReturn(${r.id},'reject')">Reject</button>
-                <span style="font-size:0.5rem; color:#94a3b8;">Refund amount: Ksh ${parseFloat(r.refund_amount || 0).toFixed(2)}</span>
+                <button class="btn-refund-approve" onclick="handleReturn(${r.id},'approve')">Approve</button>
+                <button class="btn-refund-reject" onclick="handleReturn(${r.id},'reject')">Reject</button>
+                <span style="font-size:0.5rem; color:#94a3b8;">Refund: Ksh ${parseFloat(r.refund_amount || 0).toFixed(2)}</span>
               ` : `<span style="font-size:0.6rem; color:#94a3b8;">Processed</span>`}
             </div>
           </div>
         `;
       });
-      html += `</div>`;
       container.innerHTML = html;
     })
     .catch(err => {
@@ -609,7 +939,6 @@ function loadReturns() {
     });
 }
 
-// ---- Handle Return (admin) ----
 function handleReturn(returnId, action) {
   if (!confirm(`${action === 'approve' ? 'Approve' : 'Reject'} this return?`)) return;
   fetch(`/api/admin/returns/${returnId}`, {
@@ -622,7 +951,7 @@ function handleReturn(returnId, action) {
     if (data.success) {
       alert(`Return ${action}d.`);
       loadReturns();
-      loadDashboardStats(); // refresh card counts
+      loadDashboardStats();
     } else {
       alert('Failed: ' + (data.error || 'Unknown error'));
     }
@@ -630,7 +959,6 @@ function handleReturn(returnId, action) {
   .catch(() => alert('Network error.'));
 }
 
-// ---- Render Order Rows (same as before, with payment history addition) ----
 function renderOrderRows(orders) {
   const container = document.getElementById('orderListContainer');
   if (!orders || orders.length === 0) {
@@ -638,7 +966,7 @@ function renderOrderRows(orders) {
     return;
   }
 
-  let html = `<div class="order-list">`;
+  let html = '';
   orders.forEach(order => {
     const ref = order.order_ref || `#${order.id}`;
     const customer = order.customer_name || 'Guest';
@@ -646,7 +974,6 @@ function renderOrderRows(orders) {
     const total = parseFloat(order.total).toFixed(2);
     const statusClass = order.status;
 
-    // Build actions (same as before)
     let actionsHtml = '';
     let statusOptions = '';
     if (order.status === 'pending') {
@@ -696,11 +1023,6 @@ function renderOrderRows(orders) {
       actionsHtml = `<span style="font-size:0.6rem; color:#94a3b8;">No actions</span>`;
     }
 
-    // ---- Payment History (new) ----
-    // We'll fetch and display payments if any (we can show inline)
-    // For simplicity, we'll show a button to view payments
-    actionsHtml += ` <button class="btn btn-primary btn-sm" onclick="viewPayments(${order.id})" style="font-size:0.55rem; background:#64748b; color:white;">Payments</button>`;
-
     html += `
       <div class="order-row" id="order-row-${order.id}">
         <div class="order-header">
@@ -712,52 +1034,14 @@ function renderOrderRows(orders) {
           <a href="/admin-orders.html?status=${currentStatus}" target="_blank" style="font-size:0.6rem; color:#2563eb;">View full</a>
         </div>
         <div class="order-actions">${actionsHtml}</div>
-        <div id="payments-${order.id}" style="display:none; margin-top:4px; border-top:1px dashed #e2e8f0; padding-top:4px;"></div>
       </div>
     `;
   });
-  html += `</div>`;
   container.innerHTML = html;
 }
 
-// ---- View Payments (new) ----
-function viewPayments(orderId) {
-  const container = document.getElementById(`payments-${orderId}`);
-  if (container.style.display === 'block') {
-    container.style.display = 'none';
-    return;
-  }
-  container.style.display = 'block';
-  container.innerHTML = 'Loading payments...';
-  fetch(`/api/payments/order/${orderId}`, { headers: authHeaders() })
-    .then(res => res.json())
-    .then(payments => {
-      if (!payments || payments.length === 0) {
-        container.innerHTML = '<span style="font-size:0.7rem; color:#94a3b8;">No payments recorded.</span>';
-        return;
-      }
-      let html = '<div style="font-size:0.7rem;">';
-      payments.forEach(p => {
-        const statusColor = p.status === 'success' ? '#16a34a' : '#ef4444';
-        html += `
-          <div style="display:flex; justify-content:space-between; padding:2px 0; border-bottom:1px solid #f1f4f8;">
-            <span><strong>${p.method.toUpperCase()}</strong> ${p.transaction_id || ''}</span>
-            <span>Ksh ${parseFloat(p.amount).toFixed(2)}</span>
-            <span style="color:${statusColor};">${p.status}</span>
-            <span style="font-size:0.6rem; color:#94a3b8;">${new Date(p.created_at).toLocaleString()}</span>
-          </div>
-        `;
-      });
-      html += '</div>';
-      container.innerHTML = html;
-    })
-    .catch(() => {
-      container.innerHTML = '<span style="font-size:0.7rem; color:#ef4444;">Error loading payments.</span>';
-    });
-}
-
 // ============================================================
-// ACTION FUNCTIONS (same as before)
+// ORDER ACTIONS
 // ============================================================
 function updateOrderStatus(orderId) {
   const statusSelect = document.getElementById(`statusSelect-${orderId}`);
@@ -786,44 +1070,38 @@ function updateOrderStatus(orderId) {
 
 function confirmOrder(orderId) {
   if (!confirm('Confirm this order?')) return;
-  fetch(`/api/orders/${orderId}/confirm`, {
-    method: 'PUT',
-    headers: { 'Authorization': `Bearer ${token}` }
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      alert('Order confirmed.');
-      refreshCurrentOrders();
-      if (socket) socket.emit('order-status-updated', { orderId, status: 'confirmed' });
-    } else {
-      alert('Failed: ' + (data.error || 'Unknown error'));
-    }
-  })
-  .catch(() => alert('Network error.'));
+  fetch(`/api/orders/${orderId}/confirm`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert('Order confirmed.');
+        refreshCurrentOrders();
+        if (socket) socket.emit('order-status-updated', { orderId, status: 'confirmed' });
+      } else {
+        alert('Failed: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(() => alert('Network error.'));
 }
 
 function markReceived(orderId) {
   if (!confirm('Mark this order as received by customer?')) return;
-  fetch(`/api/orders/${orderId}/receive`, {
-    method: 'PUT',
-    headers: { 'Authorization': `Bearer ${token}` }
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      alert('Order marked as received.');
-      refreshCurrentOrders();
-      if (socket) socket.emit('order-status-updated', { orderId, status: 'received' });
-    } else {
-      alert('Failed: ' + (data.error || 'Unknown error'));
-    }
-  })
-  .catch(() => alert('Network error.'));
+  fetch(`/api/orders/${orderId}/receive`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert('Order marked as received.');
+        refreshCurrentOrders();
+        if (socket) socket.emit('order-status-updated', { orderId, status: 'received' });
+      } else {
+        alert('Failed: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(() => alert('Network error.'));
 }
 
 function handleRefund(orderId, action) {
-  if (!confirm(`${action === 'approve' ? 'Approve' : 'Reject'} refund for this order?`)) return;
+  if (!confirm(`${action === 'approve' ? 'Approve' : 'Reject'} refund?`)) return;
   fetch(`/api/admin/orders/${orderId}/refund`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -863,7 +1141,7 @@ function handleReplacement(orderId, action) {
 }
 
 function remindCustomer(orderId) {
-  if (!confirm('Send a reminder to the customer to pick up their order?')) return;
+  if (!confirm('Send reminder to customer?')) return;
   fetch(`/api/admin/orders/${orderId}/remind`, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${token}` }
@@ -871,7 +1149,7 @@ function remindCustomer(orderId) {
   .then(res => res.json())
   .then(data => {
     if (data.success) {
-      alert('Reminder sent to customer via chat.');
+      alert('Reminder sent.');
       refreshCurrentOrders();
     } else {
       alert('Failed: ' + (data.error || 'Unknown error'));
@@ -881,7 +1159,7 @@ function remindCustomer(orderId) {
 }
 
 function cancelOrder(orderId) {
-  const reason = prompt('Please provide a cancellation reason:');
+  const reason = prompt('Cancellation reason:');
   if (!reason) return;
   if (!confirm('Cancel this order?')) return;
   fetch(`/api/orders/${orderId}/cancel`, {
@@ -901,6 +1179,115 @@ function cancelOrder(orderId) {
   })
   .catch(() => alert('Network error.'));
 }
+
+// ============================================================
+// SHOP PROFILE & PAYMENT SETTINGS
+// ============================================================
+function loadShopProfile() {
+  fetch('/api/shop', { headers: authHeaders() })
+    .then(res => res.json())
+    .then(shop => {
+      document.getElementById('shopName').value = shop.name || '';
+      document.getElementById('shopLocation').value = shop.location || '';
+      document.getElementById('shopAddress').value = shop.address || '';
+      document.getElementById('shopLatitude').value = shop.latitude || '';
+      document.getElementById('shopLongitude').value = shop.longitude || '';
+      document.getElementById('shopDesc').value = shop.description || '';
+      document.getElementById('shopMission').value = shop.mission || '';
+      document.getElementById('shopVision').value = shop.vision || '';
+      document.getElementById('shopWhatsapp').value = shop.whatsapp || '';
+      document.getElementById('shopTiktok').value = shop.tiktok || '';
+      document.getElementById('shopInstagram').value = shop.instagram || '';
+      document.getElementById('shopFacebook').value = shop.facebook || '';
+      document.getElementById('shopPhone').value = shop.phone || '';
+
+      // Payment settings
+      document.getElementById('mpesaEnabled').checked = shop.mpesa_enabled || false;
+      document.getElementById('mpesaNumber').value = shop.mpesa_number || '';
+      document.getElementById('airtelEnabled').checked = shop.airtel_enabled || false;
+      document.getElementById('airtelNumber').value = shop.airtel_number || '';
+      document.getElementById('bankEnabled').checked = shop.bank_enabled || false;
+      document.getElementById('bankName').value = shop.bank_name || '';
+      document.getElementById('bankAccount').value = shop.bank_account || '';
+      document.getElementById('bankAccountName').value = shop.bank_account_name || '';
+      document.getElementById('paypalEnabled').checked = shop.paypal_enabled || false;
+      document.getElementById('paypalEmail').value = shop.paypal_email || '';
+
+      // Logo & Cover preview
+      if (shop.logo) {
+        document.getElementById('logoPreviewImg').src = shop.logo;
+        document.getElementById('logoPreviewImg').style.display = 'block';
+      }
+      if (shop.heroImage) {
+        document.getElementById('coverPreviewImg').src = shop.heroImage;
+        document.getElementById('coverPreviewImg').style.display = 'block';
+      }
+    })
+    .catch(err => console.error('Error loading shop:', err));
+}
+
+document.getElementById('shopLogo').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      document.getElementById('logoPreviewImg').src = event.target.result;
+      document.getElementById('logoPreviewImg').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+document.getElementById('shopHero').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      document.getElementById('coverPreviewImg').src = event.target.result;
+      document.getElementById('coverPreviewImg').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+document.getElementById('shopForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const formData = new FormData(this);
+
+  // Add boolean values properly
+  const boolFields = ['mpesa_enabled', 'airtel_enabled', 'bank_enabled', 'paypal_enabled'];
+  boolFields.forEach(field => {
+    const el = document.querySelector(`[name="${field}"]`);
+    formData.set(field, el.checked ? 'true' : 'false');
+  });
+
+  const statusDiv = document.getElementById('settingsStatus');
+  statusDiv.textContent = '⏳ Saving settings...';
+  statusDiv.style.color = '#2563eb';
+
+  try {
+    const res = await fetch('/api/shop', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: formData
+    });
+    const data = await res.json();
+    if (res.ok) {
+      statusDiv.textContent = '✅ Settings saved successfully!';
+      statusDiv.style.color = '#16a34a';
+      // Reload shop profile to reflect changes
+      loadShopProfile();
+      // Refresh dashboard stats in case payment settings affect anything
+      loadDashboardStats();
+    } else {
+      statusDiv.textContent = '❌ Failed: ' + (data.error || 'Unknown error');
+      statusDiv.style.color = '#ef4444';
+    }
+  } catch (err) {
+    statusDiv.textContent = '❌ Network error: ' + err.message;
+    statusDiv.style.color = '#ef4444';
+  }
+});
 
 // ============================================================
 // INIT
@@ -928,7 +1315,6 @@ window.handleReplacement = handleReplacement;
 window.remindCustomer = remindCustomer;
 window.cancelOrder = cancelOrder;
 window.refreshCurrentOrders = refreshCurrentOrders;
-window.viewPayments = viewPayments;
 window.handleReturn = handleReturn;
 </script>
 </body>

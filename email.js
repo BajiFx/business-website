@@ -65,8 +65,36 @@ function receivedEmail(order, customerName) {
   };
 }
 
+// ---- Auto Social Messages ----
+function getAutoSocialMessage(product) {
+  const productName = product.name || 'this product';
+  const productPrice = product.price || '';
+  const productDesc = product.description || '';
+  const productImage = product.image || '';
+
+  // WhatsApp default message
+  const whatsappMessage = `Hi, I'm interested in "${productName}" (${productPrice}). Could I get more information about this product? ${productDesc ? `\n\nDescription: ${productDesc}` : ''}`;
+
+  // Instagram default message (shorter for DM)
+  const instagramMessage = `Hi! I'm interested in "${productName}". Can you tell me more about it?`;
+
+  // Facebook Messenger default message
+  const messengerMessage = `Hi there! I came across "${productName}" on your shop. Could you share more details?`;
+
+  return {
+    whatsapp: whatsappMessage,
+    instagram: instagramMessage,
+    messenger: messengerMessage,
+    productName,
+    productPrice,
+    productDesc,
+    productImage
+  };
+}
+
 module.exports = {
   orderConfirmationEmail,
   statusUpdateEmail,
-  receivedEmail
+  receivedEmail,
+  getAutoSocialMessage
 };
