@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    /* ===== BASE ===== */
+    /* ===== BASE STYLES (unchanged) ===== */
     .product-detail-page { max-width: 100%; padding: 0 12px 20px; padding-bottom: 80px; }
     .back-link { display: inline-block; margin: 10px 0; color: #2563eb; text-decoration: none; font-weight: 600; font-size: 0.85rem; }
     .back-link:hover { text-decoration: underline; }
@@ -429,45 +429,50 @@
       const res = await fetch('/api/shop');
       if (!res.ok) throw new Error('Failed to load shop');
       shopData = await res.json();
-      console.log('✅ Shop data loaded:', shopData);
     } catch (err) {
-      console.error('❌ Error loading shop:', err);
+      console.error('Error loading shop:', err);
       shopData = {};
     }
   }
 
-  // ---- WhatsApp link builder (robust) ----
+  // ---- Build the full product message with details ----
+  function buildProductMessage(product) {
+    const name = product.name || 'this product';
+    const price = product.price ? `Ksh ${product.price}` : '';
+    const description = product.description || '';
+    const image = product.image || '';
+    const productUrl = `${window.location.origin}/product-detail.html?id=${product.id}`;
+
+    let msg = `Hi, I'm interested in "${name}"${price ? ` (${price})` : ''}. Could I get more information about this product?\n\n`;
+
+    if (description) {
+      msg += `📄 Description: ${description}\n`;
+    }
+    if (image) {
+      msg += `📷 Product Image: ${image}\n`;
+    }
+    msg += `🔗 Product Link: ${productUrl}`;
+
+    return msg;
+  }
+
+  // ---- WhatsApp link ----
   function getWhatsAppLink(phoneNumber, message) {
-    if (!phoneNumber) {
-      console.warn('⚠️ WhatsApp number missing in shop profile.');
-      return '#';
-    }
+    if (!phoneNumber) return '#';
     const cleaned = phoneNumber.replace(/[^0-9]/g, '');
-    if (cleaned.length < 9) {
-      console.warn('⚠️ Invalid WhatsApp number:', phoneNumber);
-      return '#';
-    }
+    if (cleaned.length < 9) return '#';
     const encoded = encodeURIComponent(message);
-    const link = `https://wa.me/${cleaned}?text=${encoded}`;
-    console.log('📤 Generated WhatsApp link:', link);
-    return link;
+    return `https://wa.me/${cleaned}?text=${encoded}`;
   }
 
-  // ---- Messenger link builder (pre-fill message) ----
+  // ---- Messenger link ----
   function getMessengerLink(pageId, message) {
-    if (!pageId) {
-      console.warn('⚠️ Facebook page ID/username missing.');
-      return '#';
-    }
+    if (!pageId) return '#';
     const encoded = encodeURIComponent(message);
-    // Use m.me with pre‑filled text (works on mobile)
-    // Some browsers might not support, but it's the best we have.
-    const link = `https://m.me/${pageId.replace('@', '')}?text=${encoded}`;
-    console.log('📤 Generated Messenger link:', link);
-    return link;
+    return `https://m.me/${pageId.replace('@', '')}?text=${encoded}`;
   }
 
-  // ---- Instagram link (no pre-fill, but we open profile) ----
+  // ---- Instagram link ----
   function getInstagramLink(username) {
     if (!username) return '#';
     return `https://www.instagram.com/${username.replace('@', '')}/`;
@@ -488,9 +493,7 @@
     const tiktokUser = shop.tiktok || '';
     const phone = shop.phone || '';
 
-    const productName = product.name || 'this product';
-    const productPrice = product.price ? ` (${product.price})` : '';
-    const message = `Hi, I'm interested in "${productName}"${productPrice}. Could I get more information about this product?`;
+    const message = buildProductMessage(product);
 
     return {
       whatsapp: getWhatsAppLink(whatsappNumber, message),
@@ -501,7 +504,7 @@
     };
   }
 
-  // ---- Load product detail ----
+  // ---- Render detail ----
   async function loadProductDetail() {
     try {
       await fetchShopData();
@@ -531,15 +534,10 @@
 
     let variant = allVariants.find(v => v.id === currentVariantId) || allVariants[0];
     let media = [];
-    if (variant.image) {
-      media.push({ id: null, type: 'image', url: variant.image });
-    }
-    if (product.image && !media.length) {
-      media.push({ id: null, type: 'image', url: product.image });
-    }
+    if (variant.image) media.push({ id: null, type: 'image', url: variant.image });
+    if (product.image && !media.length) media.push({ id: null, type: 'image', url: product.image });
     if (currentMediaIndex >= media.length) currentMediaIndex = 0;
 
-    // Variant swatches
     let variantHtml = '';
     if (allVariants.length > 1) {
       variantHtml = `<div class="variant-selector"><span class="label">Color:</span>`;
@@ -552,14 +550,12 @@
       variantHtml = `<div class="variant-selector"><span class="label">Color:</span> <span style="font-weight:500;">${allVariants[0].name}</span></div>`;
     }
 
-    // Thumbnails
     let thumbHtml = '';
     media.forEach((m, idx) => {
       const active = idx === currentMediaIndex ? 'active' : '';
       thumbHtml += `<div class="thumb ${active}" onclick="selectMedia(${idx})"><img src="${m.url}" alt="Media"></div>`;
     });
 
-    // Main media
     let mainMediaHtml = '';
     if (media.length > 0 && media[currentMediaIndex]) {
       mainMediaHtml = `<img src="${media[currentMediaIndex].url}" alt="${product.name}">`;
@@ -569,7 +565,6 @@
 
     const priceDisplay = variant.price || product.price;
     const stockDisplay = variant.stock !== undefined ? variant.stock : 999;
-
     const isInCart = getCart().some(item => item.id === product.id && item.variant_id === currentVariantId);
     const btnText = isInCart ? 'Add More' : 'Add to Cart';
     const btnClass = isInCart ? 'in-cart' : '';
@@ -582,14 +577,14 @@
       returnPolicyHtml = `<div class="return-policy" style="background:#fee2e2;">Non-returnable (final sale).</div>`;
     }
 
-    // ---- "LET'S TALK" SECTION (SOCIAL ICONS) ----
+    // ---- LET'S TALK ----
     const socialLinks = getAutoSocialLinks(product);
-    const messagePreview = `Hi, I'm interested in "${product.name}"${product.price ? ` (${product.price})` : ''}. Could I get more information about this product?`;
+    const previewMessage = buildProductMessage(product).replace(/\n/g, ' ');
 
     let letsTalkHtml = `
       <div class="lets-talk-section">
         <h3><i class="fas fa-comment-dots"></i> Let's Talk About This Product</h3>
-        <p>Get instant answers via WhatsApp, Instagram, or Messenger – we're here to help!</p>
+        <p>Get instant answers via WhatsApp or Messenger – we're here to help!</p>
         <div class="social-icons">
           <a href="${socialLinks.whatsapp}" target="_blank" class="whatsapp" title="Chat on WhatsApp"><i class="fab fa-whatsapp"></i> WhatsApp</a>
           <a href="${socialLinks.instagram}" target="_blank" class="instagram" title="Instagram"><i class="fab fa-instagram"></i> Instagram</a>
@@ -599,7 +594,7 @@
         </div>
         <div class="auto-message-preview">
           <div class="label">📨 Auto Message</div>
-          <strong>${messagePreview}</strong>
+          <strong>${previewMessage}</strong>
           <div style="font-size:0.65rem; color:#94a3b8; margin-top:2px;">This message will be pre-filled when you click WhatsApp or Messenger.</div>
         </div>
       </div>
@@ -619,7 +614,6 @@
       reviewsHtml = '<p style="font-size:0.8rem; color:#94a3b8;">No reviews yet.</p>';
     }
 
-    // Related
     let relatedHtml = '';
     if (related && related.length > 0) {
       relatedHtml = related.map(p => `
@@ -688,7 +682,7 @@
     `;
   }
 
-  // ---- Variant & media functions ----
+  // ---- Variant & Media functions ----
   function selectVariant(variantId) {
     currentVariantId = variantId;
     currentMediaIndex = 0;
@@ -780,7 +774,6 @@
     updateNavCartBadge();
   });
 
-  // Expose globals for inline onclick
   window.selectVariant = selectVariant;
   window.selectMedia = selectMedia;
   window.changeDetailQty = changeDetailQty;
