@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Panel</title>
-  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <script src="/socket.io/socket.io.js"></script>
   <style>
     /* ===== ADMIN HEADER ===== */
@@ -279,7 +279,7 @@
       font-size: 0.85rem;
     }
 
-    /* ===== SHOP PROFILE & SETTINGS ===== */
+    /* ===== SETTINGS & PRODUCT SECTIONS ===== */
     .settings-section {
       background: white;
       border-radius: 12px;
@@ -350,8 +350,87 @@
       margin-top: 12px;
     }
     .settings-section .btn-save:hover { background: #1d4ed8; }
+    .settings-section .btn-danger {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .settings-section .btn-danger:hover { background: #dc2626; }
+    .settings-section .btn-secondary {
+      background: #e2e8f0;
+      color: #1e293b;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .settings-section .btn-secondary:hover { background: #cbd5e1; }
 
-    /* ===== AUTH ===== */
+    .variant-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      background: #f8fafc;
+      padding: 6px 10px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+    }
+    .variant-row input,
+    .variant-row select {
+      flex: 1;
+      min-width: 60px;
+      padding: 4px 6px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+    .variant-row .variant-color {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 1px solid #d1d5db;
+    }
+    .variant-row .remove-variant {
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+      font-size: 0.7rem;
+    }
+
+    .product-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #e2e8f0;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .product-item .info {
+      flex: 1;
+    }
+    .product-item .info .name {
+      font-weight: 600;
+    }
+    .product-item .info .price {
+      color: #2563eb;
+      font-weight: 700;
+    }
+    .product-item .actions {
+      display: flex;
+      gap: 6px;
+    }
+
     .auth-container {
       max-width: 380px;
       margin: 30px auto;
@@ -414,7 +493,6 @@
     .auth-status.success { color: #16a34a; background: #f0fdf4; }
     .hidden { display: none !important; }
 
-    /* ===== RESPONSIVE ===== */
     @media (max-width: 768px) {
       .dashboard-container { flex-direction: column; }
       .sidebar-cards {
@@ -432,6 +510,7 @@
       .stat-card .label { font-size: 0.4rem; }
       .stat-card .icon { font-size: 0.7rem; }
       .settings-section .form-row { grid-template-columns: 1fr; }
+      .variant-row { flex-direction: column; align-items: stretch; }
     }
   </style>
 </head>
@@ -502,7 +581,9 @@
   </div>
 </div>
 
-<!-- ===== SHOP PROFILE & SETTINGS ===== -->
+<!-- ============================================================ -->
+<!--  SHOP PROFILE & PAYMENT SETTINGS & POLICIES                  -->
+<!-- ============================================================ -->
 <div id="settingsContainer" class="hidden settings-section" style="max-width: 1200px; margin: 20px auto; padding: 0 12px;">
   <h2>🏪 Shop Profile & Payment Settings</h2>
   <form id="shopForm" enctype="multipart/form-data">
@@ -591,6 +672,31 @@
         <input type="email" id="paypalEmail" name="paypal_email" placeholder="your@email.com" />
       </div>
 
+      <!-- ===== POLICIES SECTION ===== -->
+      <div class="full" style="border-top: 2px solid #e2e8f0; padding-top: 16px; margin-top: 8px;">
+        <h3 style="font-size:1rem; font-weight:700; margin-bottom:12px;">📋 Shop Policies</h3>
+      </div>
+
+      <div class="full">
+        <div class="checkbox-group">
+          <label><input type="checkbox" id="deliveryEnabled" name="delivery_enabled" /> Enable Delivery</label>
+          <label><input type="checkbox" id="onlineOrdersEnabled" name="online_orders_enabled" /> Enable Online Orders</label>
+        </div>
+      </div>
+
+      <div class="full"><label>Shipping Policy</label>
+        <textarea id="shippingPolicy" name="shipping_policy" rows="4" placeholder="Our shipping policy..."></textarea>
+      </div>
+      <div class="full"><label>Return Policy</label>
+        <textarea id="returnPolicy" name="return_policy" rows="4" placeholder="Our return policy..."></textarea>
+      </div>
+      <div class="full"><label>Terms & Conditions</label>
+        <textarea id="termsPolicy" name="terms_policy" rows="3" placeholder="Terms and conditions..."></textarea>
+      </div>
+      <div class="full"><label>Privacy Policy</label>
+        <textarea id="privacyPolicy" name="privacy_policy" rows="3" placeholder="Privacy policy..."></textarea>
+      </div>
+
       <!-- Submit -->
       <div class="full">
         <button type="submit" class="btn-save">💾 Save Shop & Payment Settings</button>
@@ -600,722 +706,1116 @@
   </form>
 </div>
 
+<!-- ============================================================ -->
+<!--  PRODUCT MANAGEMENT                                           -->
+<!-- ============================================================ -->
+<div id="productContainer" class="hidden settings-section" style="max-width: 1200px; margin: 20px auto; padding: 0 12px;">
+  <h2>📦 Product Manager</h2>
+
+  <!-- Add / Edit Product Form -->
+  <form id="productForm" enctype="multipart/form-data">
+    <input type="hidden" id="editProductId" value="" />
+    <div class="form-row">
+      <div class="full"><label>Product Name *</label><input type="text" id="pName" name="name" required /></div>
+      <div><label>Price (Ksh) *</label><input type="text" id="pPrice" name="price" required /></div>
+      <div><label>Old Price (Ksh)</label><input type="text" id="pOldPrice" name="old_price" placeholder="e.g., 799" /></div>
+      <div><label>Discount (%)</label><input type="text" id="pDiscount" name="discount_percent" placeholder="e.g., 20" /></div>
+      <div><label>Category</label><input type="text" id="pCategory" name="category" placeholder="e.g., Electronics, Fashion" /></div>
+      <div><label>Contact</label><input type="text" id="pContact" name="contact" value="+254700000000" /></div>
+      <div><label>Rating</label><input type="text" id="pRating" name="rating" placeholder="e.g., 4.5" /></div>
+      <div><label>Badge 1</label><input type="text" id="pBadge1" name="badge1" placeholder="Brand Official" /></div>
+      <div><label>Badge 2</label><input type="text" id="pBadge2" name="badge2" placeholder="Fulfilled By Kilimall" /></div>
+      <div class="full"><label>Shipping Info</label><input type="text" id="pShipping" name="shipping" placeholder="Ships from Mavoko, select an address to view delivery times." /></div>
+      <div class="full"><label>Description</label><textarea id="pDescription" name="description" rows="4" placeholder="Full product description..."></textarea></div>
+      <div class="full checkbox-group">
+        <label><input type="checkbox" id="pFlashSale" name="isFlashSale" /> 🔥 Flash Sale</label>
+        <label><input type="checkbox" id="pNewArrival" name="isNewArrival" /> 🆕 New Arrival</label>
+      </div>
+
+      <!-- Media Upload -->
+      <div><label>Main Image</label><input type="file" id="pImage" name="image" accept="image/*" /></div>
+      <div><label>Video</label><input type="file" id="pVideo" name="video" accept="video/*" /></div>
+
+      <!-- Variants -->
+      <div class="full">
+        <label>Color Variants</label>
+        <div id="variantsContainer"></div>
+        <button type="button" class="btn-secondary" onclick="addVariantRow()">➕ Add Color Variant</button>
+      </div>
+    </div>
+    <button type="submit" class="btn-save" id="productSubmitBtn">➕ Add Product</button>
+    <button type="button" class="btn-secondary" onclick="cancelEditProduct()" id="cancelEditBtn" style="display:none;">Cancel Edit</button>
+  </form>
+
+  <!-- Product List -->
+  <div style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+    <h3>📋 Your Products</h3>
+    <div id="adminProductList"></div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!--  PROMO CODES MANAGEMENT                                        -->
+<!-- ============================================================ -->
+<div id="promoContainer" class="settings-section" style="max-width: 1200px; margin: 20px auto; padding: 0 12px;">
+  <h2>🎁 Promo Codes</h2>
+  <form id="promoForm" onsubmit="createPromo(event)">
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:end;">
+      <div><label>Code</label><input type="text" id="promoCode" required style="padding:6px;"></div>
+      <div><label>Type</label>
+        <select id="promoType"><option value="percentage">%</option><option value="fixed">Fixed</option></select>
+      </div>
+      <div><label>Value</label><input type="number" id="promoValue" required style="width:80px;"></div>
+      <div><label>Min Order</label><input type="number" id="promoMin" value="0" style="width:80px;"></div>
+      <div><label>Expires</label><input type="datetime-local" id="promoExpires"></div>
+      <div><label>Usage Limit</label><input type="number" id="promoLimit" style="width:80px;"></div>
+      <button class="btn btn-primary" type="submit">Add Promo</button>
+    </div>
+  </form>
+  <div id="promoList" style="margin-top:12px;"></div>
+</div>
+
+<!-- ============================================================ -->
+<!--  LOCATION REQUESTS                                            -->
+<!-- ============================================================ -->
+<div id="locationRequestsContainer" class="settings-section" style="max-width: 1200px; margin: 20px auto; padding: 0 12px;">
+  <h2>📍 Location Access Requests</h2>
+  <div id="locationRequestsList"><p class="empty-msg">Loading...</p></div>
+</div>
+
+<!-- ============================================================ -->
+<!--  ADMIN LOGS                                                  -->
+<!-- ============================================================ -->
+<div id="logsContainer" class="settings-section" style="max-width: 1200px; margin: 20px auto; padding: 0 12px;">
+  <h2>📋 Admin Activity Logs</h2>
+  <div id="logsList" style="max-height:400px; overflow-y:auto;"></div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// ============================================================
-// AUTH & DASHBOARD LOGIC
-// ============================================================
-let token = localStorage.getItem('token');
-let currentStatus = null;
-let currentOrders = [];
-let socket = null;
+  // ================================================================
+  //  AUTH & DASHBOARD
+  // ================================================================
+  let token = localStorage.getItem('token');
+  let currentStatus = null;
+  let currentOrders = [];
+  let socket = null;
 
-function authHeaders() {
-  return { 'Authorization': `Bearer ${token}` };
-}
-
-function showTab(tab) {
-  document.getElementById('loginForm').classList.toggle('active', tab === 'login');
-  document.getElementById('registerForm').classList.toggle('active', tab === 'register');
-  document.getElementById('loginTab').classList.toggle('active', tab === 'login');
-  document.getElementById('registerTab').classList.toggle('active', tab === 'register');
-}
-function togglePassword(inputId, btn) {
-  const input = document.getElementById(inputId);
-  const icon = btn.querySelector('i');
-  if (input.type === 'password') {
-    input.type = 'text';
-    icon.className = 'fas fa-eye-slash';
-  } else {
-    input.type = 'password';
-    icon.className = 'fas fa-eye';
+  function authHeaders() {
+    return { 'Authorization': `Bearer ${token}` };
   }
-}
 
-async function checkAdminExists() {
-  try {
-    const res = await fetch('/api/auth/admin-exists');
-    const data = await res.json();
-    if (data.exists) {
-      document.getElementById('registerTab').style.display = 'none';
-      document.getElementById('registerForm').classList.remove('active');
-      document.getElementById('loginForm').classList.add('active');
-      document.getElementById('loginTab').classList.add('active');
+  function showTab(tab) {
+    document.getElementById('loginForm').classList.toggle('active', tab === 'login');
+    document.getElementById('registerForm').classList.toggle('active', tab === 'register');
+    document.getElementById('loginTab').classList.toggle('active', tab === 'login');
+    document.getElementById('registerTab').classList.toggle('active', tab === 'register');
+  }
+  function togglePassword(inputId, btn) {
+    const input = document.getElementById(inputId);
+    const icon = btn.querySelector('i');
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.className = 'fas fa-eye-slash';
     } else {
+      input.type = 'password';
+      icon.className = 'fas fa-eye';
+    }
+  }
+
+  async function checkAdminExists() {
+    try {
+      const res = await fetch('/api/auth/admin-exists');
+      const data = await res.json();
+      if (data.exists) {
+        document.getElementById('registerTab').style.display = 'none';
+        document.getElementById('registerForm').classList.remove('active');
+        document.getElementById('loginForm').classList.add('active');
+        document.getElementById('loginTab').classList.add('active');
+      } else {
+        document.getElementById('registerTab').style.display = 'block';
+      }
+    } catch (err) {
       document.getElementById('registerTab').style.display = 'block';
     }
-  } catch (err) {
-    document.getElementById('registerTab').style.display = 'block';
   }
-}
 
-async function handleRegister() {
-  const email = document.getElementById('regEmail').value.trim();
-  const password = document.getElementById('regPassword').value;
-  const confirm = document.getElementById('regConfirm').value;
-  const status = document.getElementById('registerStatus');
-  status.className = 'auth-status';
-  if (!email || !password || !confirm) {
-    status.textContent = '❌ All fields are required.';
-    status.className += ' error';
-    return;
-  }
-  if (password.length < 6) {
-    status.textContent = '❌ Password must be at least 6 characters.';
-    status.className += ' error';
-    return;
-  }
-  if (password !== confirm) {
-    status.textContent = '❌ Passwords do not match.';
-    status.className += ' error';
-    return;
-  }
-  status.textContent = '⏳ Creating account...';
-  document.getElementById('registerBtn').disabled = true;
-  try {
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      status.textContent = '✅ ' + data.message;
-      status.className = 'auth-status success';
-      localStorage.setItem('token', data.token);
-      token = data.token;
-      setTimeout(() => showDashboard(), 500);
-    } else {
-      status.textContent = '❌ ' + (data.error || 'Registration failed');
+  async function handleRegister() {
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value;
+    const confirm = document.getElementById('regConfirm').value;
+    const status = document.getElementById('registerStatus');
+    status.className = 'auth-status';
+    if (!email || !password || !confirm) {
+      status.textContent = '❌ All fields are required.';
+      status.className += ' error';
+      return;
+    }
+    if (password.length < 6) {
+      status.textContent = '❌ Password must be at least 6 characters.';
+      status.className += ' error';
+      return;
+    }
+    if (password !== confirm) {
+      status.textContent = '❌ Passwords do not match.';
+      status.className += ' error';
+      return;
+    }
+    status.textContent = '⏳ Creating account...';
+    document.getElementById('registerBtn').disabled = true;
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        status.textContent = '✅ ' + data.message;
+        status.className = 'auth-status success';
+        localStorage.setItem('token', data.token);
+        token = data.token;
+        setTimeout(() => showDashboard(), 500);
+      } else {
+        status.textContent = '❌ ' + (data.error || 'Registration failed');
+        status.className = 'auth-status error';
+        document.getElementById('registerBtn').disabled = false;
+      }
+    } catch (err) {
+      status.textContent = '❌ Network error. Please try again.';
       status.className = 'auth-status error';
       document.getElementById('registerBtn').disabled = false;
     }
-  } catch (err) {
-    status.textContent = '❌ Network error. Please try again.';
-    status.className = 'auth-status error';
-    document.getElementById('registerBtn').disabled = false;
   }
-}
 
-async function handleLogin() {
-  const email = document.getElementById('loginEmail').value.trim();
-  const password = document.getElementById('loginPassword').value;
-  const status = document.getElementById('loginStatus');
-  status.className = 'auth-status';
-  if (!email || !password) {
-    status.textContent = '❌ Email and password are required.';
-    status.className += ' error';
-    return;
-  }
-  status.textContent = '⏳ Logging in...';
-  document.getElementById('loginBtn').disabled = true;
-  try {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      status.textContent = '✅ Welcome back!';
-      status.className = 'auth-status success';
-      localStorage.setItem('token', data.token);
-      token = data.token;
-      setTimeout(() => showDashboard(), 500);
-    } else {
-      status.textContent = '❌ ' + (data.error || 'Login failed');
+  async function handleLogin() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const status = document.getElementById('loginStatus');
+    status.className = 'auth-status';
+    if (!email || !password) {
+      status.textContent = '❌ Email and password are required.';
+      status.className += ' error';
+      return;
+    }
+    status.textContent = '⏳ Logging in...';
+    document.getElementById('loginBtn').disabled = true;
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        status.textContent = '✅ Welcome back!';
+        status.className = 'auth-status success';
+        localStorage.setItem('token', data.token);
+        token = data.token;
+        setTimeout(() => showDashboard(), 500);
+      } else {
+        status.textContent = '❌ ' + (data.error || 'Login failed');
+        status.className = 'auth-status error';
+        document.getElementById('loginBtn').disabled = false;
+      }
+    } catch (err) {
+      status.textContent = '❌ Network error. Please try again.';
       status.className = 'auth-status error';
       document.getElementById('loginBtn').disabled = false;
     }
-  } catch (err) {
-    status.textContent = '❌ Network error. Please try again.';
-    status.className = 'auth-status error';
-    document.getElementById('loginBtn').disabled = false;
   }
-}
 
-function logout() {
-  localStorage.removeItem('token');
-  token = null;
-  document.getElementById('authContainer').style.display = 'block';
-  document.getElementById('dashboardContainer').classList.add('hidden');
-  document.getElementById('settingsContainer').classList.add('hidden');
-  document.getElementById('logoutBtn').classList.add('hidden');
-  if (socket) { socket.disconnect(); socket = null; }
-  window.location.href = '/admin.html';
-}
+  function logout() {
+    localStorage.removeItem('token');
+    token = null;
+    document.getElementById('authContainer').style.display = 'block';
+    document.getElementById('dashboardContainer').classList.add('hidden');
+    document.getElementById('settingsContainer').classList.add('hidden');
+    document.getElementById('productContainer').classList.add('hidden');
+    document.getElementById('promoContainer').classList.add('hidden');
+    document.getElementById('locationRequestsContainer').classList.add('hidden');
+    document.getElementById('logsContainer').classList.add('hidden');
+    document.getElementById('logoutBtn').classList.add('hidden');
+    if (socket) { socket.disconnect(); socket = null; }
+    window.location.href = '/admin.html';
+  }
 
-function showDashboard() {
-  document.getElementById('authContainer').style.display = 'none';
-  document.getElementById('dashboardContainer').classList.remove('hidden');
-  document.getElementById('settingsContainer').classList.remove('hidden');
-  document.getElementById('logoutBtn').classList.remove('hidden');
-  initSocket();
-  loadDashboardStats();
-  loadShopProfile();
-}
-
-function initSocket() {
-  if (socket) return;
-  socket = io({ auth: { token } });
-  socket.on('new-order-chat-message', () => {
-    if (currentStatus) loadOrdersByStatus(currentStatus);
-  });
-  socket.on('order-status-updated', () => {
-    if (currentStatus) loadOrdersByStatus(currentStatus);
-  });
-  socket.on('new-order', () => {
+  function showDashboard() {
+    document.getElementById('authContainer').style.display = 'none';
+    document.getElementById('dashboardContainer').classList.remove('hidden');
+    document.getElementById('settingsContainer').classList.remove('hidden');
+    document.getElementById('productContainer').classList.remove('hidden');
+    document.getElementById('promoContainer').classList.remove('hidden');
+    document.getElementById('locationRequestsContainer').classList.remove('hidden');
+    document.getElementById('logsContainer').classList.remove('hidden');
+    document.getElementById('logoutBtn').classList.remove('hidden');
+    initSocket();
     loadDashboardStats();
-    if (currentStatus) loadOrdersByStatus(currentStatus);
-  });
-  socket.on('bank-transfer-pending', () => {
-    loadDashboardStats();
-  });
-}
-
-// ============================================================
-// DASHBOARD STATS & CARDS
-// ============================================================
-function loadDashboardStats() {
-  fetch('/api/admin/dashboard', { headers: authHeaders() })
-    .then(res => {
-      if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
-      return res.json();
-    })
-    .then(stats => {
-      renderCards(stats);
-      if (currentStatus) loadOrdersByStatus(currentStatus);
-    })
-    .catch(err => console.error(err));
-}
-
-function renderCards(stats) {
-  const grid = document.getElementById('statsGrid');
-  const configs = [
-    { key: 'pending', label: 'Pending', icon: 'fa-clock', css: 'pending', statusParam: 'pending' },
-    { key: 'confirmed', label: 'Confirmed', icon: 'fa-check-circle', css: 'confirmed', statusParam: 'confirmed' },
-    { key: 'shipped', label: 'Shipped', icon: 'fa-truck', css: 'shipped', statusParam: 'shipped' },
-    { key: 'delivered', label: 'Awaiting Pickup', icon: 'fa-box-open', css: 'delivered', statusParam: 'delivered' },
-    { key: 'received', label: 'Received', icon: 'fa-check-double', css: 'received', statusParam: 'received' },
-    { key: 'cancelled', label: 'Cancelled', icon: 'fa-times-circle', css: 'cancelled', statusParam: 'cancelled' },
-    { key: 'replacements_pending', label: 'Replacements', icon: 'fa-exchange-alt', css: 'replacements', statusParam: 'replacements' },
-    { key: 'refunds_pending', label: 'Refunds', icon: 'fa-hand-holding-usd', css: 'refunds', statusParam: 'refunds' },
-    { key: 'urgent', label: 'Urgent', icon: 'fa-exclamation-triangle', css: 'urgent', statusParam: 'urgent' },
-    { key: 'returns_pending', label: 'Returns', icon: 'fa-undo', css: 'returns', statusParam: 'returns' },
-    { key: 'total_orders', label: 'Total', icon: 'fa-shopping-bag', css: 'total', statusParam: 'all' },
-  ];
-
-  let html = '';
-  configs.forEach(cfg => {
-    const count = stats[cfg.key] ?? 0;
-    const isPendingAction = ['replacements_pending', 'refunds_pending', 'urgent', 'pending', 'delivered', 'returns_pending'].includes(cfg.key);
-    const shouldBlink = (count > 0 && isPendingAction);
-    const blinkClass = shouldBlink ? '' : 'hidden';
-    html += `
-      <div class="stat-card ${cfg.css}" onclick="handleCardClick('${cfg.statusParam}')">
-        <div class="icon"><i class="fas ${cfg.icon}"></i></div>
-        <div class="number">${count}</div>
-        <div class="label">${cfg.label} <span class="blink-dot ${blinkClass}"></span></div>
-      </div>
-    `;
-  });
-  grid.innerHTML = html;
-}
-
-// ============================================================
-// HANDLE CARD CLICK – LOAD ORDERS
-// ============================================================
-function handleCardClick(status) {
-  currentStatus = status;
-  if (status === 'returns') {
-    loadReturns();
-    return;
+    loadShopProfile();
+    loadAdminProducts();
+    loadPromoCodes();
+    loadLocationRequests();
+    loadAdminLogs();
   }
-  loadOrdersByStatus(status);
-}
 
-function refreshCurrentOrders() {
-  if (currentStatus === 'returns') {
-    loadReturns();
-  } else if (currentStatus) {
-    loadOrdersByStatus(currentStatus);
+  function initSocket() {
+    if (socket) return;
+    socket = io({ auth: { token } });
+    socket.on('new-order-chat-message', () => { if (currentStatus) loadOrdersByStatus(currentStatus); });
+    socket.on('order-status-updated', () => { if (currentStatus) loadOrdersByStatus(currentStatus); });
+    socket.on('new-order', () => { loadDashboardStats(); if (currentStatus) loadOrdersByStatus(currentStatus); });
+    socket.on('bank-transfer-pending', () => { loadDashboardStats(); });
   }
-}
 
-function loadOrdersByStatus(status) {
-  const container = document.getElementById('orderListContainer');
-  const title = document.getElementById('panelTitle');
-  const badge = document.getElementById('panelBadge');
-
-  const labelMap = {
-    pending: 'Pending Orders',
-    confirmed: 'Confirmed Orders',
-    shipped: 'Shipped Orders',
-    delivered: 'Awaiting Pickup',
-    received: 'Received Orders',
-    cancelled: 'Cancelled Orders',
-    replacements: 'Replacement Requests',
-    refunds: 'Refund Requests',
-    urgent: 'Urgent Deliveries',
-    all: 'All Orders'
-  };
-  title.innerHTML = `📋 ${labelMap[status] || 'Orders'} <span class="badge" id="panelBadge">Loading...</span>`;
-
-  let url = '/api/orders?';
-  const params = new URLSearchParams();
-  if (status !== 'all' && status !== 'replacements' && status !== 'refunds' && status !== 'urgent') {
-    params.append('status', status);
+  // ================================================================
+  //  DASHBOARD STATS & CARDS
+  // ================================================================
+  function loadDashboardStats() {
+    fetch('/api/admin/dashboard', { headers: authHeaders() })
+      .then(res => {
+        if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
+        return res.json();
+      })
+      .then(stats => {
+        renderCards(stats);
+        if (currentStatus) loadOrdersByStatus(currentStatus);
+      })
+      .catch(err => console.error(err));
   }
-  url += params.toString();
 
-  fetch(url, { headers: authHeaders() })
-    .then(res => {
-      if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
-      return res.json();
-    })
-    .then(orders => {
-      let filtered = orders;
-      if (status === 'replacements') {
-        filtered = orders.filter(o => o.replacement_status && o.replacement_status !== 'none' && o.replacement_status !== 'approved' && o.replacement_status !== 'rejected');
-      } else if (status === 'refunds') {
-        filtered = orders.filter(o => o.refund_status === 'pending');
-      } else if (status === 'urgent') {
-        filtered = orders.filter(o => o.urgent_delivery === true && o.status !== 'received' && o.status !== 'cancelled');
-      }
-      currentOrders = filtered;
-      badge.textContent = filtered.length + ' order' + (filtered.length !== 1 ? 's' : '');
-      renderOrderRows(filtered);
-    })
-    .catch(err => {
-      console.error(err);
-      container.innerHTML = `<p class="empty-msg" style="color:#ef4444;">Error loading orders.</p>`;
+  function renderCards(stats) {
+    const grid = document.getElementById('statsGrid');
+    const configs = [
+      { key: 'pending', label: 'Pending', icon: 'fa-clock', css: 'pending', statusParam: 'pending' },
+      { key: 'confirmed', label: 'Confirmed', icon: 'fa-check-circle', css: 'confirmed', statusParam: 'confirmed' },
+      { key: 'shipped', label: 'Shipped', icon: 'fa-truck', css: 'shipped', statusParam: 'shipped' },
+      { key: 'delivered', label: 'Awaiting Pickup', icon: 'fa-box-open', css: 'delivered', statusParam: 'delivered' },
+      { key: 'received', label: 'Received', icon: 'fa-check-double', css: 'received', statusParam: 'received' },
+      { key: 'cancelled', label: 'Cancelled', icon: 'fa-times-circle', css: 'cancelled', statusParam: 'cancelled' },
+      { key: 'replacements_pending', label: 'Replacements', icon: 'fa-exchange-alt', css: 'replacements', statusParam: 'replacements' },
+      { key: 'refunds_pending', label: 'Refunds', icon: 'fa-hand-holding-usd', css: 'refunds', statusParam: 'refunds' },
+      { key: 'urgent', label: 'Urgent', icon: 'fa-exclamation-triangle', css: 'urgent', statusParam: 'urgent' },
+      { key: 'returns_pending', label: 'Returns', icon: 'fa-undo', css: 'returns', statusParam: 'returns' },
+      { key: 'total_orders', label: 'Total', icon: 'fa-shopping-bag', css: 'total', statusParam: 'all' },
+    ];
+
+    let html = '';
+    configs.forEach(cfg => {
+      const count = stats[cfg.key] ?? 0;
+      const isPendingAction = ['replacements_pending', 'refunds_pending', 'urgent', 'pending', 'delivered', 'returns_pending'].includes(cfg.key);
+      const shouldBlink = (count > 0 && isPendingAction);
+      const blinkClass = shouldBlink ? '' : 'hidden';
+      html += `
+        <div class="stat-card ${cfg.css}" onclick="handleCardClick('${cfg.statusParam}')">
+          <div class="icon"><i class="fas ${cfg.icon}"></i></div>
+          <div class="number">${count}</div>
+          <div class="label">${cfg.label} <span class="blink-dot ${blinkClass}"></span></div>
+        </div>
+      `;
     });
-}
+    grid.innerHTML = html;
+  }
 
-function loadReturns() {
-  const container = document.getElementById('orderListContainer');
-  const title = document.getElementById('panelTitle');
-  const badge = document.getElementById('panelBadge');
-  title.innerHTML = `📋 Returns <span class="badge" id="panelBadge">Loading...</span>`;
+  function handleCardClick(status) {
+    currentStatus = status;
+    if (status === 'returns') { loadReturns(); return; }
+    loadOrdersByStatus(status);
+  }
+  function refreshCurrentOrders() {
+    if (currentStatus === 'returns') loadReturns();
+    else if (currentStatus) loadOrdersByStatus(currentStatus);
+  }
 
-  fetch('/api/admin/returns', { headers: authHeaders() })
-    .then(res => {
-      if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
-      return res.json();
+  function loadOrdersByStatus(status) {
+    const container = document.getElementById('orderListContainer');
+    const title = document.getElementById('panelTitle');
+    const badge = document.getElementById('panelBadge');
+
+    const labelMap = {
+      pending: 'Pending Orders',
+      confirmed: 'Confirmed Orders',
+      shipped: 'Shipped Orders',
+      delivered: 'Awaiting Pickup',
+      received: 'Received Orders',
+      cancelled: 'Cancelled Orders',
+      replacements: 'Replacement Requests',
+      refunds: 'Refund Requests',
+      urgent: 'Urgent Deliveries',
+      all: 'All Orders'
+    };
+    title.innerHTML = `📋 ${labelMap[status] || 'Orders'} <span class="badge" id="panelBadge">Loading...</span>`;
+
+    let url = '/api/orders?';
+    const params = new URLSearchParams();
+    if (status !== 'all' && status !== 'replacements' && status !== 'refunds' && status !== 'urgent') {
+      params.append('status', status);
+    }
+    url += params.toString();
+
+    fetch(url, { headers: authHeaders() })
+      .then(res => {
+        if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
+        return res.json();
+      })
+      .then(orders => {
+        let filtered = orders;
+        if (status === 'replacements') {
+          filtered = orders.filter(o => o.replacement_status && o.replacement_status !== 'none' && o.replacement_status !== 'approved' && o.replacement_status !== 'rejected');
+        } else if (status === 'refunds') {
+          filtered = orders.filter(o => o.refund_status === 'pending');
+        } else if (status === 'urgent') {
+          filtered = orders.filter(o => o.urgent_delivery === true && o.status !== 'received' && o.status !== 'cancelled');
+        }
+        currentOrders = filtered;
+        badge.textContent = filtered.length + ' order' + (filtered.length !== 1 ? 's' : '');
+        renderOrderRows(filtered);
+      })
+      .catch(err => {
+        console.error(err);
+        container.innerHTML = `<p class="empty-msg" style="color:#ef4444;">Error loading orders.</p>`;
+      });
+  }
+
+  function loadReturns() {
+    const container = document.getElementById('orderListContainer');
+    const title = document.getElementById('panelTitle');
+    const badge = document.getElementById('panelBadge');
+    title.innerHTML = `📋 Returns <span class="badge" id="panelBadge">Loading...</span>`;
+
+    fetch('/api/admin/returns', { headers: authHeaders() })
+      .then(res => {
+        if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
+        return res.json();
+      })
+      .then(returns => {
+        badge.textContent = returns.length + ' return' + (returns.length !== 1 ? 's' : '');
+        if (!returns || returns.length === 0) {
+          container.innerHTML = `<p class="empty-msg">No returns found.</p>`;
+          return;
+        }
+        let html = '';
+        returns.forEach(r => {
+          html += `
+            <div class="order-row">
+              <div class="order-header">
+                <span class="ref">Order ${r.order_ref}</span>
+                <span class="customer">${r.customer_name}</span>
+                <span class="date">${new Date(r.requested_at).toLocaleString()}</span>
+                <span class="status-badge status-${r.status}">${r.status}</span>
+                <span style="font-size:0.7rem;">Product #${r.product_id}</span>
+              </div>
+              <div style="font-size:0.7rem; color:#475569;"><strong>Reason:</strong> ${r.reason}</div>
+              <div class="order-actions">
+                ${r.status === 'pending' ? `
+                  <button class="btn-refund-approve" onclick="handleReturn(${r.id},'approve')">Approve</button>
+                  <button class="btn-refund-reject" onclick="handleReturn(${r.id},'reject')">Reject</button>
+                  <span style="font-size:0.5rem; color:#94a3b8;">Refund: Ksh ${parseFloat(r.refund_amount || 0).toFixed(2)}</span>
+                ` : `<span style="font-size:0.6rem; color:#94a3b8;">Processed</span>`}
+              </div>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      })
+      .catch(err => {
+        console.error(err);
+        container.innerHTML = `<p class="empty-msg" style="color:#ef4444;">Error loading returns.</p>`;
+      });
+  }
+
+  function handleReturn(returnId, action) {
+    if (!confirm(`${action === 'approve' ? 'Approve' : 'Reject'} this return?`)) return;
+    fetch(`/api/admin/returns/${returnId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ action })
     })
-    .then(returns => {
-      badge.textContent = returns.length + ' return' + (returns.length !== 1 ? 's' : '');
-      if (!returns || returns.length === 0) {
-        container.innerHTML = `<p class="empty-msg">No returns found.</p>`;
-        return;
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert(`Return ${action}d.`);
+          loadReturns();
+          loadDashboardStats();
+        } else {
+          alert('Failed: ' + (data.error || 'Unknown error'));
+        }
+      })
+      .catch(() => alert('Network error.'));
+  }
+
+  function renderOrderRows(orders) {
+    const container = document.getElementById('orderListContainer');
+    if (!orders || orders.length === 0) {
+      container.innerHTML = `<p class="empty-msg">No orders found for this status.</p>`;
+      return;
+    }
+
+    let html = '';
+    orders.forEach(order => {
+      const ref = order.order_ref || `#${order.id}`;
+      const customer = order.customer_name || 'Guest';
+      const date = new Date(order.created_at).toLocaleString();
+      const total = parseFloat(order.total).toFixed(2);
+      const statusClass = order.status;
+
+      let actionsHtml = '';
+      let statusOptions = '';
+      if (order.status === 'pending') {
+        statusOptions = `<option value="confirmed">Confirm</option><option value="shipped">Ship</option>`;
+      } else if (order.status === 'confirmed') {
+        statusOptions = `<option value="shipped">Ship</option>`;
+      } else if (order.status === 'shipped') {
+        statusOptions = `<option value="delivered">Deliver</option>`;
+      } else if (order.status === 'delivered') {
+        statusOptions = `<option value="received">Mark Received</option>`;
       }
-      let html = '';
-      returns.forEach(r => {
-        html += `
-          <div class="order-row">
-            <div class="order-header">
-              <span class="ref">Order ${r.order_ref}</span>
-              <span class="customer">${r.customer_name}</span>
-              <span class="date">${new Date(r.requested_at).toLocaleString()}</span>
-              <span class="status-badge status-${r.status}">${r.status}</span>
-              <span style="font-size:0.7rem;">Product #${r.product_id}</span>
-            </div>
-            <div style="font-size:0.7rem; color:#475569;"><strong>Reason:</strong> ${r.reason}</div>
-            <div class="order-actions">
-              ${r.status === 'pending' ? `
-                <button class="btn-refund-approve" onclick="handleReturn(${r.id},'approve')">Approve</button>
-                <button class="btn-refund-reject" onclick="handleReturn(${r.id},'reject')">Reject</button>
-                <span style="font-size:0.5rem; color:#94a3b8;">Refund: Ksh ${parseFloat(r.refund_amount || 0).toFixed(2)}</span>
-              ` : `<span style="font-size:0.6rem; color:#94a3b8;">Processed</span>`}
-            </div>
+      if (statusOptions) {
+        actionsHtml += `
+          <select id="statusSelect-${order.id}" class="status-select">
+            <option value="">Update...</option>
+            ${statusOptions}
+          </select>
+          <input type="text" id="trackingInput-${order.id}" placeholder="Tracking #" style="width:80px;">
+          <button class="btn-ship" onclick="updateOrderStatus(${order.id})">Update</button>
+        `;
+      }
+      if (order.status === 'pending') {
+        actionsHtml += `<button class="btn-confirm" onclick="confirmOrder(${order.id})">Confirm</button>`;
+      }
+      if (order.status === 'delivered') {
+        actionsHtml += `<button class="btn-remind" onclick="remindCustomer(${order.id})"><i class="fas fa-bell"></i> Remind</button>`;
+      }
+      if (order.refund_status === 'pending') {
+        actionsHtml += `
+          <button class="btn-refund-approve" onclick="handleRefund(${order.id},'approve')">Approve Refund</button>
+          <button class="btn-refund-reject" onclick="handleRefund(${order.id},'reject')">Reject</button>
+        `;
+      }
+      if (['pending_payment','pending_refund'].includes(order.replacement_status)) {
+        actionsHtml += `
+          <button class="btn-replace-approve" onclick="handleReplacement(${order.id},'approve')">Approve Replacement</button>
+          <button class="btn-replace-reject" onclick="handleReplacement(${order.id},'reject')">Reject</button>
+        `;
+      }
+      if (order.status === 'delivered') {
+        actionsHtml += `<button class="btn-received" onclick="markReceived(${order.id})">Mark Received</button>`;
+      }
+      if (['pending','confirmed','pending_payment'].includes(order.status)) {
+        actionsHtml += `<button class="btn-cancel" onclick="cancelOrder(${order.id})">Cancel</button>`;
+      }
+      if (order.status === 'confirmed' || order.status === 'pending') {
+        actionsHtml += `
+          <button class="btn-success btn-sm" onclick="sendOrderConfirmation(${order.id})">
+            <i class="fas fa-check-circle"></i> Send Confirmation
+          </button>
+        `;
+      }
+      actionsHtml += ` <button class="btn-info btn-sm" onclick="togglePayments(${order.id})">Payments</button>`;
+
+      // Location display
+      let locationHtml = '';
+      if (order.delivery_address || order.customer_lat) {
+        locationHtml = `
+          <div style="margin:4px 0; padding:6px 8px; background:#f0f9ff; border-radius:6px; border-left:3px solid #2563eb; font-size:0.7rem;">
+            <strong>📍 Delivery:</strong> ${order.delivery_address || 'Not provided'}
+            ${order.delivery_instructions ? `<br><strong>Instructions:</strong> ${order.delivery_instructions}` : ''}
+            ${order.customer_lat && order.customer_lng ? `<br><a href="https://www.google.com/maps?q=${order.customer_lat},${order.customer_lng}" target="_blank" style="color:#2563eb;">📌 View on Map</a>` : ''}
           </div>
         `;
-      });
-      container.innerHTML = html;
-    })
-    .catch(err => {
-      console.error(err);
-      container.innerHTML = `<p class="empty-msg" style="color:#ef4444;">Error loading returns.</p>`;
-    });
-}
+      }
 
-function handleReturn(returnId, action) {
-  if (!confirm(`${action === 'approve' ? 'Approve' : 'Reject'} this return?`)) return;
-  fetch(`/api/admin/returns/${returnId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    body: JSON.stringify({ action })
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      alert(`Return ${action}d.`);
-      loadReturns();
-      loadDashboardStats();
-    } else {
-      alert('Failed: ' + (data.error || 'Unknown error'));
-    }
-  })
-  .catch(() => alert('Network error.'));
-}
-
-function renderOrderRows(orders) {
-  const container = document.getElementById('orderListContainer');
-  if (!orders || orders.length === 0) {
-    container.innerHTML = `<p class="empty-msg">No orders found for this status.</p>`;
-    return;
-  }
-
-  let html = '';
-  orders.forEach(order => {
-    const ref = order.order_ref || `#${order.id}`;
-    const customer = order.customer_name || 'Guest';
-    const date = new Date(order.created_at).toLocaleString();
-    const total = parseFloat(order.total).toFixed(2);
-    const statusClass = order.status;
-
-    let actionsHtml = '';
-    let statusOptions = '';
-    if (order.status === 'pending') {
-      statusOptions = `<option value="confirmed">Confirm</option><option value="shipped">Ship</option>`;
-    } else if (order.status === 'confirmed') {
-      statusOptions = `<option value="shipped">Ship</option>`;
-    } else if (order.status === 'shipped') {
-      statusOptions = `<option value="delivered">Deliver</option>`;
-    } else if (order.status === 'delivered') {
-      statusOptions = `<option value="received">Mark Received</option>`;
-    }
-    if (statusOptions) {
-      actionsHtml += `
-        <select id="statusSelect-${order.id}" class="status-select">
-          <option value="">Update...</option>
-          ${statusOptions}
-        </select>
-        <input type="text" id="trackingInput-${order.id}" placeholder="Tracking #" style="width:80px;" />
-        <button class="btn-ship" onclick="updateOrderStatus(${order.id})">Update</button>
-      `;
-    }
-    if (order.status === 'pending') {
-      actionsHtml += `<button class="btn-confirm" onclick="confirmOrder(${order.id})">Confirm</button>`;
-    }
-    if (order.status === 'delivered') {
-      actionsHtml += `<button class="btn-remind" onclick="remindCustomer(${order.id})"><i class="fas fa-bell"></i> Remind</button>`;
-    }
-    if (order.refund_status === 'pending') {
-      actionsHtml += `
-        <button class="btn-refund-approve" onclick="handleRefund(${order.id},'approve')">Approve Refund</button>
-        <button class="btn-refund-reject" onclick="handleRefund(${order.id},'reject')">Reject</button>
-      `;
-    }
-    if (['pending_payment','pending_refund'].includes(order.replacement_status)) {
-      actionsHtml += `
-        <button class="btn-replace-approve" onclick="handleReplacement(${order.id},'approve')">Approve Replacement</button>
-        <button class="btn-replace-reject" onclick="handleReplacement(${order.id},'reject')">Reject</button>
-      `;
-    }
-    if (order.status === 'delivered') {
-      actionsHtml += `<button class="btn-received" onclick="markReceived(${order.id})">Mark Received</button>`;
-    }
-    if (['pending','confirmed'].includes(order.status)) {
-      actionsHtml += `<button class="btn-cancel" onclick="cancelOrder(${order.id})">Cancel</button>`;
-    }
-    if (!actionsHtml) {
-      actionsHtml = `<span style="font-size:0.6rem; color:#94a3b8;">No actions</span>`;
-    }
-
-    html += `
-      <div class="order-row" id="order-row-${order.id}">
-        <div class="order-header">
-          <span class="ref">${ref}</span>
-          <span class="customer">${customer}</span>
-          <span class="date">${date}</span>
-          <span class="total">Ksh ${total}</span>
-          <span class="status-badge status-${statusClass}">${order.status}</span>
-          <a href="/admin-orders.html?status=${currentStatus}" target="_blank" style="font-size:0.6rem; color:#2563eb;">View full</a>
+      html += `
+        <div class="order-row" id="order-row-${order.id}">
+          <div class="order-header">
+            <span class="ref">${ref}</span>
+            <span class="customer">${customer}</span>
+            <span class="date">${date}</span>
+            <span class="total">Ksh ${total}</span>
+            <span class="status-badge status-${statusClass}">${order.status}</span>
+            <a href="/admin-orders.html?status=${currentStatus}" target="_blank" style="font-size:0.6rem; color:#2563eb;">View full</a>
+          </div>
+          ${locationHtml}
+          <div class="order-actions">${actionsHtml}</div>
         </div>
-        <div class="order-actions">${actionsHtml}</div>
-      </div>
-    `;
-  });
-  container.innerHTML = html;
-}
-
-// ============================================================
-// ORDER ACTIONS
-// ============================================================
-function updateOrderStatus(orderId) {
-  const statusSelect = document.getElementById(`statusSelect-${orderId}`);
-  const trackingInput = document.getElementById(`trackingInput-${orderId}`);
-  const status = statusSelect.value;
-  const tracking = trackingInput.value.trim();
-  if (!status) return;
-  if (!confirm(`Update order to ${status.toUpperCase()}?`)) return;
-  fetch(`/api/orders/${orderId}/status`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    body: JSON.stringify({ status, tracking_number: tracking || undefined })
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      alert('Order status updated.');
-      refreshCurrentOrders();
-      if (socket) socket.emit('order-status-updated', { orderId, status });
-    } else {
-      alert('Failed: ' + (data.error || 'Unknown error'));
-    }
-  })
-  .catch(() => alert('Network error.'));
-}
-
-function confirmOrder(orderId) {
-  if (!confirm('Confirm this order?')) return;
-  fetch(`/api/orders/${orderId}/confirm`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        alert('Order confirmed.');
-        refreshCurrentOrders();
-        if (socket) socket.emit('order-status-updated', { orderId, status: 'confirmed' });
-      } else {
-        alert('Failed: ' + (data.error || 'Unknown error'));
-      }
-    })
-    .catch(() => alert('Network error.'));
-}
-
-function markReceived(orderId) {
-  if (!confirm('Mark this order as received by customer?')) return;
-  fetch(`/api/orders/${orderId}/receive`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        alert('Order marked as received.');
-        refreshCurrentOrders();
-        if (socket) socket.emit('order-status-updated', { orderId, status: 'received' });
-      } else {
-        alert('Failed: ' + (data.error || 'Unknown error'));
-      }
-    })
-    .catch(() => alert('Network error.'));
-}
-
-function handleRefund(orderId, action) {
-  if (!confirm(`${action === 'approve' ? 'Approve' : 'Reject'} refund?`)) return;
-  fetch(`/api/admin/orders/${orderId}/refund`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    body: JSON.stringify({ action })
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      alert(`Refund ${action}d.`);
-      refreshCurrentOrders();
-      if (socket) socket.emit('order-status-updated', { orderId, refundStatus: action === 'approve' ? 'approved' : 'rejected' });
-    } else {
-      alert('Failed: ' + (data.error || 'Unknown error'));
-    }
-  })
-  .catch(() => alert('Network error.'));
-}
-
-function handleReplacement(orderId, action) {
-  if (!confirm(`${action === 'approve' ? 'Approve' : 'Reject'} replacement?`)) return;
-  fetch(`/api/admin/orders/${orderId}/replace`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    body: JSON.stringify({ action })
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      alert(`Replacement ${action}d.`);
-      refreshCurrentOrders();
-      if (socket) socket.emit('order-status-updated', { orderId, replacementStatus: action === 'approve' ? 'approved' : 'rejected' });
-    } else {
-      alert('Failed: ' + (data.error || 'Unknown error'));
-    }
-  })
-  .catch(() => alert('Network error.'));
-}
-
-function remindCustomer(orderId) {
-  if (!confirm('Send reminder to customer?')) return;
-  fetch(`/api/admin/orders/${orderId}/remind`, {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${token}` }
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      alert('Reminder sent.');
-      refreshCurrentOrders();
-    } else {
-      alert('Failed: ' + (data.error || 'Unknown error'));
-    }
-  })
-  .catch(() => alert('Network error.'));
-}
-
-function cancelOrder(orderId) {
-  const reason = prompt('Cancellation reason:');
-  if (!reason) return;
-  if (!confirm('Cancel this order?')) return;
-  fetch(`/api/orders/${orderId}/cancel`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    body: JSON.stringify({ reason })
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      alert('Order cancelled.');
-      refreshCurrentOrders();
-      if (socket) socket.emit('order-status-updated', { orderId, status: 'cancelled' });
-    } else {
-      alert('Failed: ' + (data.error || 'Unknown error'));
-    }
-  })
-  .catch(() => alert('Network error.'));
-}
-
-// ============================================================
-// SHOP PROFILE & PAYMENT SETTINGS
-// ============================================================
-function loadShopProfile() {
-  fetch('/api/shop', { headers: authHeaders() })
-    .then(res => res.json())
-    .then(shop => {
-      document.getElementById('shopName').value = shop.name || '';
-      document.getElementById('shopLocation').value = shop.location || '';
-      document.getElementById('shopAddress').value = shop.address || '';
-      document.getElementById('shopLatitude').value = shop.latitude || '';
-      document.getElementById('shopLongitude').value = shop.longitude || '';
-      document.getElementById('shopDesc').value = shop.description || '';
-      document.getElementById('shopMission').value = shop.mission || '';
-      document.getElementById('shopVision').value = shop.vision || '';
-      document.getElementById('shopWhatsapp').value = shop.whatsapp || '';
-      document.getElementById('shopTiktok').value = shop.tiktok || '';
-      document.getElementById('shopInstagram').value = shop.instagram || '';
-      document.getElementById('shopFacebook').value = shop.facebook || '';
-      document.getElementById('shopPhone').value = shop.phone || '';
-
-      // Payment settings
-      document.getElementById('mpesaEnabled').checked = shop.mpesa_enabled || false;
-      document.getElementById('mpesaNumber').value = shop.mpesa_number || '';
-      document.getElementById('airtelEnabled').checked = shop.airtel_enabled || false;
-      document.getElementById('airtelNumber').value = shop.airtel_number || '';
-      document.getElementById('bankEnabled').checked = shop.bank_enabled || false;
-      document.getElementById('bankName').value = shop.bank_name || '';
-      document.getElementById('bankAccount').value = shop.bank_account || '';
-      document.getElementById('bankAccountName').value = shop.bank_account_name || '';
-      document.getElementById('paypalEnabled').checked = shop.paypal_enabled || false;
-      document.getElementById('paypalEmail').value = shop.paypal_email || '';
-
-      // Logo & Cover preview
-      if (shop.logo) {
-        document.getElementById('logoPreviewImg').src = shop.logo;
-        document.getElementById('logoPreviewImg').style.display = 'block';
-      }
-      if (shop.heroImage) {
-        document.getElementById('coverPreviewImg').src = shop.heroImage;
-        document.getElementById('coverPreviewImg').style.display = 'block';
-      }
-    })
-    .catch(err => console.error('Error loading shop:', err));
-}
-
-document.getElementById('shopLogo').addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = function(event) {
-      document.getElementById('logoPreviewImg').src = event.target.result;
-      document.getElementById('logoPreviewImg').style.display = 'block';
-    };
-    reader.readAsDataURL(file);
-  }
-});
-
-document.getElementById('shopHero').addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = function(event) {
-      document.getElementById('coverPreviewImg').src = event.target.result;
-      document.getElementById('coverPreviewImg').style.display = 'block';
-    };
-    reader.readAsDataURL(file);
-  }
-});
-
-document.getElementById('shopForm').addEventListener('submit', async function(e) {
-  e.preventDefault();
-  const formData = new FormData(this);
-
-  // Add boolean values properly
-  const boolFields = ['mpesa_enabled', 'airtel_enabled', 'bank_enabled', 'paypal_enabled'];
-  boolFields.forEach(field => {
-    const el = document.querySelector(`[name="${field}"]`);
-    formData.set(field, el.checked ? 'true' : 'false');
-  });
-
-  const statusDiv = document.getElementById('settingsStatus');
-  statusDiv.textContent = '⏳ Saving settings...';
-  statusDiv.style.color = '#2563eb';
-
-  try {
-    const res = await fetch('/api/shop', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: formData
+      `;
     });
-    const data = await res.json();
-    if (res.ok) {
-      statusDiv.textContent = '✅ Settings saved successfully!';
-      statusDiv.style.color = '#16a34a';
-      // Reload shop profile to reflect changes
-      loadShopProfile();
-      // Refresh dashboard stats in case payment settings affect anything
-      loadDashboardStats();
-    } else {
-      statusDiv.textContent = '❌ Failed: ' + (data.error || 'Unknown error');
+    container.innerHTML = html;
+  }
+
+  // ================================================================
+  //  ORDER ACTIONS
+  // ================================================================
+  function updateOrderStatus(orderId) {
+    const statusSelect = document.getElementById(`statusSelect-${orderId}`);
+    const trackingInput = document.getElementById(`trackingInput-${orderId}`);
+    const status = statusSelect.value;
+    const tracking = trackingInput.value.trim();
+    if (!status) return;
+    if (!confirm(`Update order to ${status.toUpperCase()}?`)) return;
+    fetch(`/api/orders/${orderId}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ status, tracking_number: tracking || undefined })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) { alert('Order status updated.'); refreshCurrentOrders(); }
+        else { alert('Failed: ' + (data.error || 'Unknown error')); }
+      })
+      .catch(() => alert('Network error.'));
+  }
+
+  function confirmOrder(orderId) {
+    if (!confirm('Confirm this order?')) return;
+    fetch(`/api/orders/${orderId}/confirm`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) { alert('Order confirmed.'); refreshCurrentOrders(); }
+        else { alert('Failed: ' + (data.error || 'Unknown error')); }
+      })
+      .catch(() => alert('Network error.'));
+  }
+
+  function markReceived(orderId) {
+    if (!confirm('Mark this order as received by customer?')) return;
+    fetch(`/api/orders/${orderId}/receive`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) { alert('Order marked as received.'); refreshCurrentOrders(); }
+        else { alert('Failed: ' + (data.error || 'Unknown error')); }
+      })
+      .catch(() => alert('Network error.'));
+  }
+
+  function handleRefund(orderId, action) {
+    if (!confirm(`${action === 'approve' ? 'Approve' : 'Reject'} refund?`)) return;
+    fetch(`/api/admin/orders/${orderId}/refund`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ action })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) { alert(`Refund ${action}d.`); refreshCurrentOrders(); }
+        else { alert('Failed: ' + (data.error || 'Unknown error')); }
+      })
+      .catch(() => alert('Network error.'));
+  }
+
+  function handleReplacement(orderId, action) {
+    if (!confirm(`${action === 'approve' ? 'Approve' : 'Reject'} replacement?`)) return;
+    fetch(`/api/admin/orders/${orderId}/replace`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ action })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) { alert(`Replacement ${action}d.`); refreshCurrentOrders(); }
+        else { alert('Failed: ' + (data.error || 'Unknown error')); }
+      })
+      .catch(() => alert('Network error.'));
+  }
+
+  function remindCustomer(orderId) {
+    if (!confirm('Send reminder to customer?')) return;
+    fetch(`/api/admin/orders/${orderId}/remind`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) { alert('Reminder sent.'); refreshCurrentOrders(); }
+        else { alert('Failed: ' + (data.error || 'Unknown error')); }
+      })
+      .catch(() => alert('Network error.'));
+  }
+
+  function cancelOrder(orderId) {
+    const reason = prompt('Cancellation reason:');
+    if (!reason) return;
+    if (!confirm('Cancel this order?')) return;
+    fetch(`/api/orders/${orderId}/cancel`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ reason })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) { alert('Order cancelled.'); refreshCurrentOrders(); }
+        else { alert('Failed: ' + (data.error || 'Unknown error')); }
+      })
+      .catch(() => alert('Network error.'));
+  }
+
+  function sendOrderConfirmation(orderId) {
+    if (!confirm('Send order confirmation message to the customer?')) return;
+    fetch(`/api/orders/${orderId}/send-confirmation`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('✅ Confirmation sent to customer via chat.');
+          refreshCurrentOrders();
+        } else {
+          alert('❌ Failed: ' + (data.error || 'Unknown error'));
+        }
+      })
+      .catch(() => alert('❌ Network error.'));
+  }
+
+  function togglePayments(orderId) {
+    const container = document.getElementById(`payments-${orderId}`);
+    if (container.style.display === 'block') { container.style.display = 'none'; return; }
+    container.style.display = 'block';
+    container.innerHTML = 'Loading payments...';
+    fetch(`/api/payments/order/${orderId}`, { headers: { 'Authorization': `Bearer ${token}` } })
+      .then(res => res.json())
+      .then(payments => {
+        if (!payments || payments.length === 0) {
+          container.innerHTML = '<span style="color:#94a3b8;">No payments recorded.</span>';
+          return;
+        }
+        let html = '';
+        payments.forEach(p => {
+          const statusColor = p.status === 'success' ? '#16a34a' : '#ef4444';
+          html += `
+            <div style="display:flex; justify-content:space-between; padding:2px 0; border-bottom:1px solid #f1f4f8;">
+              <span><strong>${p.method.toUpperCase()}</strong> ${p.transaction_id || ''}</span>
+              <span>Ksh ${parseFloat(p.amount).toFixed(2)}</span>
+              <span style="color:${statusColor};">${p.status}</span>
+              <span style="font-size:0.6rem; color:#94a3b8;">${new Date(p.created_at).toLocaleString()}</span>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      })
+      .catch(() => { container.innerHTML = '<span style="color:#ef4444;">Error loading payments.</span>'; });
+  }
+
+  // ================================================================
+  //  SHOP PROFILE & POLICIES
+  // ================================================================
+  function loadShopProfile() {
+    fetch('/api/shop', { headers: authHeaders() })
+      .then(res => res.json())
+      .then(shop => {
+        document.getElementById('shopName').value = shop.name || '';
+        document.getElementById('shopLocation').value = shop.location || '';
+        document.getElementById('shopAddress').value = shop.address || '';
+        document.getElementById('shopLatitude').value = shop.latitude || '';
+        document.getElementById('shopLongitude').value = shop.longitude || '';
+        document.getElementById('shopDesc').value = shop.description || '';
+        document.getElementById('shopMission').value = shop.mission || '';
+        document.getElementById('shopVision').value = shop.vision || '';
+        document.getElementById('shopWhatsapp').value = shop.whatsapp || '';
+        document.getElementById('shopTiktok').value = shop.tiktok || '';
+        document.getElementById('shopInstagram').value = shop.instagram || '';
+        document.getElementById('shopFacebook').value = shop.facebook || '';
+        document.getElementById('shopPhone').value = shop.phone || '';
+
+        document.getElementById('mpesaEnabled').checked = shop.mpesa_enabled || false;
+        document.getElementById('mpesaNumber').value = shop.mpesa_number || '';
+        document.getElementById('airtelEnabled').checked = shop.airtel_enabled || false;
+        document.getElementById('airtelNumber').value = shop.airtel_number || '';
+        document.getElementById('bankEnabled').checked = shop.bank_enabled || false;
+        document.getElementById('bankName').value = shop.bank_name || '';
+        document.getElementById('bankAccount').value = shop.bank_account || '';
+        document.getElementById('bankAccountName').value = shop.bank_account_name || '';
+        document.getElementById('paypalEnabled').checked = shop.paypal_enabled || false;
+        document.getElementById('paypalEmail').value = shop.paypal_email || '';
+
+        document.getElementById('shippingPolicy').value = shop.shipping_policy || '';
+        document.getElementById('returnPolicy').value = shop.return_policy || '';
+        document.getElementById('termsPolicy').value = shop.terms_policy || '';
+        document.getElementById('privacyPolicy').value = shop.privacy_policy || '';
+        document.getElementById('deliveryEnabled').checked = shop.delivery_enabled || false;
+        document.getElementById('onlineOrdersEnabled').checked = shop.online_orders_enabled || false;
+
+        if (shop.logo) {
+          document.getElementById('logoPreviewImg').src = shop.logo;
+          document.getElementById('logoPreviewImg').style.display = 'block';
+        }
+        if (shop.heroImage) {
+          document.getElementById('coverPreviewImg').src = shop.heroImage;
+          document.getElementById('coverPreviewImg').style.display = 'block';
+        }
+      })
+      .catch(err => console.error('Error loading shop:', err));
+  }
+
+  document.getElementById('shopLogo').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        document.getElementById('logoPreviewImg').src = event.target.result;
+        document.getElementById('logoPreviewImg').style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  document.getElementById('shopHero').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        document.getElementById('coverPreviewImg').src = event.target.result;
+        document.getElementById('coverPreviewImg').style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  document.getElementById('shopForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+
+    const boolFields = ['mpesa_enabled', 'airtel_enabled', 'bank_enabled', 'paypal_enabled', 'delivery_enabled', 'online_orders_enabled'];
+    boolFields.forEach(field => {
+      const el = document.querySelector(`[name="${field}"]`);
+      formData.set(field, el.checked ? 'true' : 'false');
+    });
+
+    const statusDiv = document.getElementById('settingsStatus');
+    statusDiv.textContent = '⏳ Saving settings...';
+    statusDiv.style.color = '#2563eb';
+
+    try {
+      const res = await fetch('/api/shop', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        statusDiv.textContent = '✅ Settings saved successfully!';
+        statusDiv.style.color = '#16a34a';
+        loadShopProfile();
+        loadDashboardStats();
+      } else {
+        statusDiv.textContent = '❌ Failed: ' + (data.error || 'Unknown error');
+        statusDiv.style.color = '#ef4444';
+      }
+    } catch (err) {
+      statusDiv.textContent = '❌ Network error: ' + err.message;
       statusDiv.style.color = '#ef4444';
     }
-  } catch (err) {
-    statusDiv.textContent = '❌ Network error: ' + err.message;
-    statusDiv.style.color = '#ef4444';
+  });
+
+  // ================================================================
+  //  PRODUCT MANAGEMENT
+  // ================================================================
+  let variantCounter = 0;
+
+  function addVariantRow(name = '', price = '', stock = '', colorCode = '#cccccc', imagePreview = '') {
+    const container = document.getElementById('variantsContainer');
+    const row = document.createElement('div');
+    row.className = 'variant-row';
+    row.dataset.index = variantCounter++;
+    row.innerHTML = `
+      <input type="text" class="variant-name" placeholder="Color name" value="${name}" />
+      <input type="text" class="variant-price" placeholder="Price (optional)" value="${price}" />
+      <input type="number" class="variant-stock" placeholder="Stock" value="${stock}" />
+      <input type="color" class="variant-color-code" value="${colorCode}" />
+      <input type="file" class="variant-image" accept="image/*" />
+      ${imagePreview ? `<img src="${imagePreview}" style="width:40px; height:40px; object-fit:cover; border-radius:4px;" />` : ''}
+      <button type="button" class="remove-variant" onclick="this.closest('.variant-row').remove()">✕</button>
+    `;
+    container.appendChild(row);
   }
-});
 
-// ============================================================
-// INIT
-// ============================================================
-document.getElementById('registerBtn').addEventListener('click', handleRegister);
-document.getElementById('loginBtn').addEventListener('click', handleLogin);
+  function clearVariants() {
+    document.getElementById('variantsContainer').innerHTML = '';
+    variantCounter = 0;
+  }
 
-if (token) {
-  fetch('/api/auth/verify', { headers: authHeaders() })
-    .then(res => res.ok ? showDashboard() : logout())
-    .catch(() => logout());
-} else {
-  checkAdminExists();
-}
+  function getVariantData() {
+    const rows = document.querySelectorAll('.variant-row');
+    const variants = [];
+    rows.forEach(row => {
+      const name = row.querySelector('.variant-name').value.trim();
+      const price = row.querySelector('.variant-price').value.trim();
+      const stock = row.querySelector('.variant-stock').value.trim();
+      const colorCode = row.querySelector('.variant-color-code').value;
+      const fileInput = row.querySelector('.variant-image');
+      const file = fileInput.files[0] || null;
+      if (name) variants.push({ name, price, stock, colorCode, file });
+    });
+    return variants;
+  }
 
-window.logout = logout;
-window.showTab = showTab;
-window.togglePassword = togglePassword;
-window.handleCardClick = handleCardClick;
-window.updateOrderStatus = updateOrderStatus;
-window.confirmOrder = confirmOrder;
-window.markReceived = markReceived;
-window.handleRefund = handleRefund;
-window.handleReplacement = handleReplacement;
-window.remindCustomer = remindCustomer;
-window.cancelOrder = cancelOrder;
-window.refreshCurrentOrders = refreshCurrentOrders;
-window.handleReturn = handleReturn;
+  async function loadAdminProducts() {
+    try {
+      const res = await fetch('/api/products', { headers: authHeaders() });
+      if (res.status === 401) { logout(); return; }
+      const products = await res.json();
+      const list = document.getElementById('adminProductList');
+      if (!products || products.length === 0) {
+        list.innerHTML = '<p style="color:#94a3b8;">No products yet. Add your first product above.</p>';
+        return;
+      }
+      list.innerHTML = products.map(p => `
+        <div class="product-item">
+          <div class="info">
+            <span class="name">${p.name}</span>
+            <span class="price">Ksh ${p.price}</span>
+            ${p.rating ? `⭐(${p.rating})` : ''}
+            ${p.isFlashSale ? '🔥' : ''} ${p.isNewArrival ? '🆕' : ''}
+            ${p.variants && p.variants.length > 0 ? `<span style="font-size:0.65rem; color:#64748b;">(${p.variants.length} colors)</span>` : ''}
+            ${p.category ? `<span style="font-size:0.55rem; color:#64748b; background:#f1f5f9; padding:1px 8px; border-radius:8px;">${p.category}</span>` : ''}
+          </div>
+          <div class="actions">
+            <button class="btn-secondary" onclick="editProduct(${p.id})">✏️ Edit</button>
+            <button class="btn-danger" onclick="deleteProduct(${p.id})">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    } catch (err) {
+      console.error('Error loading products:', err);
+    }
+  }
+
+  document.getElementById('productForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const editId = document.getElementById('editProductId').value;
+    const method = editId ? 'PUT' : 'POST';
+    const url = editId ? `/api/products/${editId}` : '/api/products';
+
+    const variants = getVariantData();
+    formData.append('variants', JSON.stringify(variants));
+
+    const variantFiles = variants.map(v => v.file).filter(f => f !== null);
+    variantFiles.forEach((file) => {
+      formData.append('variantImages', file);
+    });
+
+    const submitBtn = document.getElementById('productSubmitBtn');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = '⏳ Saving...';
+    submitBtn.disabled = true;
+
+    try {
+      const res = await fetch(url, {
+        method: method,
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(editId ? '✅ Product updated!' : '✅ Product added!');
+        this.reset();
+        document.getElementById('editProductId').value = '';
+        submitBtn.textContent = '➕ Add Product';
+        document.getElementById('cancelEditBtn').style.display = 'none';
+        clearVariants();
+        loadAdminProducts();
+      } else {
+        alert('❌ ' + (data.error || 'Operation failed'));
+      }
+    } catch (err) {
+      alert('❌ Network error: ' + err.message);
+    } finally {
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
+    }
+  });
+
+  async function editProduct(id) {
+    try {
+      const res = await fetch(`/api/products/${id}/detail`, { headers: authHeaders() });
+      if (res.status === 401) { logout(); return; }
+      const data = await res.json();
+      const product = data.product;
+      const variants = data.variants || [];
+
+      document.getElementById('editProductId').value = product.id;
+      document.getElementById('pName').value = product.name || '';
+      document.getElementById('pPrice').value = product.price || '';
+      document.getElementById('pOldPrice').value = product.old_price || '';
+      document.getElementById('pDiscount').value = product.discount_percent || '';
+      document.getElementById('pCategory').value = product.category || '';
+      document.getElementById('pContact').value = product.contact || '+254700000000';
+      document.getElementById('pRating').value = product.rating || '';
+      document.getElementById('pBadge1').value = product.badge1 || '';
+      document.getElementById('pBadge2').value = product.badge2 || '';
+      document.getElementById('pShipping').value = product.shipping || '';
+      document.getElementById('pDescription').value = product.description || '';
+      document.getElementById('pFlashSale').checked = product.isFlashSale || false;
+      document.getElementById('pNewArrival').checked = product.isNewArrival || false;
+
+      clearVariants();
+      variants.forEach(v => {
+        addVariantRow(v.name, v.price || '', v.stock || '', v.color_code || '#cccccc', v.image || '');
+      });
+
+      document.getElementById('productSubmitBtn').textContent = '💾 Update Product';
+      document.getElementById('cancelEditBtn').style.display = 'inline-block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      console.error('Error fetching product:', err);
+      alert('Failed to load product details.');
+    }
+  }
+
+  function cancelEditProduct() {
+    document.getElementById('productForm').reset();
+    document.getElementById('editProductId').value = '';
+    document.getElementById('productSubmitBtn').textContent = '➕ Add Product';
+    document.getElementById('cancelEditBtn').style.display = 'none';
+    clearVariants();
+    loadAdminProducts();
+  }
+
+  async function deleteProduct(id) {
+    if (!confirm('Delete this product?')) return;
+    try {
+      const res = await fetch(`/api/products/${id}`, { method: 'DELETE', headers: authHeaders() });
+      if (res.ok) {
+        loadAdminProducts();
+      } else {
+        alert('Failed to delete product.');
+      }
+    } catch (err) {
+      alert('Network error: ' + err.message);
+    }
+  }
+
+  // ================================================================
+  //  PROMO CODES
+  // ================================================================
+  async function loadPromoCodes() {
+    const res = await fetch('/api/admin/promo-codes', { headers: authHeaders() });
+    const data = await res.json();
+    const container = document.getElementById('promoList');
+    if (!data || data.length === 0) {
+      container.innerHTML = '<p class="empty-msg">No promo codes yet.</p>';
+      return;
+    }
+    container.innerHTML = data.map(p => `
+      <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #f1f4f8; font-size:0.8rem;">
+        <span><strong>${p.code}</strong> - ${p.discount_type} ${p.discount_value} (min: ${p.min_order_value})</span>
+        <span>Used: ${p.used_count}/${p.usage_limit || '∞'} ${p.active ? '✅' : '❌'}</span>
+        <button class="btn btn-danger btn-sm" onclick="deletePromo(${p.id})">Delete</button>
+      </div>
+    `).join('');
+  }
+
+  async function createPromo(e) {
+    e.preventDefault();
+    const code = document.getElementById('promoCode').value.trim();
+    const type = document.getElementById('promoType').value;
+    const value = parseFloat(document.getElementById('promoValue').value);
+    const min = parseFloat(document.getElementById('promoMin').value) || 0;
+    const expires = document.getElementById('promoExpires').value;
+    const limit = document.getElementById('promoLimit').value ? parseInt(document.getElementById('promoLimit').value) : null;
+    if (!code || !value) { alert('Code and value required.'); return; }
+    const res = await fetch('/api/admin/promo-codes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ code, discount_type: type, discount_value: value, min_order_value: min, expires_at: expires || null, usage_limit: limit })
+    });
+    if (res.ok) { alert('Promo created!'); loadPromoCodes(); } else alert('Failed.');
+  }
+
+  async function deletePromo(id) {
+    if (!confirm('Delete this promo?')) return;
+    const res = await fetch(`/api/admin/promo-codes/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+    if (res.ok) loadPromoCodes();
+  }
+
+  // ================================================================
+  //  LOCATION REQUESTS
+  // ================================================================
+  async function loadLocationRequests() {
+    const res = await fetch('/api/admin/location/requests', { headers: authHeaders() });
+    const data = await res.json();
+    const container = document.getElementById('locationRequestsList');
+    if (!data || data.length === 0) {
+      container.innerHTML = '<p class="empty-msg">No pending location requests.</p>';
+      return;
+    }
+    container.innerHTML = data.map(req => `
+      <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f4f8; font-size:0.8rem;">
+        <span>${req.name} (${req.email}) - requested ${new Date(req.created_at).toLocaleString()}</span>
+        <span>
+          <button class="btn btn-success btn-sm" onclick="approveLocation(${req.id})">Approve</button>
+          <button class="btn btn-danger btn-sm" onclick="rejectLocation(${req.id})">Reject</button>
+        </span>
+      </div>
+    `).join('');
+  }
+
+  async function approveLocation(id) {
+    if (!confirm('Approve location access?')) return;
+    const res = await fetch(`/api/admin/location/requests/${id}/approve`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+    if (res.ok) { alert('Approved!'); loadLocationRequests(); } else alert('Failed.');
+  }
+
+  async function rejectLocation(id) {
+    if (!confirm('Reject location access?')) return;
+    const res = await fetch(`/api/admin/location/requests/${id}/reject`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+    if (res.ok) { alert('Rejected.'); loadLocationRequests(); } else alert('Failed.');
+  }
+
+  // ================================================================
+  //  ADMIN LOGS
+  // ================================================================
+  async function loadAdminLogs() {
+    const res = await fetch('/api/admin/logs', { headers: authHeaders() });
+    const logs = await res.json();
+    const container = document.getElementById('logsList');
+    if (!logs || logs.length === 0) {
+      container.innerHTML = '<p class="empty-msg">No logs yet.</p>';
+      return;
+    }
+    container.innerHTML = logs.map(log => `
+      <div style="padding:4px 0; border-bottom:1px solid #f1f4f8; font-size:0.7rem;">
+        <span>${new Date(log.created_at).toLocaleString()}</span> -
+        <strong>${log.action}</strong> -
+        <span style="color:#64748b;">${log.details ? JSON.stringify(log.details) : ''}</span>
+      </div>
+    `).join('');
+  }
+
+  // ================================================================
+  //  INIT
+  // ================================================================
+  document.getElementById('registerBtn').addEventListener('click', handleRegister);
+  document.getElementById('loginBtn').addEventListener('click', handleLogin);
+
+  if (token) {
+    fetch('/api/auth/verify', { headers: authHeaders() })
+      .then(res => res.ok ? showDashboard() : logout())
+      .catch(() => logout());
+  } else {
+    checkAdminExists();
+  }
+
+  window.logout = logout;
+  window.showTab = showTab;
+  window.togglePassword = togglePassword;
+  window.handleCardClick = handleCardClick;
+  window.refreshCurrentOrders = refreshCurrentOrders;
+  window.addVariantRow = addVariantRow;
+  window.editProduct = editProduct;
+  window.cancelEditProduct = cancelEditProduct;
+  window.deleteProduct = deleteProduct;
+  window.updateOrderStatus = updateOrderStatus;
+  window.confirmOrder = confirmOrder;
+  window.markReceived = markReceived;
+  window.handleRefund = handleRefund;
+  window.handleReplacement = handleReplacement;
+  window.remindCustomer = remindCustomer;
+  window.cancelOrder = cancelOrder;
+  window.sendOrderConfirmation = sendOrderConfirmation;
+  window.togglePayments = togglePayments;
+  window.handleReturn = handleReturn;
+  window.createPromo = createPromo;
+  window.deletePromo = deletePromo;
+  window.approveLocation = approveLocation;
+  window.rejectLocation = rejectLocation;
 </script>
 </body>
 </html>

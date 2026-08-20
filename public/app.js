@@ -359,19 +359,25 @@ function toggleAuthPwd(inputId, btn) {
 }
 window.toggleAuthPwd = toggleAuthPwd;
 
+// ============================================================
+//  HANDLE AUTH LOGIN
+// ============================================================
 async function handleAuthLogin() {
   const email = document.getElementById('authLoginEmail').value.trim();
   const password = document.getElementById('authLoginPassword').value;
   const status = document.getElementById('authLoginStatus');
   if (!status) return;
   status.textContent = '';
+
   if (!email || !password) {
-    status.textContent = 'Email and password are required.';
+    status.textContent = '❌ Email and password are required.';
     status.style.color = '#ef4444';
     return;
   }
-  status.textContent = 'Logging in...';
+
+  status.textContent = '⏳ Logging in...';
   status.style.color = '#2563eb';
+
   try {
     const res = await fetch('/api/auth/customer/login', {
       method: 'POST',
@@ -379,20 +385,24 @@ async function handleAuthLogin() {
       body: JSON.stringify({ email, password })
     });
     const data = await res.json();
+
     if (res.ok) {
-      status.textContent = '✅ Logged in!';
+      status.textContent = '✅ Logged in! Redirecting...';
       status.style.color = '#16a34a';
-      setCustomerToken(data.token);
-      setCurrentUser(data.customer);
-      updateUserUI();
-      closeAuthModal();
-      await loadCartFromServer();
-      renderGrid();
-      updateCartBadge();
-      updateNavCartBadge();
-      if (chatOpen) {
-        showChatPanel();
-      }
+      localStorage.setItem('customerToken', data.token);
+      localStorage.setItem('currentUser', JSON.stringify(data.customer));
+      window.customerToken = data.token;
+      window.currentUser = data.customer;
+
+      setTimeout(() => {
+        closeAuthModal();
+        updateUserUI();
+        loadCartFromServer();
+        renderGrid();
+        updateCartBadge();
+        updateNavCartBadge();
+        window.location.reload();
+      }, 500);
     } else {
       status.textContent = '❌ ' + (data.error || 'Login failed');
       status.style.color = '#ef4444';
@@ -404,6 +414,9 @@ async function handleAuthLogin() {
 }
 window.handleAuthLogin = handleAuthLogin;
 
+// ============================================================
+//  HANDLE AUTH REGISTER
+// ============================================================
 async function handleAuthRegister() {
   const name = document.getElementById('authRegName').value.trim();
   const email = document.getElementById('authRegEmail').value.trim();
@@ -412,23 +425,26 @@ async function handleAuthRegister() {
   const status = document.getElementById('authRegisterStatus');
   if (!status) return;
   status.textContent = '';
+
   if (!name || !email || !password || !confirm) {
-    status.textContent = 'All fields are required.';
+    status.textContent = '❌ All fields are required.';
     status.style.color = '#ef4444';
     return;
   }
   if (password.length < 6) {
-    status.textContent = 'Password must be at least 6 characters.';
+    status.textContent = '❌ Password must be at least 6 characters.';
     status.style.color = '#ef4444';
     return;
   }
   if (password !== confirm) {
-    status.textContent = 'Passwords do not match.';
+    status.textContent = '❌ Passwords do not match.';
     status.style.color = '#ef4444';
     return;
   }
-  status.textContent = 'Creating account...';
+
+  status.textContent = '⏳ Creating account...';
   status.style.color = '#2563eb';
+
   try {
     const res = await fetch('/api/auth/customer/register', {
       method: 'POST',
@@ -436,20 +452,24 @@ async function handleAuthRegister() {
       body: JSON.stringify({ name, email, password })
     });
     const data = await res.json();
+
     if (res.ok) {
       status.textContent = '✅ Account created! Logging in...';
       status.style.color = '#16a34a';
-      setCustomerToken(data.token);
-      setCurrentUser(data.customer);
-      updateUserUI();
-      closeAuthModal();
-      await loadCartFromServer();
-      renderGrid();
-      updateCartBadge();
-      updateNavCartBadge();
-      if (chatOpen) {
-        showChatPanel();
-      }
+      localStorage.setItem('customerToken', data.token);
+      localStorage.setItem('currentUser', JSON.stringify(data.customer));
+      window.customerToken = data.token;
+      window.currentUser = data.customer;
+
+      setTimeout(() => {
+        closeAuthModal();
+        updateUserUI();
+        loadCartFromServer();
+        renderGrid();
+        updateCartBadge();
+        updateNavCartBadge();
+        window.location.reload();
+      }, 500);
     } else {
       status.textContent = '❌ ' + (data.error || 'Registration failed');
       status.style.color = '#ef4444';
@@ -730,7 +750,6 @@ async function loadShopProfile() {
     if (iconFacebook) iconFacebook.href = shop.facebook ? `https://facebook.com/messages/t/${shop.facebook.replace('@','')}` : '#';
     if (iconPhone) iconPhone.href = shop.phone ? `tel:${shop.phone}` : '#';
 
-    // Store shop data for auto social messages
     localStorage.setItem('shop', JSON.stringify(shop));
 
     updateCartBadge();
@@ -740,39 +759,9 @@ async function loadShopProfile() {
 }
 
 // ============================================================
-//  AUTO SOCIAL MESSAGES
-// ============================================================
-function getAutoSocialLinks(product) {
-  const shop = JSON.parse(localStorage.getItem('shop')) || {};
-  const whatsappNumber = shop.whatsapp || '';
-  const instagramUser = shop.instagram || '';
-  const facebookUser = shop.facebook || '';
-  const tiktokUser = shop.tiktok || '';
-
-  // Build default message with product details
-  const productName = product.name || 'this product';
-  const productPrice = product.price ? ` (${product.price})` : '';
-  const message = `Hi, I'm interested in "${productName}"${productPrice}. Could I get more information about this product?`;
-
-  const encodedMessage = encodeURIComponent(message);
-
-  const links = {
-    whatsapp: whatsappNumber ? `https://wa.me/${whatsappNumber.replace(/[^0-9]/g, '')}?text=${encodedMessage}` : '#',
-    instagram: instagramUser ? `https://www.instagram.com/${instagramUser.replace('@', '')}/` : '#',
-    messenger: facebookUser ? `https://m.me/${facebookUser.replace('@', '')}` : '#',
-    tiktok: tiktokUser ? `https://www.tiktok.com/@${tiktokUser.replace('@', '')}` : '#',
-    phone: shop.phone ? `tel:${shop.phone}` : '#'
-  };
-
-  return links;
-}
-window.getAutoSocialLinks = getAutoSocialLinks;
-
-// ============================================================
 //  TOAST NOTIFICATIONS
 // ============================================================
 function showToast(message, type = 'success') {
-  // Remove existing toast
   const existing = document.querySelector('.toast-container');
   if (existing) existing.remove();
 
@@ -837,7 +826,6 @@ function showToast(message, type = 'success') {
   container.appendChild(toast);
   document.body.appendChild(container);
 
-  // Auto dismiss
   setTimeout(() => {
     if (document.body.contains(container)) {
       toast.style.transform = 'translateX(120%)';
@@ -896,7 +884,6 @@ function hideSpinner(element) {
 }
 window.hideSpinner = hideSpinner;
 
-// Add spin animation
 const spinStyle = document.createElement('style');
 spinStyle.textContent = `
   @keyframes spin {
@@ -905,6 +892,32 @@ spinStyle.textContent = `
   }
 `;
 document.head.appendChild(spinStyle);
+
+// ============================================================
+//  AUTO SOCIAL MESSAGES
+// ============================================================
+function getAutoSocialLinks(product) {
+  const shop = JSON.parse(localStorage.getItem('shop')) || {};
+  const whatsappNumber = shop.whatsapp || '';
+  const instagramUser = shop.instagram || '';
+  const facebookUser = shop.facebook || '';
+  const tiktokUser = shop.tiktok || '';
+
+  const productName = product.name || 'this product';
+  const productPrice = product.price ? ` (${product.price})` : '';
+  const message = `Hi, I'm interested in "${productName}"${productPrice}. Could I get more information about this product?`;
+
+  const encodedMessage = encodeURIComponent(message);
+
+  return {
+    whatsapp: whatsappNumber ? `https://wa.me/${whatsappNumber.replace(/[^0-9]/g, '')}?text=${encodedMessage}` : '#',
+    instagram: instagramUser ? `https://www.instagram.com/${instagramUser.replace('@', '')}/` : '#',
+    messenger: facebookUser ? `https://m.me/${facebookUser.replace('@', '')}` : '#',
+    tiktok: tiktokUser ? `https://www.tiktok.com/@${tiktokUser.replace('@', '')}` : '#',
+    phone: shop.phone ? `tel:${shop.phone}` : '#'
+  };
+}
+window.getAutoSocialLinks = getAutoSocialLinks;
 
 // ============================================================
 //  HERO SLIDESHOW
@@ -934,7 +947,7 @@ function addImageToSlideshow(imageUrl) {
 }
 
 // ============================================================
-//  LOAD PRODUCTS (with error handling)
+//  LOAD PRODUCTS
 // ============================================================
 async function loadProducts() {
   try {
@@ -1008,7 +1021,7 @@ function changeSlide(direction) {
 window.changeSlide = changeSlide;
 
 // ============================================================
-//  PRODUCT GRID (with clickable images, hover preview, variants)
+//  PRODUCT GRID
 // ============================================================
 async function renderGrid() {
   const grid = document.getElementById('productGrid');
@@ -1018,7 +1031,6 @@ async function renderGrid() {
     return;
   }
 
-  // Fetch variants for each product
   const variantMap = {};
   for (let product of rotatedProducts) {
     try {
@@ -1048,7 +1060,6 @@ async function renderGrid() {
       imageHtml = `<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#e2e8f0;font-size:2rem;">📦</div>`;
     }
 
-    // Build hover preview
     const variants = variantMap[p.id] || [];
     let swatchesHtml = '';
     if (variants.length > 0) {
@@ -1070,6 +1081,7 @@ async function renderGrid() {
           <div class="quick-view-icon"><i class="fas fa-eye"></i></div>
           ${p.isFlashSale ? `<div class="flash-badge">🔥</div>` : ''}
           ${p.isNewArrival ? `<div class="new-badge">🆕</div>` : ''}
+          <i id="wishlist-icon-${p.id}" class="far fa-heart" onclick="event.stopPropagation(); toggleWishlist(${p.id})" style="position:absolute; top:8px; left:8px; font-size:1.2rem; background:white; padding:4px; border-radius:50%; cursor:pointer; z-index:10;"></i>
           <div class="hover-preview">
             <div class="product-name">${p.name}</div>
             <div class="product-price">${p.price}</div>
@@ -1097,6 +1109,46 @@ async function renderGrid() {
   }).join('');
 }
 window.renderGrid = renderGrid;
+
+// ============================================================
+//  WISHLIST TOGGLE (NEW)
+// ============================================================
+async function toggleWishlist(productId) {
+  if (!isLoggedIn()) {
+    openAuthModal('login');
+    return;
+  }
+  try {
+    const res = await fetch('/api/wishlist', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${window.customerToken}`
+      },
+      body: JSON.stringify({ product_id: productId })
+    });
+    const data = await res.json();
+    if (data.success) {
+      const icon = document.getElementById(`wishlist-icon-${productId}`);
+      if (icon) {
+        if (data.action === 'added') {
+          icon.className = 'fas fa-heart';
+          icon.style.color = '#ef4444';
+        } else {
+          icon.className = 'far fa-heart';
+          icon.style.color = '';
+        }
+      }
+      showToast(data.action === 'added' ? 'Added to wishlist ❤️' : 'Removed from wishlist', 'success');
+    } else {
+      showToast('Failed to update wishlist', 'error');
+    }
+  } catch (err) {
+    console.error('Wishlist error:', err);
+    showToast('Network error', 'error');
+  }
+}
+window.toggleWishlist = toggleWishlist;
 
 // ============================================================
 //  OPEN DETAILS MODAL
@@ -1354,3 +1406,8 @@ window.sendChatMessage = sendChatMessage;
 window.changeSlide = changeSlide;
 window.renderGrid = renderGrid;
 window.checkLocationStatus = checkLocationStatus;
+window.showToast = showToast;
+window.showSpinner = showSpinner;
+window.hideSpinner = hideSpinner;
+window.getAutoSocialLinks = getAutoSocialLinks;
+window.toggleWishlist = toggleWishlist;

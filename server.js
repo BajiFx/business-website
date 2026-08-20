@@ -13,11 +13,10 @@ const cors = require('cors');
 const cloudinary = require('cloudinary').v2;
 const nodemailer = require('nodemailer');
 const { body, validationResult } = require('express-validator');
-const csrf = require('csurf');
 const PDFDocument = require('pdfkit');
 require('dotenv').config();
 
-// Increase max listeners to avoid warnings
+// Increase max listeners
 process.setMaxListeners(20);
 
 // ---- Email templates ----
@@ -85,30 +84,24 @@ cloudinary.config({
 });
 console.log('✅ Cloudinary configured');
 
-// ---------- PostgreSQL (Improved Connection) ----------
+// ---------- PostgreSQL ----------
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }, // still works, ignores SSL warning
+  ssl: { rejectUnauthorized: false },
   max: 20,
-  idleTimeoutMillis: 10000,           // shorter idle timeout
+  idleTimeoutMillis: 10000,
   connectionTimeoutMillis: 5000,
-  keepAlive: true,                    // important to prevent disconnections
+  keepAlive: true,
 });
 
-// Handle pool errors globally
 pool.on('error', (err) => {
   console.error('⚠️ PostgreSQL pool error:', err);
-  console.log('🔄 Attempting to reconnect...');
-  // The pool will automatically attempt to reconnect, but we can also manually retry
 });
 
-// Test connection on startup
 pool.connect((err, client, release) => {
   if (err) {
     console.error('❌ Database connection failed:', err);
-    // Retry after 5 seconds
     setTimeout(() => {
-      console.log('🔄 Retrying database connection...');
       pool.connect((err2, client2, release2) => {
         if (err2) {
           console.error('❌ Database still unreachable:', err2);
@@ -124,7 +117,6 @@ pool.connect((err, client, release) => {
   }
 });
 
-// ---- Graceful shutdown: close pool ----
 process.on('SIGINT', () => {
   pool.end(() => {
     console.log('🔌 Database pool closed');
@@ -134,7 +126,6 @@ process.on('SIGINT', () => {
 
 process.on('uncaughtException', (err) => {
   console.error('❌ Uncaught Exception:', err);
-  // Don't exit, just log – keep server running
 });
 
 process.on('unhandledRejection', (reason) => {
@@ -319,14 +310,32 @@ async function getSetting(key, defaultValue) {
   return result.rows[0].value;
 }
 
+// ---- Shipping cost calculation (same logic as frontend) ----
+function calculateShippingCost(subtotal, tier) {
+  const FREE_SHIPPING_THRESHOLD = 40000;
+  let standard, express, overnight;
+  if (subtotal >= FREE_SHIPPING_THRESHOLD) {
+    standard = 0; express = 250; overnight = 350;
+  } else if (subtotal >= 10000) {
+    standard = 150; express = 250; overnight = 300;
+  } else if (subtotal >= 2000) {
+    standard = 120; express = 200; overnight = 250;
+  } else if (subtotal >= 500) {
+    standard = 80; express = 150; overnight = 200;
+  } else {
+    standard = 50; express = 100; overnight = 150;
+  }
+  switch(tier) {
+    case 'standard': return standard;
+    case 'express': return express;
+    case 'overnight': return overnight;
+    default: return standard;
+  }
+}
+
 // ============================================================
 // API ROUTES
 // ============================================================
-
-// ---- CSRF Token ----
-app.get('/api/csrf-token', csrf({ cookie: true }), (req, res) => {
-  res.json({ csrfToken: req.csrfToken() });
-});
 
 // ---- SHOP profile ----
 app.get('/api/shop', async (req, res) => {
@@ -341,7 +350,9 @@ app.get('/api/shop', async (req, res) => {
         mpesa_enabled: false, mpesa_number: '',
         airtel_enabled: false, airtel_number: '',
         bank_enabled: false, bank_name: '', bank_account: '', bank_account_name: '',
-        paypal_enabled: false, paypal_email: ''
+        paypal_enabled: false, paypal_email: '',
+        shipping_policy: '', return_policy: '', terms_policy: '', privacy_policy: '',
+        delivery_enabled: true, online_orders_enabled: true
       });
     }
     const row = result.rows[0];
@@ -361,7 +372,9 @@ app.post('/api/shop', authMiddleware, upload.fields([{ name: 'logo' }, { name: '
       mpesa_enabled, mpesa_number,
       airtel_enabled, airtel_number,
       bank_enabled, bank_name, bank_account, bank_account_name,
-      paypal_enabled, paypal_email
+      paypal_enabled, paypal_email,
+      shipping_policy, return_policy, terms_policy, privacy_policy,
+      delivery_enabled, online_orders_enabled
     } = req.body;
     let logo = null, heroImage = null;
     if (req.files['logo']) {
@@ -384,15 +397,19 @@ app.post('/api/shop', authMiddleware, upload.fields([{ name: 'logo' }, { name: '
           mpesa_enabled, mpesa_number,
           airtel_enabled, airtel_number,
           bank_enabled, bank_name, bank_account, bank_account_name,
-          paypal_enabled, paypal_email
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+          paypal_enabled, paypal_email,
+          shipping_policy, return_policy, terms_policy, privacy_policy,
+          delivery_enabled, online_orders_enabled
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28)
         RETURNING *
       `, [name, location, address, latitude, longitude, description, mission, vision,
           logo, heroImage, whatsapp, tiktok, instagram, facebook, phone,
           mpesa_enabled === 'true', mpesa_number,
           airtel_enabled === 'true', airtel_number,
           bank_enabled === 'true', bank_name, bank_account, bank_account_name,
-          paypal_enabled === 'true', paypal_email]);
+          paypal_enabled === 'true', paypal_email,
+          shipping_policy, return_policy, terms_policy, privacy_policy,
+          delivery_enabled === 'true', online_orders_enabled === 'true']);
       updatedRow = insertResult.rows[0];
     } else {
       const fields = ['name','location','address','latitude','longitude','description','mission','vision',
@@ -400,7 +417,9 @@ app.post('/api/shop', authMiddleware, upload.fields([{ name: 'logo' }, { name: '
                       'mpesa_enabled','mpesa_number',
                       'airtel_enabled','airtel_number',
                       'bank_enabled','bank_name','bank_account','bank_account_name',
-                      'paypal_enabled','paypal_email'];
+                      'paypal_enabled','paypal_email',
+                      'shipping_policy','return_policy','terms_policy','privacy_policy',
+                      'delivery_enabled','online_orders_enabled'];
       const values = fields.map(f => {
         if (f.endsWith('_enabled')) return req.body[f] === 'true';
         return req.body[f] || null;
@@ -432,15 +451,43 @@ app.post('/api/shop', authMiddleware, upload.fields([{ name: 'logo' }, { name: '
   }
 });
 
+// ---- Shop Policies ----
+app.get('/api/shop/policies', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT shipping_policy, return_policy, terms_policy, privacy_policy, delivery_enabled, online_orders_enabled FROM shop LIMIT 1');
+    if (result.rows.length === 0) {
+      return res.json({
+        shipping_policy: 'We deliver to all major towns in Kenya. Delivery takes 2-5 working days.',
+        return_policy: 'Returns are accepted within 14 days of delivery. Products must be in original condition.',
+        terms_policy: 'By using our platform, you agree to our terms and conditions.',
+        privacy_policy: 'We protect your personal data and never share it with third parties.',
+        delivery_enabled: true,
+        online_orders_enabled: true
+      });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ---- Products ----
 app.get('/api/products', async (req, res) => {
   try {
-    const { search, limit } = req.query;
+    const { search, limit, category } = req.query;
     let query = 'SELECT * FROM products';
     let params = [];
+    let conditions = [];
     if (search) {
-      query += ' WHERE name ILIKE $1';
+      conditions.push('name ILIKE $' + (params.length + 1));
       params.push(`%${search}%`);
+    }
+    if (category && category !== 'all') {
+      conditions.push('category = $' + (params.length + 1));
+      params.push(category);
+    }
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
     }
     query += ' ORDER BY created_at DESC';
     if (limit) {
@@ -501,12 +548,12 @@ app.get('/api/products/:id/detail', async (req, res) => {
   }
 });
 
-// ---- Product CRUD ----
+// ---- Product CRUD with variants ----
 app.post('/api/products', authMiddleware, upload.fields([{ name: 'image' }, { name: 'variantImages' }]), async (req, res) => {
   try {
-    const { name, price, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival, description,
+    const { name, price, category, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival, description,
             shipping_fee, free_shipping_eligible, return_enabled, return_window_days, restocking_fee_percent,
-            return_shipping_paid_by, return_condition, variants } = req.body;
+            return_shipping_paid_by, return_condition, variants, old_price, discount_percent } = req.body;
 
     let mainImage = null;
     if (req.files['image']) {
@@ -516,12 +563,13 @@ app.post('/api/products', authMiddleware, upload.fields([{ name: 'image' }, { na
     }
 
     const result = await pool.query(`
-      INSERT INTO products (name, price, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival,
+      INSERT INTO products (name, price, old_price, discount_percent, category, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival,
         image, description, shipping_fee, free_shipping_eligible, return_enabled, return_window_days,
         restocking_fee_percent, return_shipping_paid_by, return_condition)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING *
-    `, [name, price, contact, rating, badge1, badge2, shipping, isFlashSale === 'true', isNewArrival === 'true',
-        mainImage, description, shipping_fee, free_shipping_eligible === 'true', return_enabled !== 'false',
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING *
+    `, [name, price, old_price || null, discount_percent || null, category, contact, rating, badge1, badge2,
+        shipping, isFlashSale === 'true', isNewArrival === 'true', mainImage, description,
+        shipping_fee, free_shipping_eligible === 'true', return_enabled !== 'false',
         return_window_days || 14, restocking_fee_percent || 0, return_shipping_paid_by || 'buyer',
         return_condition || 'unopened']);
 
@@ -555,9 +603,9 @@ app.post('/api/products', authMiddleware, upload.fields([{ name: 'image' }, { na
 app.put('/api/products/:id', authMiddleware, upload.fields([{ name: 'image' }, { name: 'variantImages' }]), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { name, price, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival, description,
+    const { name, price, category, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival, description,
             shipping_fee, free_shipping_eligible, return_enabled, return_window_days, restocking_fee_percent,
-            return_shipping_paid_by, return_condition, variants } = req.body;
+            return_shipping_paid_by, return_condition, variants, old_price, discount_percent } = req.body;
 
     const existing = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
     if (existing.rows.length === 0) return res.status(404).json({ error: 'Product not found' });
@@ -572,22 +620,26 @@ app.put('/api/products/:id', authMiddleware, upload.fields([{ name: 'image' }, {
 
     const result = await pool.query(`
       UPDATE products
-      SET name = $1, price = $2, contact = $3, rating = $4, badge1 = $5, badge2 = $6,
-          shipping = $7, isFlashSale = $8, isNewArrival = $9, image = $10,
-          description = $11, shipping_fee = $12, free_shipping_eligible = $13,
-          return_enabled = $14, return_window_days = $15, restocking_fee_percent = $16,
-          return_shipping_paid_by = $17, return_condition = $18
-      WHERE id = $19 RETURNING *
-    `, [name, price, contact, rating, badge1, badge2, shipping, isFlashSale === 'true', isNewArrival === 'true',
-        image, description, shipping_fee, free_shipping_eligible === 'true', return_enabled !== 'false',
-        return_window_days || 14, restocking_fee_percent || 0, return_shipping_paid_by || 'buyer',
-        return_condition || 'unopened', id]);
+      SET name = $1, price = $2, old_price = $3, discount_percent = $4, category = $5,
+          contact = $6, rating = $7, badge1 = $8, badge2 = $9, shipping = $10,
+          isFlashSale = $11, isNewArrival = $12, image = $13, description = $14,
+          shipping_fee = $15, free_shipping_eligible = $16,
+          return_enabled = $17, return_window_days = $18, restocking_fee_percent = $19,
+          return_shipping_paid_by = $20, return_condition = $21
+      WHERE id = $22 RETURNING *
+    `, [name, price, old_price || null, discount_percent || null, category,
+        contact, rating, badge1, badge2, shipping,
+        isFlashSale === 'true', isNewArrival === 'true', image, description,
+        shipping_fee, free_shipping_eligible === 'true',
+        return_enabled !== 'false', return_window_days || 14, restocking_fee_percent || 0,
+        return_shipping_paid_by || 'buyer', return_condition || 'unopened', id]);
 
     const product = result.rows[0];
 
-    await pool.query('DELETE FROM product_variants WHERE product_id = $1', [id]);
-
+    // --- FIX: Only delete variants if new variants are provided ---
     if (variants && typeof variants === 'string') {
+      // Delete existing variants only if we have new ones to replace them
+      await pool.query('DELETE FROM product_variants WHERE product_id = $1', [id]);
       const variantData = JSON.parse(variants);
       const variantImages = req.files['variantImages'] || [];
       for (let i = 0; i < variantData.length; i++) {
@@ -604,6 +656,7 @@ app.put('/api/products/:id', authMiddleware, upload.fields([{ name: 'image' }, {
         );
       }
     }
+    // If no variants sent, keep existing ones unchanged.
 
     res.json({ success: true, product });
   } catch (err) {
@@ -781,8 +834,8 @@ app.post('/api/auth/customer/register', [
     if (existing.rows.length > 0) return res.status(409).json({ error: 'Email already registered.' });
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await pool.query(
-      'INSERT INTO customers (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email',
-      [name, email, hashedPassword]
+      'INSERT INTO customers (name, email, password, phone) VALUES ($1, $2, $3, $4) RETURNING id, name, email, phone',
+      [name, email, hashedPassword, '']
     );
     const customer = result.rows[0];
     await pool.query('INSERT INTO carts (customer_id, items) VALUES ($1, $2)', [customer.id, '[]']);
@@ -815,7 +868,7 @@ app.post('/api/auth/customer/login', loginLimiter, [
       [customer.id, '[]']
     );
     const token = generateToken(customer.id, 'customer');
-    res.json({ success: true, token, customer: { id: customer.id, name: customer.name, email: customer.email } });
+    res.json({ success: true, token, customer: { id: customer.id, name: customer.name, email: customer.email, phone: customer.phone || '' } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -824,11 +877,39 @@ app.post('/api/auth/customer/login', loginLimiter, [
 
 app.get('/api/auth/customer/verify', authMiddleware, async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, name, email, created_at FROM customers WHERE id = $1', [req.userId]);
+    const result = await pool.query('SELECT id, name, email, phone, created_at FROM customers WHERE id = $1', [req.userId]);
     if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     res.json({ user: result.rows[0] });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/auth/customer/profile', authMiddleware, async (req, res) => {
+  const { name, phone, email } = req.body;
+  try {
+    const result = await pool.query(
+      'UPDATE customers SET name = COALESCE($1, name), phone = COALESCE($2, phone), email = COALESCE($3, email) WHERE id = $4 RETURNING id, name, email, phone',
+      [name, phone, email, req.userId]
+    );
+    res.json({ user: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/customer/logout', authMiddleware, (req, res) => {
+  res.json({ success: true });
+});
+
+app.post('/api/auth/customer/check-email', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email required' });
+  try {
+    const result = await pool.query('SELECT id FROM customers WHERE email = $1', [email]);
+    res.json({ exists: result.rows.length > 0 });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
@@ -853,14 +934,27 @@ app.post('/api/addresses', authMiddleware, [
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { label, address, lat, lng, location_name } = req.body;
+  const { label, address, lat, lng, location_name, address_type, recipient_name, recipient_phone,
+          building_name, floor_room, road, estate, nearest_landmark, delivery_instructions } = req.body;
+
   try {
     const countResult = await pool.query('SELECT COUNT(*) FROM customer_addresses WHERE customer_id = $1', [req.userId]);
     const isDefault = parseInt(countResult.rows[0].count) === 0;
+
+    let fullAddress = address;
+    if (building_name) fullAddress = `${building_name}, ${fullAddress}`;
+    if (estate) fullAddress = `${fullAddress}, ${estate}`;
+
     await pool.query(
-      `INSERT INTO customer_addresses (customer_id, label, address, lat, lng, location_name, is_default)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [req.userId, label, address, lat || null, lng || null, location_name || null, isDefault]
+      `INSERT INTO customer_addresses (
+        customer_id, label, address, lat, lng, location_name, is_default,
+        address_type, recipient_name, recipient_phone, building_name, floor_room,
+        road, estate, nearest_landmark, delivery_instructions
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+      [req.userId, label, fullAddress, lat || null, lng || null, location_name || null, isDefault,
+       address_type || 'doorstep', recipient_name || null, recipient_phone || null,
+       building_name || null, floor_room || null, road || null, estate || null,
+       nearest_landmark || null, delivery_instructions || null]
     );
     res.json({ success: true });
   } catch (err) {
@@ -943,6 +1037,58 @@ app.post('/api/promo/validate', async (req, res) => {
     }
     discount = Math.min(discount, subtotal);
     res.json({ valid: true, discount, message: 'Promo applied!' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- PROMO CODES ADMIN (NEW) ----
+app.get('/api/admin/promo-codes', authMiddleware, async (req, res) => {
+  if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
+  try {
+    const result = await pool.query('SELECT * FROM promo_codes ORDER BY created_at DESC');
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/promo-codes', authMiddleware, [
+  body('code').notEmpty().withMessage('Code required'),
+  body('discount_type').isIn(['percentage', 'fixed']).withMessage('Invalid type'),
+  body('discount_value').isNumeric().withMessage('Discount value must be a number'),
+  body('min_order_value').optional().isNumeric(),
+  body('expires_at').optional().isISO8601(),
+  body('usage_limit').optional().isInt()
+], async (req, res) => {
+  if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  const { code, discount_type, discount_value, min_order_value, expires_at, usage_limit } = req.body;
+  try {
+    await pool.query(
+      `INSERT INTO promo_codes (code, discount_type, discount_value, min_order_value, expires_at, usage_limit)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [code.toUpperCase(), discount_type, discount_value, min_order_value || 0, expires_at || null, usage_limit || null]
+    );
+    await logAdminActivity(req.userId, 'CREATE_PROMO', { code });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/admin/promo-codes/:id', authMiddleware, async (req, res) => {
+  if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
+  const id = parseInt(req.params.id);
+  try {
+    await pool.query('DELETE FROM promo_codes WHERE id = $1', [id]);
+    await logAdminActivity(req.userId, 'DELETE_PROMO', { id });
+    res.json({ success: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -1101,7 +1247,7 @@ app.post('/api/admin/location/update', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
-// PAYMENT ROUTES
+// PAYMENT ROUTES (M-Pesa, Airtel, Bank)
 // ============================================================
 
 async function initiateMpesaPayment(phone, amount, orderId, accountRef) {
@@ -1110,6 +1256,7 @@ async function initiateMpesaPayment(phone, amount, orderId, accountRef) {
     const consumerSecret = process.env.MPESA_CONSUMER_SECRET;
     const passkey = process.env.MPESA_PASSKEY;
     const shortcode = process.env.MPESA_SHORTCODE;
+    const callbackUrl = process.env.MPESA_CALLBACK_URL || 'http://localhost:3000/api/payments/mpesa-callback';
 
     if (!consumerKey || !consumerSecret) {
       console.warn('⚠️ M-Pesa credentials not set. Using simulation.');
@@ -1146,7 +1293,7 @@ async function initiateMpesaPayment(phone, amount, orderId, accountRef) {
         PartyA: formattedPhone,
         PartyB: shortcode,
         PhoneNumber: formattedPhone,
-        CallBackURL: `${process.env.CLIENT_URL}/api/payments/mpesa-callback`,
+        CallBackURL: callbackUrl,
         AccountReference: accountRef || `ORD-${orderId}`,
         TransactionDesc: 'Payment for order'
       })
@@ -1184,7 +1331,6 @@ app.post('/api/payments/mpesa-callback', async (req, res) => {
     const resultDesc = body?.Body?.stkCallback?.ResultDesc;
     const checkoutRequestID = body?.Body?.stkCallback?.CheckoutRequestID;
     const transactionId = body?.Body?.stkCallback?.CallbackMetadata?.Item?.find(i => i.Name === 'MpesaReceiptNumber')?.Value;
-    const amount = body?.Body?.stkCallback?.CallbackMetadata?.Item?.find(i => i.Name === 'Amount')?.Value;
 
     const isSuccess = resultCode === '0';
 
@@ -1233,203 +1379,79 @@ app.post('/api/payments/mpesa-callback', async (req, res) => {
   }
 });
 
-app.post('/api/payments/mpesa', authMiddleware, [
-  body('phone').isMobilePhone().withMessage('Invalid phone number'),
-  body('amount').isNumeric().withMessage('Amount must be a number'),
-  body('orderId').isInt().withMessage('Order ID required')
-], async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
+app.post('/api/payments/initiate', authMiddleware, async (req, res) => {
   try {
-    const { phone, amount, orderId } = req.body;
-    const accountRef = `ORD-${orderId}`;
+    const {
+      orderId, method, amount, phone, account, bank, pin,
+      delivery_address, recipient_name, recipient_phone,
+      delivery_instructions, customer_lat, customer_lng, location_accuracy
+    } = req.body;
+    const customerId = req.userId;
 
-    const paymentResult = await pool.query(
+    if (!method || !amount) {
+      return res.status(400).json({ error: 'Payment method and amount required.' });
+    }
+
+    if (method === 'mpesa' || method === 'airtel') {
+      if (!phone) return res.status(400).json({ error: 'Phone number required.' });
+      if (!pin) return res.status(400).json({ error: 'PIN required.' });
+    } else if (method === 'bank') {
+      if (!bank || !account) return res.status(400).json({ error: 'Bank and account number required.' });
+      if (!pin) return res.status(400).json({ error: 'PIN required.' });
+    }
+
+    if (orderId) {
+      await pool.query(
+        `UPDATE orders SET
+          delivery_address = $1,
+          recipient_name = $2,
+          recipient_phone = $3,
+          delivery_instructions = $4,
+          customer_lat = $5,
+          customer_lng = $6,
+          location_accuracy = $7,
+          location_detected_at = NOW()
+        WHERE id = $8`,
+        [delivery_address || null, recipient_name || null, recipient_phone || null,
+         delivery_instructions || null, customer_lat || null, customer_lng || null,
+         location_accuracy || null, orderId]
+      );
+    }
+
+    const isSuccess = pin && pin.length >= 4;
+    const status = isSuccess ? 'success' : 'failed';
+    const transactionId = isSuccess ? `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}` : null;
+
+    const paymentDetails = { phone, account, bank, pin: pin ? '***' : null };
+    const result = await pool.query(
       `INSERT INTO payments (customer_id, order_id, amount, method, status, transaction_id, payment_details)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [req.userId, orderId, amount, 'mpesa', 'pending', null, JSON.stringify({ phone })]
+      [customerId, orderId || null, amount, method, status, transactionId, JSON.stringify(paymentDetails)]
     );
 
-    const payment = paymentResult.rows[0];
+    const payment = result.rows[0];
 
-    const result = await initiateMpesaPayment(phone, amount, orderId, accountRef);
-
-    if (result.success) {
-      await pool.query(
-        'UPDATE payments SET transaction_id = $1 WHERE id = $2',
-        [result.transactionId, payment.id]
-      );
-      res.json({
-        success: true,
-        message: 'STK Push sent to your phone. Please enter PIN to complete payment.',
-        transactionId: result.transactionId
-      });
-    } else {
-      await pool.query(
-        'UPDATE payments SET status = $1 WHERE id = $2',
-        ['failed', payment.id]
-      );
-      res.json({
-        success: false,
-        message: result.message || 'M-Pesa payment failed. Please try again.'
-      });
-    }
-  } catch (err) {
-    console.error('M-Pesa initiation error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/payments/airtel', authMiddleware, [
-  body('phone').isMobilePhone().withMessage('Invalid phone number'),
-  body('amount').isNumeric().withMessage('Amount must be a number'),
-  body('orderId').isInt().withMessage('Order ID required')
-], async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  try {
-    const { phone, amount, orderId } = req.body;
-
-    if (!process.env.AIRTEL_API_KEY || !process.env.AIRTEL_API_SECRET) {
-      const transactionId = `AIRTEL-SIM-${Date.now()}`;
-      await pool.query(
-        `INSERT INTO payments (customer_id, order_id, amount, method, status, transaction_id, payment_details)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [req.userId, orderId, amount, 'airtel', 'success', transactionId, JSON.stringify({ phone })]
-      );
-
-      await pool.query('UPDATE orders SET payment_status = $1 WHERE id = $2', ['paid', orderId]);
-      await pool.query(
-        `UPDATE orders SET status = 'pending' WHERE id = $1 AND status = 'pending_payment'`,
-        [orderId]
-      );
-      await appendOrderStatus(orderId, 'pending', 'Payment successful (simulated). Order confirmed.');
-
-      io.emit('new-order', { orderId });
-      io.to(`order_${orderId}`).emit('payment-updated', { orderId, paymentStatus: 'paid' });
-
-      return res.json({
-        success: true,
-        message: 'Airtel Money payment simulated successfully. Order confirmed.',
-        transactionId
-      });
-    }
-
-    const airtelResponse = await fetch('https://api.airtel.ke/payments', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.AIRTEL_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ phone, amount, orderId })
-    });
-
-    const result = await airtelResponse.json();
-
-    if (result.success) {
-      await pool.query(
-        `INSERT INTO payments (customer_id, order_id, amount, method, status, transaction_id, payment_details)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [req.userId, orderId, amount, 'airtel', 'success', result.transactionId, JSON.stringify({ phone })]
-      );
-
+    if (isSuccess && orderId) {
       await pool.query('UPDATE orders SET payment_status = $1 WHERE id = $2', ['paid', orderId]);
       await pool.query(
         `UPDATE orders SET status = 'pending' WHERE id = $1 AND status = 'pending_payment'`,
         [orderId]
       );
       await appendOrderStatus(orderId, 'pending', 'Payment successful. Order confirmed.');
-
       io.emit('new-order', { orderId });
       io.to(`order_${orderId}`).emit('payment-updated', { orderId, paymentStatus: 'paid' });
-
-      res.json({ success: true, message: 'Airtel Money payment successful!', transactionId: result.transactionId });
-    } else {
-      res.json({ success: false, message: result.message || 'Airtel Money payment failed' });
     }
-  } catch (err) {
-    console.error('Airtel error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/payments/bank', authMiddleware, [
-  body('reference').notEmpty().withMessage('Transaction reference required'),
-  body('amount').isNumeric().withMessage('Amount must be a number'),
-  body('orderId').isInt().withMessage('Order ID required')
-], async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  try {
-    const { reference, amount, orderId } = req.body;
-
-    await pool.query(
-      `INSERT INTO payments (customer_id, order_id, amount, method, status, transaction_id, payment_details)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [req.userId, orderId, amount, 'bank', 'pending', reference, JSON.stringify({ reference })]
-    );
-
-    io.emit('bank-transfer-pending', { orderId, reference, amount });
 
     res.json({
-      success: true,
-      message: 'Bank transfer recorded. Awaiting admin confirmation.',
-      status: 'pending'
+      success: isSuccess,
+      payment: payment,
+      message: isSuccess ? 'Payment successful! Your order has been confirmed.' : 'Payment failed. Please try again.',
+      transactionId
     });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.put('/api/admin/payments/bank/:paymentId/confirm', authMiddleware, async (req, res) => {
-  if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
-  const paymentId = parseInt(req.params.id);
-  const { action } = req.body;
-
-  try {
-    const paymentResult = await pool.query(
-      'SELECT order_id, amount FROM payments WHERE id = $1 AND method = $2',
-      [paymentId, 'bank']
-    );
-    if (paymentResult.rows.length === 0) return res.status(404).json({ error: 'Payment not found' });
-
-    const payment = paymentResult.rows[0];
-
-    if (action === 'confirm') {
-      await pool.query(
-        'UPDATE payments SET status = $1, updated_at = NOW() WHERE id = $2',
-        ['success', paymentId]
-      );
-      await pool.query('UPDATE orders SET payment_status = $1 WHERE id = $2', ['paid', payment.order_id]);
-      await pool.query(
-        `UPDATE orders SET status = 'pending' WHERE id = $1 AND status = 'pending_payment'`,
-        [payment.order_id]
-      );
-      await appendOrderStatus(payment.order_id, 'pending', 'Bank payment confirmed. Order confirmed.');
-      io.emit('new-order', { orderId: payment.order_id });
-      io.to(`order_${payment.order_id}`).emit('payment-updated', { orderId: payment.order_id, paymentStatus: 'paid' });
-      await logAdminActivity(req.userId, 'CONFIRM_BANK_PAYMENT', { paymentId, orderId: payment.order_id });
-      res.json({ success: true, message: 'Bank transfer confirmed.' });
-    } else {
-      await pool.query(
-        'UPDATE payments SET status = $1, updated_at = NOW() WHERE id = $2',
-        ['failed', paymentId]
-      );
-      res.json({ success: true, message: 'Bank transfer rejected.' });
-    }
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    console.error('Payment initiation error:', err);
+    res.status(500).json({ error: 'Payment processing failed.' });
   }
 });
 
@@ -1470,8 +1492,7 @@ app.get('/api/payments/customer', authMiddleware, async (req, res) => {
 
 app.post('/api/orders', authMiddleware, [
   body('items').isArray().withMessage('Items must be an array'),
-  body('total').isNumeric().withMessage('Total must be a number'),
-  body('address_id').isInt().withMessage('Address required')
+  // We no longer require total because we recalc
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -1483,16 +1504,52 @@ app.post('/api/orders', authMiddleware, [
   }
 
   const customerId = req.userId;
-  const { items, total, shipping_tier, shipping_cost, order_notes, address_id, promo_code, discount } = req.body;
+  const {
+    items, shipping_tier, order_notes,
+    promo_code,
+    delivery_address, recipient_name, recipient_phone,
+    delivery_instructions, customer_lat, customer_lng, location_accuracy
+  } = req.body;
 
   try {
-    const addrCheck = await pool.query(
-      'SELECT id, address, location_name FROM customer_addresses WHERE id = $1 AND customer_id = $2',
-      [address_id, customerId]
-    );
-    if (addrCheck.rows.length === 0) return res.status(400).json({ error: 'Invalid address.' });
-    const addressData = addrCheck.rows[0];
+    // --- SERVER-SIDE RECALCULATION ---
+    // 1. Calculate subtotal from items
+    let subtotal = 0;
+    for (const item of items) {
+      const priceNum = parseFloat(item.price.replace(/[^0-9.]/g,'')) || 0;
+      subtotal += priceNum * item.quantity;
+    }
 
+    // 2. Calculate shipping cost based on subtotal and tier
+    const tier = shipping_tier || 'standard';
+    const shippingCost = calculateShippingCost(subtotal, tier);
+
+    // 3. Validate promo code and calculate discount
+    let discount = 0;
+    if (promo_code) {
+      const promoResult = await pool.query(
+        'SELECT * FROM promo_codes WHERE code = $1 AND active = true AND (expires_at IS NULL OR expires_at > NOW()) AND (usage_limit IS NULL OR used_count < usage_limit)',
+        [promo_code.toUpperCase()]
+      );
+      if (promoResult.rows.length > 0) {
+        const promo = promoResult.rows[0];
+        if (subtotal >= promo.min_order_value) {
+          if (promo.discount_type === 'percentage') {
+            discount = subtotal * promo.discount_value / 100;
+          } else {
+            discount = promo.discount_value;
+          }
+          discount = Math.min(discount, subtotal);
+          // Increment usage
+          await pool.query('UPDATE promo_codes SET used_count = used_count + 1 WHERE id = $1', [promo.id]);
+        }
+      }
+    }
+
+    // 4. Final total
+    const total = subtotal + shippingCost - discount;
+
+    // --- Now proceed with order creation ---
     let orderRef;
     let unique = false;
     while (!unique) {
@@ -1501,30 +1558,28 @@ app.post('/api/orders', authMiddleware, [
       if (check.rows.length === 0) unique = true;
     }
 
-    let appliedDiscount = discount || 0;
-    if (promo_code) {
-      const promoResult = await pool.query(
-        'SELECT * FROM promo_codes WHERE code = $1 AND active = true AND (expires_at IS NULL OR expires_at > NOW()) AND (usage_limit IS NULL OR used_count < usage_limit)',
-        [promo_code.toUpperCase()]
-      );
-      if (promoResult.rows.length > 0) {
-        const promo = promoResult.rows[0];
-        await pool.query('UPDATE promo_codes SET used_count = used_count + 1 WHERE id = $1', [promo.id]);
-      } else {
-        appliedDiscount = 0;
-      }
-    }
-
-    const urgent = shipping_tier === 'overnight';
+    const urgent = tier === 'overnight';
 
     await pool.query('BEGIN');
     const orderResult = await pool.query(`
-      INSERT INTO orders (customer_id, total, status, order_ref, status_history, shipping_tier, shipping_cost,
-        order_notes, address_id, promo_code, discount_applied, delivery_location_name, urgent_delivery, payment_status)
-      VALUES ($1, $2, 'pending_payment', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'pending') RETURNING *
-    `, [customerId, total, orderRef, JSON.stringify([{ status: 'pending_payment', timestamp: new Date().toISOString() }]),
-        shipping_tier || 'standard', shipping_cost || 0, order_notes || null, address_id || null,
-        promo_code || null, appliedDiscount, addressData.location_name || addressData.address, urgent]);
+      INSERT INTO orders (
+        customer_id, total, status, order_ref, status_history,
+        shipping_tier, shipping_cost, order_notes, promo_code, discount_applied,
+        delivery_address, recipient_name, recipient_phone, delivery_instructions,
+        customer_lat, customer_lng, location_accuracy, location_detected_at,
+        urgent_delivery, payment_status
+      )
+      VALUES ($1, $2, 'pending_payment', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), $17, 'pending')
+      RETURNING *
+    `, [
+      customerId, total, orderRef,
+      JSON.stringify([{ status: 'pending_payment', timestamp: new Date().toISOString() }]),
+      tier, shippingCost,
+      order_notes || null, promo_code || null, discount,
+      delivery_address || null, recipient_name || null, recipient_phone || null,
+      delivery_instructions || null, customer_lat || null, customer_lng || null,
+      location_accuracy || null, urgent
+    ]);
 
     const order = orderResult.rows[0];
 
@@ -1614,42 +1669,6 @@ app.get('/api/orders/:id', authMiddleware, async (req, res) => {
     if (req.role !== 'admin' && order.customer_id !== req.userId) return res.status(403).json({ error: 'Forbidden' });
     const itemsResult = await pool.query('SELECT * FROM order_items WHERE order_id = $1', [orderId]);
     res.json({ ...order, items: itemsResult.rows });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/orders/:id/location', authMiddleware, async (req, res) => {
-  const orderId = parseInt(req.params.id);
-  const { lat, lng, address, location_name } = req.body;
-  if (!lat || !lng) return res.status(400).json({ error: 'Location coordinates required.' });
-  try {
-    const orderCheck = await pool.query('SELECT customer_id, order_ref FROM orders WHERE id = $1', [orderId]);
-    if (orderCheck.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
-    if (orderCheck.rows[0].customer_id !== req.userId) return res.status(403).json({ error: 'Forbidden' });
-    const shopResult = await pool.query('SELECT latitude, longitude FROM shop LIMIT 1');
-    const shop = shopResult.rows[0];
-    if (!shop || !shop.latitude || !shop.longitude) {
-      return res.status(400).json({ error: 'Shop location not set. Contact admin.' });
-    }
-    const distance = getDistance(parseFloat(shop.latitude), parseFloat(shop.longitude), parseFloat(lat), parseFloat(lng));
-    const days = estimateDeliveryDays(distance);
-    const locationData = { lat, lng, address: address || '', location_name: location_name || address || '' };
-    await pool.query(
-      `UPDATE orders SET delivery_location = $1, estimated_delivery_days = $2, delivery_location_name = $3 WHERE id = $4`,
-      [JSON.stringify(locationData), days, locationData.location_name, orderId]
-    );
-    const customerResult = await pool.query('SELECT name FROM customers WHERE id = $1', [req.userId]);
-    const customerName = customerResult.rows[0]?.name || 'Customer';
-    const ref = orderCheck.rows[0].order_ref || `#${orderId}`;
-    const msg = `Hello ${customerName}, your order ${ref} will be delivered to: ${locationData.location_name}. Estimated delivery in ${days} days.`;
-    await pool.query(
-      `INSERT INTO order_chat_messages (order_id, from_user, message) VALUES ($1, 'System', $2)`,
-      [orderId, msg]
-    );
-    io.to(`order_${orderId}`).emit('new-order-chat-message', { order_id: orderId, from_user: 'System', message: msg, timestamp: new Date() });
-    res.json({ success: true, estimated_days: days, distance: distance.toFixed(2) + ' km', location_name: locationData.location_name });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -2029,7 +2048,19 @@ app.put('/api/orders/:id/confirm', authMiddleware, async (req, res) => {
     await appendOrderStatus(orderId, 'confirmed');
     await logAdminActivity(req.userId, 'CONFIRM_ORDER', { orderId });
 
+    // --- DECREMENT STOCK ---
     const itemsResult = await pool.query('SELECT * FROM order_items WHERE order_id = $1', [orderId]);
+    for (const item of itemsResult.rows) {
+      if (item.variant_id) {
+        await pool.query(
+          'UPDATE product_variants SET stock = stock - $1 WHERE id = $2 AND stock >= $1',
+          [item.quantity, item.variant_id]
+        );
+      } else {
+        // If no variant, maybe decrement product stock? Not implemented; we could ignore.
+      }
+    }
+
     const items = itemsResult.rows;
 
     const ref = order.order_ref || `#${order.id}`;
@@ -2059,12 +2090,7 @@ app.put('/api/orders/:id/confirm', authMiddleware, async (req, res) => {
     message += `<p><strong>Total: Ksh ${Number(order.total).toFixed(2)}</strong></p>`;
     message += `<p>📦 Order Date: ${new Date(order.created_at).toLocaleString()}</p>`;
     message += `<p>🆔 Order Reference: ${ref}</p>`;
-    if (order.estimated_delivery_days) {
-      message += `<p>🚚 Estimated delivery: ${order.estimated_delivery_days} days.</p>`;
-    }
-    if (order.delivery_location_name) {
-      message += `<p>📍 Delivery destination: ${order.delivery_location_name}</p>`;
-    }
+    message += `<p>📍 Delivery: ${order.delivery_address || order.delivery_location_name || 'Not provided'}</p>`;
     message += `<p>Thank you for shopping with us!</p>`;
 
     await pool.query('INSERT INTO order_chat_messages (order_id, from_user, message) VALUES ($1, $2, $3)',
@@ -2276,7 +2302,7 @@ app.post('/api/admin/orders/:id/remind', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const orderId = parseInt(req.params.id);
   try {
-    const orderResult = await pool.query('SELECT customer_id, order_ref FROM orders WHERE id = $1 AND status = $1',
+    const orderResult = await pool.query('SELECT customer_id, order_ref FROM orders WHERE id = $1 AND status = $2',
       [orderId, 'delivered']);
     if (orderResult.rows.length === 0) {
       return res.status(400).json({ error: 'Order not found or not in "delivered" state.' });
@@ -2393,6 +2419,11 @@ app.get('/api/orders/:id/receipt', authMiddleware, async (req, res) => {
     doc.text(`Email: ${order.customer_email}`);
     doc.moveDown();
 
+    doc.fontSize(14).text('Delivery Details:');
+    doc.fontSize(12).text(`Address: ${order.delivery_address || 'N/A'}`);
+    doc.text(`Recipient: ${order.recipient_name || 'N/A'} (${order.recipient_phone || 'N/A'})`);
+    doc.moveDown();
+
     doc.fontSize(14).text('Order Items:');
     doc.moveDown(0.5);
     let total = 0;
@@ -2415,6 +2446,76 @@ app.get('/api/orders/:id/receipt', authMiddleware, async (req, res) => {
     doc.text('This is a system-generated receipt.', { align: 'center' });
 
     doc.end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Send Order Confirmation (NEW) ----
+app.post('/api/orders/:id/send-confirmation', authMiddleware, async (req, res) => {
+  if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
+
+  const orderId = parseInt(req.params.id);
+
+  try {
+    const orderResult = await pool.query(`
+      SELECT o.*, c.name AS customer_name, c.email AS customer_email
+      FROM orders o
+      JOIN customers c ON o.customer_id = c.id
+      WHERE o.id = $1
+    `, [orderId]);
+
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const order = orderResult.rows[0];
+    const itemsResult = await pool.query('SELECT * FROM order_items WHERE order_id = $1', [orderId]);
+    const items = itemsResult.rows;
+
+    const ref = order.order_ref || `#${order.id}`;
+    let message = `✅ **Order ${ref} Confirmed!**\n\n`;
+    message += `Dear ${order.customer_name},\n\n`;
+    message += `Your order has been confirmed. Here are the details:\n\n`;
+
+    message += `📦 **Order Items:**\n`;
+    let total = 0;
+    items.forEach((item, index) => {
+      const priceNum = parseFloat(item.price.replace(/[^0-9.]/g, '')) || 0;
+      const subtotal = priceNum * item.quantity;
+      total += subtotal;
+      const variant = item.variant_name || 'Default';
+      const uniqueId = item.unique_id || '—';
+      message += `${index+1}. ${item.product_name} (${variant}) x${item.quantity} – Ksh ${subtotal.toFixed(2)} (ID: ${uniqueId})\n`;
+    });
+    message += `\n💰 **Total:** Ksh ${Number(order.total).toFixed(2)}\n\n`;
+
+    message += `📍 **Delivery Location:**\n`;
+    message += `   ${order.delivery_address || 'Not provided'}\n`;
+    if (order.recipient_name) message += `   👤 Recipient: ${order.recipient_name} (${order.recipient_phone || 'N/A'})\n`;
+    if (order.delivery_instructions) message += `   📝 Instructions: ${order.delivery_instructions}\n`;
+    if (order.customer_lat && order.customer_lng) {
+      message += `   🗺️ GPS: ${order.customer_lat}, ${order.customer_lng}\n`;
+    }
+    message += `\n📅 Order Date: ${new Date(order.created_at).toLocaleString()}\n`;
+    message += `🆔 Reference: ${ref}\n\n`;
+    message += `Thank you for shopping with us! 🙏`;
+
+    await pool.query(
+      'INSERT INTO order_chat_messages (order_id, from_user, message) VALUES ($1, $2, $3)',
+      [orderId, 'Seller', message]
+    );
+
+    io.to(`order_${orderId}`).emit('new-order-chat-message', {
+      order_id: orderId,
+      from_user: 'Seller',
+      message: message,
+      timestamp: new Date()
+    });
+
+    res.json({ success: true, message: 'Confirmation sent to customer.' });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });

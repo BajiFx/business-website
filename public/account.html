@@ -28,27 +28,108 @@
     .account-page h1 { font-size: 1.2rem; font-weight: 800; }
     .back-link { display: inline-block; margin-bottom: 10px; color: #2563eb; text-decoration: none; font-weight: 600; font-size: 0.85rem; }
 
-    /* ===== CARDS (compact, fair text) ===== */
-    .stats-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+    /* ===== PROFILE CARD ===== */
+    .account-card {
+      background: white; border-radius: 14px; padding: 16px 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 12px;
+    }
+    .account-card .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid #f1f4f8;
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+    }
+    .account-card .profile-header .avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .account-card .profile-header .profile-info h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .account-card .profile-header .profile-info p {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin: 2px 0;
+    }
+    .account-card .profile-header .profile-info .member-since {
+      font-size: 0.7rem;
+      color: #94a3b8;
+      background: #f1f5f9;
+      padding: 1px 12px;
+      border-radius: 20px;
+      display: inline-block;
+    }
+    .account-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .account-actions .btn {
+      padding: 6px 16px;
+      font-size: 0.75rem;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-success { background: #22c55e; color: white; }
+    .btn-success:hover { background: #16a34a; }
+    .btn-danger { background: #ef4444; color: white; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-secondary { background: #e2e8f0; color: #1e293b; }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .btn-sm { padding: 3px 12px; font-size: 0.65rem; }
+
+    /* ===== STATS GRID ===== */
+    .stats-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 12px 0;
+    }
     .stat-card {
-      flex: 0 0 120px; border-radius: 8px; padding: 6px 4px; color: #1e293b;
-      cursor: pointer; transition: transform 0.15s, box-shadow 0.2s, border 0.2s;
+      flex: 0 0 110px;
+      border-radius: 10px;
+      padding: 8px 6px;
+      color: #1e293b;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.2s, border 0.2s;
       box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-      display: flex; flex-direction: column; align-items: center; text-align: center;
-      border: 2px solid transparent; min-height: 48px; justify-content: center;
-      position: relative; overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      border: 2px solid transparent;
+      min-height: 44px;
+      justify-content: center;
+      position: relative;
     }
-    .stat-card::after {
-      content: ''; position: absolute; top: -50%; right: -50%;
-      width: 100%; height: 100%; background: rgba(255,255,255,0.3);
-      border-radius: 50%; transform: scale(0); transition: transform 0.3s;
+    .stat-card:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
     }
-    .stat-card:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
-    .stat-card:hover::after { transform: scale(2); }
     .stat-card.active { border-color: #1e293b; box-shadow: 0 0 0 2px #2563eb; }
     .stat-card .icon { font-size: 0.9rem; opacity: 0.8; margin-bottom: 1px; }
     .stat-card .number { font-size: 1.2rem; font-weight: 800; line-height: 1.2; }
-    .stat-card .label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 1px; }
+    .stat-card .label { font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 1px; }
     .stat-card .blink-dot {
       display: inline-block; width: 8px; height: 8px; border-radius: 50%;
       background: #facc15; margin-left: 4px; animation: pulse-blink 1.2s infinite;
@@ -59,7 +140,6 @@
       50% { opacity: 0.2; transform: scale(0.7); }
       100% { opacity: 1; transform: scale(1); }
     }
-
     .stat-card.pending { background: linear-gradient(145deg, #fde68a, #fcd34d); }
     .stat-card.confirmed { background: linear-gradient(145deg, #86efac, #4ade80); }
     .stat-card.shipped { background: linear-gradient(145deg, #93c5fd, #60a5fa); }
@@ -68,34 +148,81 @@
     .stat-card.cancelled { background: linear-gradient(145deg, #fca5a5, #f87171); }
     .stat-card.pending_payment { background: linear-gradient(145deg, #fde68a, #fcd34d); }
 
-    /* ===== ACCOUNT CARD ===== */
-    .account-card {
-      background: white; border-radius: 12px; padding: 16px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 12px;
+    /* ===== ADDRESS BOOK ===== */
+    .address-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 6px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      font-size: 0.8rem;
+      flex-wrap: wrap;
     }
-    .account-card .info-row {
-      display: flex; padding: 4px 0; border-bottom: 1px solid #f1f4f8;
+    .address-item .label { font-weight: 600; color: #0f172a; }
+    .address-item .location-name {
+      font-size: 0.7rem; color: #2563eb; background: #dbeafe; padding: 0 10px; border-radius: 20px;
+    }
+    .address-item .address-text { font-size: 0.75rem; color: #475569; }
+    .address-item .actions { display: flex; gap: 4px; }
+
+    /* ===== ORDER TABLE ===== */
+    .order-table-wrapper {
+      overflow-x: auto;
+      margin-top: 8px;
+      border-radius: 10px;
+      border: 1px solid #e8ecf1;
+    }
+    .order-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      min-width: 700px;
+    }
+    .order-table thead {
+      background: #f8fafc;
+    }
+    .order-table th {
+      padding: 10px 12px;
+      text-align: left;
+      font-weight: 700;
+      color: #475569;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    .order-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f1f4f8;
+      vertical-align: middle;
+    }
+    .order-table tr:hover td {
+      background: #fafbfc;
+    }
+    .order-table .order-ref {
+      font-weight: 700;
+      color: #0f172a;
+      font-size: 0.75rem;
+    }
+    .order-table .order-date {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+    .order-table .order-total {
+      font-weight: 700;
+      color: #2563eb;
       font-size: 0.85rem;
     }
-    .account-card .info-row .label { font-weight: 600; width: 80px; color: #64748b; }
-    .account-card .info-row .value { color: #0f172a; }
-    .account-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
-    .account-actions .btn {
-      padding: 6px 14px; font-size: 0.75rem; border-radius: 8px;
-      border: none; font-weight: 600; cursor: pointer;
-    }
-
-    /* ===== ORDER LIST ===== */
-    .order-section { margin-top: 16px; }
-    .order-section h2 { font-size: 1rem; font-weight: 700; margin: 12px 0 6px; padding-bottom: 4px; border-bottom: 2px solid #e2e8f0; }
-    .order-section .badge-count { background: #2563eb; color: white; border-radius: 10px; padding: 0 8px; font-size: 0.6rem; margin-left: 6px; }
-    .order-item-mini {
-      display: flex; justify-content: space-between; align-items: center;
-      flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid #f1f4f8;
-      font-size: 0.75rem; gap: 4px;
-    }
-    .order-item-mini .status {
-      padding: 1px 8px; border-radius: 10px; font-size: 0.6rem; font-weight: 600;
+    .order-table .status-badge {
+      padding: 2px 12px;
+      border-radius: 20px;
+      font-size: 0.6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      display: inline-block;
     }
     .status-pending { background: #fef3c7; color: #92400e; }
     .status-confirmed { background: #d1fae5; color: #065f46; }
@@ -105,47 +232,183 @@
     .status-cancelled { background: #fee2e2; color: #991b1b; }
     .status-pending_payment { background: #fef3c7; color: #92400e; }
 
-    .order-detail { display: none; margin-top: 8px; padding: 10px; background: #f8fafc; border-radius: 8px; font-size: 0.8rem; }
-    .order-detail.active { display: block; }
-    .order-summary-table { width: 100%; border-collapse: collapse; font-size: 0.7rem; }
-    .order-summary-table th { background: #e2e8f0; padding: 4px 6px; text-align: left; }
-    .order-summary-table td { padding: 4px 6px; border-bottom: 1px solid #e2e8f0; }
-    .red-tick { color: #ef4444; font-weight: 700; }
-    .timeline { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
-    .timeline .step {
-      display: flex; align-items: center; gap: 2px; background: #e2e8f0;
-      padding: 2px 8px; border-radius: 10px; font-size: 0.6rem; color: #475569;
+    .order-table .btn-details {
+      background: none;
+      border: none;
+      color: #2563eb;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.7rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+      transition: background 0.2s;
     }
-    .timeline .step.active { background: #2563eb; color: white; font-weight: 600; }
-    .timeline .step .time { font-size: 0.5rem; opacity: 0.7; margin-left: 2px; }
-    .status-message-box {
-      background: #f1f5f9; padding: 8px 12px; border-radius: 6px;
-      margin: 6px 0; border-left: 3px solid #2563eb;
-      font-weight: 500; font-size: 0.8rem;
+    .order-table .btn-details:hover {
+      background: #dbeafe;
     }
-    .chat-box {
-      border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px;
-      max-height: 140px; overflow-y: auto; background: white;
-    }
-    .chat-msg { padding: 3px 8px; border-bottom: 1px solid #f1f4f8; font-size: 0.75rem; }
-    .chat-msg.seller { background: #e2e8f0; border-radius: 4px; margin: 2px 0; }
-    .chat-msg.customer { background: #dbeafe; border-radius: 4px; margin: 2px 0; }
-    .chat-msg.system { background: #fef3c7; border-radius: 4px; margin: 2px 0; font-style: italic; }
 
-    .btn-sm { padding: 2px 8px; font-size: 0.6rem; }
-    .empty-msg { color: #94a3b8; padding: 8px 0; text-align: center; font-size: 0.8rem; }
+    /* ===== ORDER DETAIL ROW ===== */
+    .order-detail-row {
+      display: none;
+      background: #f8fafc;
+    }
+    .order-detail-row.active {
+      display: table-row;
+    }
+    .order-detail-row td {
+      padding: 16px 20px;
+    }
+    .order-detail-content {
+      border-top: 2px solid #e2e8f0;
+      padding-top: 12px;
+    }
+    .order-detail-content .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 600px) {
+      .order-detail-content .detail-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .order-detail-content .detail-item {
+      background: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      font-size: 0.8rem;
+    }
+    .order-detail-content .detail-item .label {
+      font-weight: 600;
+      color: #64748b;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      display: block;
+      margin-bottom: 2px;
+    }
+    .order-detail-content .detail-item .value {
+      color: #0f172a;
+    }
+    .order-detail-content .detail-item .value a {
+      color: #2563eb;
+      text-decoration: none;
+    }
+    .order-detail-content .detail-item .value a:hover {
+      text-decoration: underline;
+    }
 
-    /* ===== ADDRESS ===== */
-    .address-item {
-      display: flex; align-items: center; gap: 6px; padding: 4px 8px;
-      border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 4px;
+    .order-detail-content .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #e2e8f0;
+    }
+    .order-detail-content .items-table th {
+      background: #f1f5f9;
+      padding: 6px 10px;
+      text-align: left;
+      font-weight: 700;
+      color: #475569;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+    }
+    .order-detail-content .items-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid #f1f4f8;
+    }
+    .order-detail-content .items-table .item-total {
+      font-weight: 700;
+      color: #2563eb;
+    }
+
+    .order-detail-content .timeline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin: 8px 0;
+    }
+    .order-detail-content .timeline .step {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #e2e8f0;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 0.6rem;
+      color: #475569;
+    }
+    .order-detail-content .timeline .step.active {
+      background: #2563eb;
+      color: white;
+      font-weight: 600;
+    }
+    .order-detail-content .timeline .step .time {
+      font-size: 0.5rem;
+      opacity: 0.7;
+    }
+
+    .order-detail-content .chat-box {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 6px;
+      max-height: 120px;
+      overflow-y: auto;
+      background: white;
+      margin-top: 6px;
+    }
+    .order-detail-content .chat-msg {
+      padding: 3px 8px;
+      border-bottom: 1px solid #f1f4f8;
+      font-size: 0.7rem;
+    }
+    .order-detail-content .chat-msg.seller { background: #e2e8f0; border-radius: 4px; margin: 2px 0; }
+    .order-detail-content .chat-msg.customer { background: #dbeafe; border-radius: 4px; margin: 2px 0; }
+    .order-detail-content .chat-msg.system { background: #fef3c7; border-radius: 4px; margin: 2px 0; font-style: italic; }
+
+    .order-detail-content .chat-input-row {
+      display: flex;
+      margin-top: 4px;
+      gap: 4px;
+    }
+    .order-detail-content .chat-input-row input {
+      flex: 1;
+      padding: 4px 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
       font-size: 0.75rem;
     }
-    .address-item .label { font-weight: 600; }
-    .address-item .location-name {
-      font-size: 0.7rem; color: #2563eb; background: #dbeafe; padding: 0 6px; border-radius: 8px;
+    .order-detail-content .chat-input-row button {
+      padding: 4px 14px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      cursor: pointer;
     }
-    .address-item .address-text { font-size: 0.7rem; color: #475569; }
+    .order-detail-content .chat-input-row button:hover {
+      background: #1d4ed8;
+    }
+
+    .order-detail-content .action-buttons {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .empty-msg {
+      color: #94a3b8;
+      padding: 20px 0;
+      text-align: center;
+      font-size: 0.85rem;
+    }
 
     /* ===== MODAL ===== */
     .modal-overlay {
@@ -208,14 +471,14 @@
 
   <!-- Profile Card -->
   <div class="account-card" id="accountCard">
-    <div style="text-align:center; padding:8px 0;">
-      <div style="font-size:3rem; color:#2563eb; margin-bottom:4px;">👤</div>
-      <h2 id="accountName" style="font-weight:700; font-size:1.1rem;">Loading...</h2>
-      <p id="accountEmail" style="color:#64748b; font-size:0.8rem;">Loading...</p>
+    <div class="profile-header">
+      <div class="avatar" id="avatarInitial">G</div>
+      <div class="profile-info">
+        <h2 id="accountName">Loading...</h2>
+        <p id="accountEmail">Loading...</p>
+        <span class="member-since" id="memberSince">Member since: Loading...</span>
+      </div>
     </div>
-    <div class="info-row"><span class="label">Name</span><span class="value" id="accName">-</span></div>
-    <div class="info-row"><span class="label">Email</span><span class="value" id="accEmail">-</span></div>
-    <div class="info-row"><span class="label">Member Since</span><span class="value" id="accDate">-</span></div>
     <div class="account-actions">
       <button class="btn btn-success" onclick="viewOrders()"><i class="fas fa-box"></i> My Orders</button>
       <button class="btn btn-primary" onclick="location.href='/cart.html'"><i class="fas fa-shopping-cart"></i> Cart</button>
@@ -230,16 +493,18 @@
     <button class="btn btn-primary btn-sm" onclick="showAddAddress()"><i class="fas fa-plus"></i> Add Address</button>
   </div>
 
-  <!-- Customer Dashboard Cards -->
+  <!-- Customer Dashboard Stats -->
   <div class="account-card">
     <h3 style="font-size:0.9rem; font-weight:700; margin:0 0 8px 0;">📊 Your Order Dashboard</h3>
     <div class="stats-grid" id="customerStatsGrid"></div>
   </div>
 
-  <!-- Orders -->
+  <!-- Orders Table -->
   <div id="orderHistory" style="margin-top:12px;">
     <h2 style="font-size:1.1rem; font-weight:800;">📦 My Orders</h2>
-    <div id="ordersContainer"></div>
+    <div id="ordersContainer">
+      <p class="empty-msg">Loading orders...</p>
+    </div>
   </div>
 
   <!-- Payment History -->
@@ -285,8 +550,9 @@
 <script src="/app.js"></script>
 <script>
 // ============================================================
-// CUSTOMER DASHBOARD – FULLY INTERACTIVE
+//  CUSTOMER ACCOUNT PAGE – With Table Layout
 // ============================================================
+
 const token = window.customerToken;
 if (!token) {
   alert('Please login first.');
@@ -297,6 +563,7 @@ let socket = null;
 let allOrders = [];
 let currentFilterStatus = null;
 let returnsMap = {};
+let expandedOrderId = null;
 
 function initSocket() {
   if (socket) return;
@@ -308,6 +575,9 @@ function initSocket() {
   socket.on('return-requested', () => { loadCustomerDashboard(); });
 }
 
+// ============================================================
+//  LOAD DASHBOARD
+// ============================================================
 function loadCustomerDashboard() {
   Promise.all([
     fetch('/api/orders', { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
@@ -318,11 +588,10 @@ function loadCustomerDashboard() {
     returnsMap = {};
     (returns || []).forEach(r => { returnsMap[r.order_id] = r; });
     renderCustomerStats(orders);
-    // If a filter was previously active, apply it; otherwise show all
     if (currentFilterStatus) {
       filterOrdersByStatus(currentFilterStatus);
     } else {
-      renderOrders(orders);
+      renderOrdersTable(orders);
     }
   })
   .catch(err => {
@@ -331,6 +600,9 @@ function loadCustomerDashboard() {
   });
 }
 
+// ============================================================
+//  STATS
+// ============================================================
 function renderCustomerStats(orders) {
   const grid = document.getElementById('customerStatsGrid');
   const statuses = ['pending_payment', 'pending', 'confirmed', 'shipped', 'delivered', 'received', 'cancelled'];
@@ -370,7 +642,6 @@ function renderCustomerStats(orders) {
 
 function filterOrdersByStatus(status) {
   currentFilterStatus = status;
-  // Update active class on cards
   document.querySelectorAll('#customerStatsGrid .stat-card').forEach(card => {
     card.classList.toggle('active', card.dataset.status === status);
   });
@@ -378,150 +649,294 @@ function filterOrdersByStatus(status) {
   if (status !== null && status !== 'all') {
     filtered = allOrders.filter(o => o.status === status);
   }
-  renderOrders(filtered);
+  renderOrdersTable(filtered);
 }
 
-function renderOrders(orders) {
+// ============================================================
+//  RENDER ORDERS TABLE
+// ============================================================
+function renderOrdersTable(orders) {
   const container = document.getElementById('ordersContainer');
   if (!orders || orders.length === 0) {
     container.innerHTML = '<p class="empty-msg">No orders to show.</p>';
     return;
   }
   orders.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
-  let html = '';
+
+  let html = `
+    <div class="order-table-wrapper">
+      <table class="order-table">
+        <thead>
+          <tr>
+            <th>Order Ref</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Total</th>
+            <th style="text-align:center;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
   orders.forEach(order => {
     const displayRef = order.order_ref || `#${order.id}`;
-    let history = order.status_history || [];
-    if (typeof history === 'string') history = JSON.parse(history);
-    const statusesList = ['pending_payment', 'pending', 'confirmed', 'shipped', 'delivered', 'received', 'cancelled'];
-    let timelineHtml = '<div class="timeline">';
-    statusesList.forEach(s => {
-      const entry = history.find(h => h.status === s);
-      const active = order.status === s ? 'active' : '';
-      const time = entry ? new Date(entry.timestamp).toLocaleString() : '';
-      const icon = s === 'pending_payment' ? '⏳' : s === 'pending' ? '🕐' : s === 'confirmed' ? '✅' : s === 'shipped' ? '🚚' : s === 'delivered' ? '📦' : s === 'received' ? '✔️' : '❌';
-      if (entry || order.status === s) {
-        timelineHtml += `<div class="step ${active}"><i>${icon}</i> ${s.charAt(0).toUpperCase()+s.slice(1)} ${time ? `<span class="time">${time}</span>` : ''}</div>`;
-      }
-    });
-    timelineHtml += '</div>';
-
-    let statusMessage = '';
-    switch (order.status) {
-      case 'pending_payment': statusMessage = 'Awaiting payment confirmation.'; break;
-      case 'pending': statusMessage = 'Your order is being reviewed.'; break;
-      case 'confirmed': statusMessage = 'Your order is confirmed and being prepared.'; break;
-      case 'shipped': statusMessage = 'Your order is on the way.'; break;
-      case 'delivered': statusMessage = 'Your order is ready for pickup. Please collect within 7 working days.'; break;
-      case 'received': statusMessage = 'You have confirmed receipt. Thank you!'; break;
-      case 'cancelled': statusMessage = 'This order has been cancelled.'; break;
-      default: statusMessage = '';
-    }
-
-    let returnStatus = '';
-    if (returnsMap[order.id]) {
-      const ret = returnsMap[order.id];
-      returnStatus = `<div style="font-size:0.75rem; color:#f59e0b;">📦 Return: ${ret.status.toUpperCase()}${ret.status === 'pending' ? ' (awaiting approval)' : ''}</div>`;
-    }
-
-    let extraBadges = '';
-    if (order.replacement_status && order.replacement_status !== 'none' && order.replacement_status !== 'approved' && order.replacement_status !== 'rejected') {
-      extraBadges += `<span style="background:#fef3c7; padding:2px 6px; border-radius:10px; font-size:0.6rem;">🔄 Replacement ${order.replacement_status}</span>`;
-    }
-    if (order.refund_status && order.refund_status === 'pending') {
-      extraBadges += `<span style="background:#dbeafe; padding:2px 6px; border-radius:10px; font-size:0.6rem;">💰 Refund Pending</span>`;
-    }
+    const date = new Date(order.created_at).toLocaleDateString();
+    const total = parseFloat(order.total).toFixed(2);
+    const statusClass = order.status;
+    const isExpanded = expandedOrderId === order.id;
 
     html += `
-      <div class="order-item-mini" style="background:white; padding:10px; border-radius:8px; margin-bottom:6px; box-shadow:0 2px 4px rgba(0,0,0,0.04);">
-        <div style="display:flex; justify-content:space-between; width:100%; flex-wrap:wrap;">
-          <span class="id">Order ${displayRef}</span>
-          <span>${new Date(order.created_at).toLocaleDateString()}</span>
-          <span class="status status-${order.status}">${order.status.toUpperCase()}</span>
-          <span class="total">Ksh ${parseFloat(order.total).toFixed(2)}</span>
-          <button class="btn btn-primary btn-sm" onclick="toggleCustomerOrderDetails(${order.id})">Details</button>
-        </div>
-        ${extraBadges}
-        ${returnStatus}
-        <div class="order-detail" id="customer-detail-${order.id}">
-          ${timelineHtml}
-          <div class="status-message-box">${statusMessage}</div>
-          ${order.estimated_delivery_days ? `<div style="font-size:0.75rem; color:#475569;">🚚 Estimated delivery: ${order.estimated_delivery_days} days</div>` : ''}
-          ${order.delivery_location_name ? `<div style="font-size:0.75rem; color:#2563eb;">📍 Delivery: ${order.delivery_location_name}</div>` : ''}
-          ${order.refund_status && order.refund_status !== 'none' ? `<div style="font-size:0.75rem; color:#f59e0b;">💰 Refund: ${order.refund_status}</div>` : ''}
-          ${order.replacement_status && order.replacement_status !== 'none' ? `<div style="font-size:0.75rem; color:#f59e0b;">🔄 Replacement: ${order.replacement_status}</div>` : ''}
-          <div><strong>Order Items</strong></div>
-          <table class="order-summary-table">
-            <thead><tr><th>Product</th><th>Qty</th><th>Price</th><th>Subtotal</th><th>ID</th><th>Status</th></tr></thead>
-            <tbody>
-              ${order.items && order.items.length > 0 ? order.items.map(item => {
-                const priceNum = parseFloat(item.price.replace(/[^0-9.]/g, '')) || 0;
-                const subtotal = priceNum * item.quantity;
-                const isReceived = order.status === 'received';
-                const uniqueId = item.unique_id || '—';
-                return `<tr><td>${item.product_name}</td><td>${item.quantity}</td><td>${item.price}</td><td>Ksh ${subtotal.toFixed(2)}</td><td style="font-family:monospace; font-size:0.6rem;">${uniqueId}</td><td>${isReceived ? '✔ Received' : '-'}</td></tr>`;
-              }).join('') : '<tr><td colspan="6">No items</td></tr>'}
-            </tbody>
-          </table>
-          <div style="font-weight:700; font-size:0.9rem; margin-top:6px;">Total: Ksh ${parseFloat(order.total).toFixed(2)}</div>
-          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
-            <a href="/order-tracking.html?id=${order.id}" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> Track</a>
-            <button class="btn btn-primary btn-sm" onclick="reorderOrder(${order.id})"><i class="fas fa-redo"></i> Reorder</button>
-            ${(order.status === 'pending_payment' || order.status === 'pending' || order.status === 'confirmed') ? `<button class="btn btn-danger btn-sm" onclick="cancelOrder(${order.id})"><i class="fas fa-times"></i> Cancel</button>` : ''}
-            ${order.status === 'delivered' ? `<button class="btn btn-success btn-sm" onclick="markReceived(${order.id})">✅ Confirm Receive</button>` : ''}
-            ${(order.status === 'delivered' || order.status === 'received') ? `<button class="btn btn-warning btn-sm" onclick="requestReturn(${order.id})">📦 Return</button>` : ''}
+      <tr>
+        <td><span class="order-ref">${displayRef}</span></td>
+        <td><span class="order-date">${date}</span></td>
+        <td><span class="status-badge status-${statusClass}">${order.status.replace('_', ' ').toUpperCase()}</span></td>
+        <td><span class="order-total">Ksh ${total}</span></td>
+        <td style="text-align:center;">
+          <button class="btn-details" onclick="toggleOrderDetails(${order.id})">
+            ${isExpanded ? 'Hide' : 'Details'}
+          </button>
+        </td>
+      </tr>
+    `;
+
+    // Detail row
+    html += `
+      <tr class="order-detail-row ${isExpanded ? 'active' : ''}" id="detail-row-${order.id}">
+        <td colspan="5">
+          <div class="order-detail-content">
+            ${buildOrderDetail(order)}
           </div>
-          <div style="margin-top:8px;">
-            <strong>Order Chat:</strong>
-            <div class="chat-box" id="cust-chat-${order.id}">Loading messages...</div>
-            <div style="display:flex; margin-top:4px;">
-              <input type="text" id="cust-chat-input-${order.id}" placeholder="Type..." style="flex:1; padding:4px 8px; border:1px solid #d1d5db; border-radius:4px; font-size:0.75rem;">
-              <button onclick="sendCustomerOrderChat(${order.id})" style="margin-left:4px; padding:4px 12px; background:#2563eb; color:white; border:none; border-radius:4px; font-size:0.7rem; cursor:pointer;">Send</button>
-            </div>
-          </div>
-        </div>
-      </div>
+        </td>
+      </tr>
     `;
   });
+
+  html += `
+        </tbody>
+      </table>
+    </div>
+  `;
+
   container.innerHTML = html;
+
+  // Load chat for expanded orders
+  if (expandedOrderId) {
+    loadOrderChat(expandedOrderId);
+    if (socket) socket.emit('join-order-room', expandedOrderId);
+  }
 }
 
-function toggleCustomerOrderDetails(orderId) {
-  const detail = document.getElementById(`customer-detail-${orderId}`);
-  if (!detail) return;
-  detail.classList.toggle('active');
-  if (detail.classList.contains('active')) {
-    loadCustomerOrderChat(orderId);
-    if (socket) socket.emit('join-order-room', orderId);
+// ============================================================
+//  BUILD ORDER DETAIL HTML
+// ============================================================
+function buildOrderDetail(order) {
+  let history = order.status_history || [];
+  if (typeof history === 'string') history = JSON.parse(history);
+
+  // Timeline
+  const statusesList = ['pending_payment', 'pending', 'confirmed', 'shipped', 'delivered', 'received', 'cancelled'];
+  let timelineHtml = '<div class="timeline">';
+  statusesList.forEach(s => {
+    const entry = history.find(h => h.status === s);
+    const active = order.status === s ? 'active' : '';
+    const time = entry ? new Date(entry.timestamp).toLocaleString() : '';
+    const icon = s === 'pending_payment' ? '⏳' : s === 'pending' ? '🕐' : s === 'confirmed' ? '✅' : s === 'shipped' ? '🚚' : s === 'delivered' ? '📦' : s === 'received' ? '✔️' : '❌';
+    if (entry || order.status === s) {
+      timelineHtml += `<div class="step ${active}"><i>${icon}</i> ${s.replace('_', ' ').charAt(0).toUpperCase()+s.replace('_', ' ').slice(1)} ${time ? `<span class="time">${time}</span>` : ''}</div>`;
+    }
+  });
+  timelineHtml += '</div>';
+
+  // Status message
+  let statusMessage = '';
+  switch (order.status) {
+    case 'pending_payment': statusMessage = 'Awaiting payment confirmation.'; break;
+    case 'pending': statusMessage = 'Your order is being reviewed.'; break;
+    case 'confirmed': statusMessage = 'Your order is confirmed and being prepared.'; break;
+    case 'shipped': statusMessage = 'Your order is on the way.'; break;
+    case 'delivered': statusMessage = 'Your order is ready for pickup. Please collect within 7 working days.'; break;
+    case 'received': statusMessage = 'You have confirmed receipt. Thank you!'; break;
+    case 'cancelled': statusMessage = 'This order has been cancelled.'; break;
+    default: statusMessage = '';
+  }
+
+  // Items table
+  let itemsHtml = '';
+  if (order.items && order.items.length > 0) {
+    itemsHtml = `
+      <table class="items-table">
+        <thead>
+          <tr><th>Product</th><th>Variant</th><th>Qty</th><th>Price</th><th>Subtotal</th><th>ID</th></tr>
+        </thead>
+        <tbody>
+    `;
+    order.items.forEach(item => {
+      const priceNum = parseFloat(item.price.replace(/[^0-9.]/g, '')) || 0;
+      const subtotal = priceNum * item.quantity;
+      const uniqueId = item.unique_id || '—';
+      const variantName = item.variant_name || 'Default';
+      itemsHtml += `
+        <tr>
+          <td>${item.product_name}</td>
+          <td>${variantName}</td>
+          <td>${item.quantity}</td>
+          <td>${item.price}</td>
+          <td class="item-total">Ksh ${subtotal.toFixed(2)}</td>
+          <td style="font-family:monospace; font-size:0.6rem;">${uniqueId}</td>
+        </tr>
+      `;
+    });
+    itemsHtml += `</tbody></table>`;
+  } else {
+    itemsHtml = '<p style="font-size:0.8rem; color:#94a3b8;">No items</p>';
+  }
+
+  // Delivery info
+  let deliveryHtml = '';
+  if (order.delivery_address || order.customer_lat) {
+    deliveryHtml = `
+      <div class="detail-item">
+        <span class="label">📍 Delivery</span>
+        <span class="value">${order.delivery_address || 'Not provided'}</span>
+        ${order.delivery_instructions ? `<br><span style="font-size:0.7rem; color:#64748b;">📝 ${order.delivery_instructions}</span>` : ''}
+        ${order.customer_lat && order.customer_lng ? `<br><a href="https://www.google.com/maps?q=${order.customer_lat},${order.customer_lng}" target="_blank">📌 View on Map</a>` : ''}
+        ${order.recipient_name ? `<br>👤 ${order.recipient_name} (${order.recipient_phone || 'N/A'})` : ''}
+      </div>
+    `;
+  }
+
+  // Return/Refund info
+  let extraInfo = '';
+  if (returnsMap[order.id]) {
+    const ret = returnsMap[order.id];
+    extraInfo += `<div style="font-size:0.75rem; color:#f59e0b;">📦 Return: ${ret.status.toUpperCase()}${ret.status === 'pending' ? ' (awaiting approval)' : ''}</div>`;
+  }
+  if (order.replacement_status && order.replacement_status !== 'none' && order.replacement_status !== 'approved' && order.replacement_status !== 'rejected') {
+    extraInfo += `<span style="background:#fef3c7; padding:2px 10px; border-radius:20px; font-size:0.6rem; display:inline-block; margin-right:4px;">🔄 Replacement ${order.replacement_status}</span>`;
+  }
+  if (order.refund_status && order.refund_status === 'pending') {
+    extraInfo += `<span style="background:#dbeafe; padding:2px 10px; border-radius:20px; font-size:0.6rem; display:inline-block;">💰 Refund Pending</span>`;
+  }
+
+  // Action buttons
+  let actionsHtml = `
+    <div class="action-buttons">
+      <a href="/order-tracking.html?id=${order.id}" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> Track</a>
+      <button class="btn btn-primary btn-sm" onclick="reorderOrder(${order.id})"><i class="fas fa-redo"></i> Reorder</button>
+  `;
+  if (['pending_payment', 'pending', 'confirmed'].includes(order.status)) {
+    actionsHtml += `<button class="btn btn-danger btn-sm" onclick="cancelOrder(${order.id})"><i class="fas fa-times"></i> Cancel</button>`;
+  }
+  if (order.status === 'delivered') {
+    actionsHtml += `<button class="btn btn-success btn-sm" onclick="markReceived(${order.id})">✅ Confirm Receive</button>`;
+  }
+  if (['delivered', 'received'].includes(order.status)) {
+    actionsHtml += `<button class="btn btn-warning btn-sm" onclick="requestReturn(${order.id})">📦 Return</button>`;
+  }
+  actionsHtml += `</div>`;
+
+  // Chat
+  const chatId = `detail-chat-${order.id}`;
+  const chatInputId = `detail-chat-input-${order.id}`;
+
+  return `
+    <div class="detail-grid">
+      <div class="detail-item">
+        <span class="label">📋 Status</span>
+        <span class="value">${statusMessage}</span>
+        ${extraInfo}
+      </div>
+      ${deliveryHtml}
+      <div class="detail-item">
+        <span class="label">📅 Order Date</span>
+        <span class="value">${new Date(order.created_at).toLocaleString()}</span>
+        ${order.shipped_at ? `<br><span class="label">🚚 Shipped</span><span class="value">${new Date(order.shipped_at).toLocaleString()}</span>` : ''}
+        ${order.delivered_at ? `<br><span class="label">📦 Delivered</span><span class="value">${new Date(order.delivered_at).toLocaleString()}</span>` : ''}
+        ${order.received_at ? `<br><span class="label">✅ Received</span><span class="value">${new Date(order.received_at).toLocaleString()}</span>` : ''}
+        ${order.tracking_number ? `<br><span class="label">📮 Tracking</span><span class="value">${order.tracking_number}</span>` : ''}
+      </div>
+      <div class="detail-item">
+        <span class="label">💰 Total</span>
+        <span class="value" style="font-size:1.2rem; font-weight:800; color:#2563eb;">Ksh ${parseFloat(order.total).toFixed(2)}</span>
+        ${order.shipping_cost > 0 ? `<br><span class="label">🚚 Shipping</span><span class="value">Ksh ${parseFloat(order.shipping_cost).toFixed(2)} (${order.shipping_tier || 'standard'})</span>` : ''}
+        ${order.discount_applied > 0 ? `<br><span class="label">🎁 Discount</span><span class="value">-Ksh ${parseFloat(order.discount_applied).toFixed(2)}</span>` : ''}
+      </div>
+    </div>
+
+    ${timelineHtml}
+
+    <div style="margin: 8px 0;"><strong>📦 Order Items</strong></div>
+    ${itemsHtml}
+
+    ${actionsHtml}
+
+    <div style="margin-top:12px;">
+      <strong>💬 Order Chat</strong>
+      <div class="chat-box" id="${chatId}">Loading messages...</div>
+      <div class="chat-input-row">
+        <input type="text" id="${chatInputId}" placeholder="Type a message...">
+        <button onclick="sendOrderChat(${order.id}, '${chatInputId}', '${chatId}')">Send</button>
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================
+//  TOGGLE ORDER DETAILS
+// ============================================================
+function toggleOrderDetails(orderId) {
+  if (expandedOrderId === orderId) {
+    expandedOrderId = null;
+  } else {
+    expandedOrderId = orderId;
+  }
+  renderOrdersTable(allOrders);
+  if (expandedOrderId) {
+    setTimeout(() => {
+      loadOrderChat(expandedOrderId);
+      if (socket) socket.emit('join-order-room', expandedOrderId);
+    }, 100);
   } else {
     if (socket) socket.emit('leave-order-room', orderId);
   }
 }
 
-function loadCustomerOrderChat(orderId) {
-  const chatBox = document.getElementById(`cust-chat-${orderId}`);
+// ============================================================
+//  LOAD ORDER CHAT
+// ============================================================
+function loadOrderChat(orderId) {
+  const chatBox = document.getElementById(`detail-chat-${orderId}`);
+  if (!chatBox) return;
   chatBox.innerHTML = 'Loading...';
-  fetch(`/api/orders/${orderId}/chat`, { headers: { 'Authorization': `Bearer ${token}` } })
-    .then(res => res.json())
-    .then(messages => {
-      chatBox.innerHTML = '';
-      if (!messages || messages.length === 0) {
-        chatBox.innerHTML = '<div class="empty-msg">No messages yet.</div>';
-        return;
-      }
-      messages.forEach(msg => {
-        const div = document.createElement('div');
-        div.className = `chat-msg ${msg.from_user === 'Customer' ? 'customer' : msg.from_user === 'System' ? 'system' : 'seller'}`;
-        div.innerHTML = `<strong>${msg.from_user}:</strong> ${msg.message} <span style="float:right; font-size:0.6rem; opacity:0.6;">${new Date(msg.timestamp).toLocaleTimeString()}</span>`;
-        chatBox.appendChild(div);
-      });
-      chatBox.scrollTop = chatBox.scrollHeight;
-    })
-    .catch(() => { chatBox.innerHTML = 'Error loading messages.'; });
+  fetch(`/api/orders/${orderId}/chat`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  })
+  .then(res => res.json())
+  .then(messages => {
+    chatBox.innerHTML = '';
+    if (!messages || messages.length === 0) {
+      chatBox.innerHTML = '<div style="color:#94a3b8; font-size:0.75rem;">No messages yet.</div>';
+      return;
+    }
+    messages.forEach(msg => {
+      const div = document.createElement('div');
+      const cls = msg.from_user === 'Seller' ? 'seller' : msg.from_user === 'System' ? 'system' : 'customer';
+      div.className = `chat-msg ${cls}`;
+      div.innerHTML = `<strong>${msg.from_user}:</strong> ${msg.message} <span style="float:right; font-size:0.6rem; opacity:0.6;">${new Date(msg.timestamp).toLocaleTimeString()}</span>`;
+      chatBox.appendChild(div);
+    });
+    chatBox.scrollTop = chatBox.scrollHeight;
+  })
+  .catch(() => {
+    chatBox.innerHTML = 'Error loading messages.';
+  });
 }
 
-function sendCustomerOrderChat(orderId) {
-  const input = document.getElementById(`cust-chat-input-${orderId}`);
+// ============================================================
+//  SEND ORDER CHAT
+// ============================================================
+function sendOrderChat(orderId, inputId, chatId) {
+  const input = document.getElementById(inputId);
   const msg = input.value.trim();
   if (!msg) return;
   fetch(`/api/orders/${orderId}/chat`, {
@@ -533,7 +948,7 @@ function sendCustomerOrderChat(orderId) {
   .then(data => {
     if (data.success) {
       input.value = '';
-      const chatBox = document.getElementById(`cust-chat-${orderId}`);
+      const chatBox = document.getElementById(chatId);
       const div = document.createElement('div');
       div.className = 'chat-msg customer';
       div.innerHTML = `<strong>Customer:</strong> ${msg} <span style="float:right; font-size:0.6rem; opacity:0.6;">Just now</span>`;
@@ -546,7 +961,9 @@ function sendCustomerOrderChat(orderId) {
   .catch(() => alert('Network error.'));
 }
 
-// ---- Order actions ----
+// ============================================================
+//  ORDER ACTIONS
+// ============================================================
 async function cancelOrder(id) {
   const reason = prompt('Please provide a reason for cancellation:');
   if (!reason) return;
@@ -634,7 +1051,9 @@ async function requestReturn(id) {
 }
 window.requestReturn = requestReturn;
 
-// ---- Address functions ----
+// ============================================================
+//  ADDRESS FUNCTIONS
+// ============================================================
 function loadAddresses() {
   const container = document.getElementById('addressBookContainer');
   const token = window.customerToken;
@@ -653,11 +1072,11 @@ function loadAddresses() {
           <div class="address-item">
             <div>
               <span class="label">${addr.label}</span>
-              ${addr.is_default ? ' <span style="font-size:0.55rem; background:#2563eb; color:white; padding:0 6px; border-radius:8px;">Default</span>' : ''}
+              ${addr.is_default ? ' <span style="font-size:0.55rem; background:#2563eb; color:white; padding:0 8px; border-radius:20px;">Default</span>' : ''}
               ${displayName ? `<span class="location-name">📍 ${displayName}</span>` : ''}
               <br><span class="address-text">${addr.address}</span>
             </div>
-            <div style="margin-left:auto; display:flex; gap:4px;">
+            <div class="actions">
               ${!addr.is_default ? `<button class="btn btn-primary btn-sm" onclick="setDefaultAddress(${addr.id})">Default</button>` : ''}
               <button class="btn btn-danger btn-sm" onclick="deleteAddress(${addr.id})"><i class="fas fa-trash"></i></button>
             </div>
@@ -759,12 +1178,9 @@ function deleteAddress(id) {
   .catch(() => alert('Network error.'));
 }
 
-function logout() {
-  localStorage.removeItem('customerToken');
-  window.location.href = '/';
-}
-
-// ---- Payment History ----
+// ============================================================
+//  PAYMENT HISTORY
+// ============================================================
 function loadPaymentHistory() {
   const container = document.getElementById('paymentHistoryContainer');
   const token = window.customerToken;
@@ -779,12 +1195,11 @@ function loadPaymentHistory() {
       let html = '';
       payments.forEach(p => {
         const statusColor = p.status === 'success' ? '#16a34a' : '#ef4444';
-        const statusIcon = p.status === 'success' ? '✅' : '❌';
         html += `
-          <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #f1f4f8; font-size:0.8rem;">
+          <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #f1f4f8; font-size:0.8rem; flex-wrap:wrap; gap:4px;">
             <span><strong>${p.method.toUpperCase()}</strong> ${p.transaction_id ? `(${p.transaction_id})` : ''}</span>
             <span>Ksh ${parseFloat(p.amount).toFixed(2)}</span>
-            <span style="color:${statusColor};">${statusIcon} ${p.status}</span>
+            <span style="color:${statusColor};">${p.status}</span>
             <span style="font-size:0.7rem; color:#94a3b8;">${new Date(p.created_at).toLocaleString()}</span>
           </div>
         `;
@@ -794,16 +1209,48 @@ function loadPaymentHistory() {
     .catch(() => { container.innerHTML = '<p class="empty-msg">Error loading payment history.</p>'; });
 }
 
-// ---- Initial load ----
+// ============================================================
+//  LOGOUT
+// ============================================================
+function logout() {
+  localStorage.removeItem('customerToken');
+  window.location.href = '/';
+}
+window.logout = logout;
+
+// ============================================================
+//  VIEW ORDERS
+// ============================================================
+function viewOrders() {
+  document.getElementById('orderHistory').scrollIntoView({ behavior: 'smooth' });
+}
+window.viewOrders = viewOrders;
+
+// ============================================================
+//  INIT
+// ============================================================
 document.addEventListener('DOMContentLoaded', () => {
   const user = window.currentUser || JSON.parse(localStorage.getItem('currentUser') || '{}');
+
+  // Set profile info
   if (user.name) {
     document.getElementById('accountName').textContent = user.name;
     document.getElementById('accountEmail').textContent = user.email;
-    document.getElementById('accName').textContent = user.name;
-    document.getElementById('accEmail').textContent = user.email;
-    document.getElementById('accDate').textContent = new Date(user.createdAt).toLocaleDateString() || 'N/A';
+    document.getElementById('avatarInitial').textContent = user.name.charAt(0).toUpperCase();
+
+    // Fix: Properly format the member since date
+    if (user.createdAt) {
+      const date = new Date(user.createdAt);
+      if (!isNaN(date.getTime())) {
+        document.getElementById('memberSince').textContent = `Member since: ${date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`;
+      } else {
+        document.getElementById('memberSince').textContent = 'Member since: Recent';
+      }
+    } else {
+      document.getElementById('memberSince').textContent = 'Member since: Recent';
+    }
   }
+
   initSocket();
   loadCustomerDashboard();
   loadAddresses();
@@ -812,8 +1259,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Expose globals
-window.toggleCustomerOrderDetails = toggleCustomerOrderDetails;
-window.sendCustomerOrderChat = sendCustomerOrderChat;
+window.toggleOrderDetails = toggleOrderDetails;
+window.sendOrderChat = sendOrderChat;
 window.filterOrdersByStatus = filterOrdersByStatus;
 window.loadCustomerDashboard = loadCustomerDashboard;
 window.showAddAddress = showAddAddress;
@@ -822,6 +1269,7 @@ window.saveAddress = saveAddress;
 window.setDefaultAddress = setDefaultAddress;
 window.deleteAddress = deleteAddress;
 window.logout = logout;
+window.viewOrders = viewOrders;
 window.selectAddressSuggestion = selectAddressSuggestion;
 </script>
 </body>

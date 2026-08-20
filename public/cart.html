@@ -7,271 +7,477 @@
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
-    /* ===== CART PAGE STYLES ===== */
-    .cart-page { max-width: 100%; padding: 0 12px 20px; padding-bottom: 80px; }
-    .cart-page h1 { font-size: 1.3rem; font-weight: 800; }
-    .cart-page .sub { font-size: 0.8rem; color: #64748b; margin-bottom: 12px; }
-    .back-link { display: inline-block; margin-bottom: 12px; color: #2563eb; text-decoration: none; font-weight: 600; font-size: 0.85rem; }
-    .back-link:hover { text-decoration: underline; }
+    /* ===== CART PAGE – COMPACT GRID LAYOUT ===== */
+    .cart-page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 12px 20px;
+      padding-bottom: 80px;
+    }
+    .cart-page h1 {
+      font-size: 1.2rem;
+      font-weight: 800;
+    }
+    .cart-page .sub {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-bottom: 10px;
+    }
+    .back-link {
+      display: inline-block;
+      margin-bottom: 10px;
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+    .back-link:hover {
+      text-decoration: underline;
+    }
 
     /* ===== CART ITEMS ===== */
     .cart-item {
       display: flex;
       gap: 12px;
-      padding: 10px 0;
+      padding: 8px 12px;
       align-items: center;
       background: white;
-      padding: 10px 12px;
       border-radius: 10px;
       margin-bottom: 6px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+      border: 1px solid #f0f4f8;
     }
-    .cart-item img {
-      width: 60px;
-      height: 60px;
-      object-fit: cover;
+    .cart-item .product-image {
+      width: 50px;
+      height: 50px;
       border-radius: 8px;
       background: #f8fafc;
+      cursor: pointer;
+      overflow: hidden;
+      flex-shrink: 0;
+      transition: transform 0.2s;
     }
-    .cart-item .details { flex: 1; }
-    .cart-item .details .name { font-weight: 600; font-size: 0.85rem; }
-    .cart-item .details .variant { font-size: 0.65rem; color: #64748b; }
-    .cart-item .details .price { font-weight: 700; font-size: 0.8rem; color: #0f172a; }
-    .cart-item .qty-control { display: flex; align-items: center; gap: 4px; }
+    .cart-item .product-image:hover {
+      transform: scale(1.05);
+    }
+    .cart-item .product-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .cart-item .details {
+      flex: 1;
+    }
+    .cart-item .details .name {
+      font-weight: 600;
+      font-size: 0.8rem;
+      cursor: pointer;
+      color: #0f172a;
+    }
+    .cart-item .details .name:hover {
+      color: #2563eb;
+    }
+    .cart-item .details .variant {
+      font-size: 0.6rem;
+      color: #64748b;
+    }
+    .cart-item .details .price {
+      font-weight: 700;
+      font-size: 0.8rem;
+      color: #2563eb;
+    }
+    .cart-item .qty-control {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
     .cart-item .qty-control button {
-      width: 26px;
-      height: 26px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       border: none;
       background: #e2e8f0;
       font-weight: 700;
       cursor: pointer;
+      font-size: 0.8rem;
+      transition: 0.2s;
     }
-    .cart-item .qty-control button:hover { background: #2563eb; color: white; }
-    .cart-item .qty-control span { font-weight: 700; min-width: 18px; text-align: center; font-size: 0.85rem; }
-    .cart-item .subtotal { font-weight: 700; font-size: 0.8rem; min-width: 60px; text-align: right; }
+    .cart-item .qty-control button:hover {
+      background: #2563eb;
+      color: white;
+    }
+    .cart-item .qty-control span {
+      font-weight: 700;
+      min-width: 18px;
+      text-align: center;
+      font-size: 0.8rem;
+    }
+    .cart-item .subtotal {
+      font-weight: 700;
+      font-size: 0.8rem;
+      min-width: 60px;
+      text-align: right;
+      color: #0f172a;
+    }
     .cart-item .remove-btn {
       background: none;
       border: none;
       color: #ef4444;
-      font-size: 1rem;
+      font-size: 0.9rem;
       cursor: pointer;
       padding: 4px;
     }
 
-    /* ===== SECTIONS ===== */
-    .section {
-      background: white;
-      border-radius: 10px;
-      padding: 12px 14px;
-      margin-bottom: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-    }
-    .section h3 {
-      font-weight: 700;
-      font-size: 0.9rem;
-      margin: 0 0 6px 0;
-      border-bottom: 1px solid #e8ecf1;
-      padding-bottom: 6px;
-    }
-    .section .sub-text {
-      font-size: 0.75rem;
-      color: #64748b;
-      margin-bottom: 8px;
-    }
-
-    /* ===== ADDRESS / PICKUP SELECTION ===== */
-    .delivery-toggle {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-    .delivery-toggle button {
-      flex: 1;
-      padding: 8px 12px;
-      border: 2px solid #e2e8f0;
+    /* ===== REVIEW ALL PRODUCTS BUTTON ===== */
+    .review-all-btn {
+      display: inline-block;
+      padding: 6px 16px;
+      background: #f8fafc;
+      border: 1.5px dashed #2563eb;
       border-radius: 8px;
-      background: white;
-      font-weight: 600;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    .delivery-toggle button.active {
-      border-color: #2563eb;
-      background: #eff6ff;
       color: #2563eb;
+      font-weight: 600;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: 0.3s;
+      margin: 6px 0;
     }
-    .delivery-toggle button:hover { border-color: #2563eb; }
+    .review-all-btn:hover {
+      background: #2563eb;
+      color: white;
+      border-color: #2563eb;
+    }
 
-    .address-item {
+    /* ===== COMPACT GRID ===== */
+    .cart-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    @media (min-width: 768px) {
+      .cart-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    @media (min-width: 1024px) {
+      .cart-grid {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+    }
+
+    .cart-section {
+      background: white;
+      border-radius: 12px;
+      padding: 10px 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+      border: 1px solid #f0f4f8;
+    }
+    .cart-section h3 {
+      font-weight: 700;
+      font-size: 0.8rem;
+      margin: 0 0 4px 0;
+      color: #0f172a;
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 5px 8px;
-      border: 1px solid #e2e8f0;
-      border-radius: 6px;
+    }
+    .cart-section .sub-text {
+      font-size: 0.65rem;
+      color: #64748b;
       margin-bottom: 4px;
-      cursor: pointer;
-      font-size: 0.8rem;
-    }
-    .address-item.selected {
-      border-color: #2563eb;
-      background: #eff6ff;
-    }
-    .address-item .location-tag {
-      font-size: 0.6rem;
-      color: #2563eb;
-      background: #dbeafe;
-      padding: 0 6px;
-      border-radius: 8px;
     }
 
-    .pickup-station-item {
+    /* ===== LOCATION ===== */
+    .detect-btn {
+      width: 100%;
+      padding: 6px 12px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.7rem;
+      cursor: pointer;
+      transition: 0.2s;
+      margin-bottom: 4px;
+    }
+    .detect-btn:hover {
+      background: #1d4ed8;
+    }
+    .detect-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .location-status {
+      font-size: 0.65rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-bottom: 4px;
+    }
+    .location-status.success { background: #dcfce7; color: #166534; }
+    .location-status.error { background: #fee2e2; color: #991b1b; }
+    .location-status.loading { background: #dbeafe; color: #1e40af; }
+
+    .location-fields {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 4px;
+    }
+    .location-fields label {
+      font-weight: 600;
+      font-size: 0.65rem;
+      color: #475569;
+      display: block;
+      margin-bottom: 1px;
+    }
+    .location-fields input,
+    .location-fields textarea {
+      width: 100%;
+      padding: 4px 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-family: inherit;
+    }
+    .location-fields textarea {
+      min-height: 40px;
+      resize: vertical;
+    }
+    .location-fields input:focus,
+    .location-fields textarea:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.08);
+    }
+
+    /* ===== SHIPPING ===== */
+    .shipping-options {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 4px;
+    }
+    .shipping-option {
+      border: 1.5px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: 0.2s;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 8px 10px;
-      border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      margin-bottom: 4px;
-      cursor: pointer;
-      transition: 0.2s;
     }
-    .pickup-station-item:hover { border-color: #2563eb; }
-    .pickup-station-item.selected {
+    .shipping-option:hover {
       border-color: #2563eb;
-      background: #eff6ff;
     }
-    .pickup-station-item .info { flex: 1; }
-    .pickup-station-item .info .name { font-weight: 600; font-size: 0.85rem; }
-    .pickup-station-item .info .address { font-size: 0.7rem; color: #475569; }
-    .pickup-station-item .info .hours { font-size: 0.65rem; color: #94a3b8; }
-    .pickup-station-item .distance {
-      font-size: 0.7rem;
-      color: #2563eb;
-      font-weight: 600;
-    }
-
-    .recipient-fields {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-top: 8px;
-    }
-    .recipient-fields input,
-    .recipient-fields select {
-      padding: 8px 10px;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      font-size: 0.85rem;
-    }
-
-    .location-selectors {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 8px;
-      margin: 8px 0;
-    }
-    .location-selectors select {
-      padding: 8px;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      font-size: 0.8rem;
-    }
-
-    /* ===== SHIPPING OPTIONS ===== */
-    .shipping-options { display: grid; grid-template-columns: 1fr; gap: 6px; }
-    .shipping-option {
-      border: 1.5px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 8px 10px;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    .shipping-option:hover { border-color: #2563eb; }
     .shipping-option.selected {
       border-color: #2563eb;
       background: #eff6ff;
     }
     .shipping-option .tier-name {
+      font-weight: 600;
+      font-size: 0.7rem;
+    }
+    .shipping-option .tier-price {
+      font-size: 0.75rem;
+      color: #2563eb;
       font-weight: 700;
-      font-size: 0.85rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
     }
-    .shipping-option .tier-price { font-size: 0.9rem; color: #2563eb; font-weight: 700; }
-    .shipping-option .tier-reason { font-size: 0.7rem; color: #475569; margin-top: 2px; line-height: 1.4; }
-    .shipping-option .tier-why {
-      font-size: 0.65rem;
-      color: #64748b;
-      background: #f1f5f9;
-      padding: 2px 8px;
-      border-radius: 10px;
-      margin-top: 2px;
-      display: inline-block;
-    }
-
     .free-shipping-banner {
       background: #dcfce7;
-      padding: 8px 12px;
-      border-radius: 8px;
-      border-left: 4px solid #22c55e;
-      margin-bottom: 8px;
-      font-size: 0.85rem;
+      padding: 4px 10px;
+      border-radius: 4px;
+      border-left: 3px solid #22c55e;
+      margin-bottom: 4px;
+      font-size: 0.7rem;
       font-weight: 600;
       color: #166534;
       display: none;
     }
-
     .shipping-info {
-      font-size: 0.7rem;
+      font-size: 0.6rem;
       color: #64748b;
-      margin-top: 4px;
-      padding: 6px 10px;
+      margin-top: 3px;
+      padding: 4px 8px;
       background: #f8fafc;
-      border-radius: 6px;
+      border-radius: 4px;
     }
 
-    /* ===== PROMO & SUMMARY ===== */
-    .promo-input { display: flex; gap: 6px; margin: 6px 0; }
-    .promo-input input { flex:1; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.8rem; }
-    .promo-input button { padding: 6px 12px; font-size: 0.75rem; }
+    /* ===== PROMO ===== */
+    .promo-input {
+      display: flex;
+      gap: 4px;
+      margin: 4px 0;
+    }
+    .promo-input input {
+      flex: 1;
+      padding: 4px 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 0.75rem;
+    }
+    .promo-input button {
+      padding: 4px 12px;
+      font-size: 0.7rem;
+      border-radius: 4px;
+      border: none;
+      background: #2563eb;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .promo-input button:hover {
+      background: #1d4ed8;
+    }
+    .promo-hint {
+      font-size: 0.6rem;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+    .promo-hint i {
+      color: #f59e0b;
+    }
 
+    /* ===== ORDER NOTES ===== */
+    .cart-section textarea {
+      width: 100%;
+      padding: 4px 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-family: inherit;
+      min-height: 36px;
+      resize: vertical;
+    }
+    .cart-section textarea:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.08);
+    }
+
+    /* ===== SUMMARY ===== */
     .summary-row {
       display: flex;
       justify-content: space-between;
-      padding: 3px 0;
-      font-size: 0.85rem;
+      padding: 2px 0;
+      font-size: 0.75rem;
     }
     .summary-row.total {
       font-weight: 800;
-      font-size: 1.05rem;
+      font-size: 0.9rem;
       border-top: 2px solid #e2e8f0;
-      padding-top: 8px;
-      margin-top: 6px;
+      padding-top: 6px;
+      margin-top: 4px;
+      color: #0f172a;
     }
+    .summary-row .label {
+      color: #64748b;
+    }
+    .summary-row .amount {
+      font-weight: 700;
+    }
+
     .btn-place {
       width: 100%;
-      padding: 14px;
-      font-size: 1rem;
+      padding: 10px;
+      font-size: 0.85rem;
       background: #22c55e;
       color: white;
       border: none;
-      border-radius: 10px;
+      border-radius: 8px;
       font-weight: 700;
       cursor: pointer;
       transition: 0.2s;
+      margin-top: 6px;
     }
-    .btn-place:hover { background: #16a34a; }
+    .btn-place:hover {
+      background: #16a34a;
+    }
 
-    .timer { color: #ef4444; font-weight: 700; font-size:0.9rem; margin-bottom: 12px; }
+    /* ===== TIMER ===== */
+    .timer {
+      color: #ef4444;
+      font-weight: 700;
+      font-size: 0.75rem;
+      margin-bottom: 6px;
+      background: #fef2f2;
+      padding: 4px 10px;
+      border-radius: 6px;
+      display: inline-block;
+    }
 
-    /* ===== MODAL ===== */
+    /* ===== CART EMPTY ===== */
+    .cart-empty {
+      text-align: center;
+      padding: 30px 20px;
+    }
+    .cart-empty i {
+      font-size: 3rem;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+    .cart-empty h2 {
+      font-size: 1.1rem;
+      color: #1e293b;
+    }
+    .cart-empty p {
+      color: #64748b;
+      margin: 6px 0 12px;
+      font-size: 0.85rem;
+    }
+
+    /* ===== RECOMMENDED ===== */
+    .related-grid {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 4px 0 8px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .related-item {
+      flex: 0 0 90px;
+      background: #f8fafc;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .related-item img {
+      width: 100%;
+      height: 70px;
+      object-fit: cover;
+    }
+    .related-item .no-image {
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      background: #e2e8f0;
+    }
+    .related-item .related-info {
+      padding: 3px 6px;
+    }
+    .related-item .related-name {
+      font-weight: 600;
+      font-size: 0.6rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .related-item .related-price {
+      font-weight: 700;
+      font-size: 0.65rem;
+      color: #2563eb;
+    }
+
+    /* ===== PRODUCT PREVIEW MODAL ===== */
     .modal-overlay {
       position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
       background: rgba(0,0,0,0.5);
       z-index: 9999;
       display: none;
@@ -279,7 +485,9 @@
       justify-content: center;
       padding: 16px;
     }
-    .modal-overlay.active { display: flex; }
+    .modal-overlay.active {
+      display: flex;
+    }
     .modal-box {
       background: white;
       max-width: 100%;
@@ -289,33 +497,197 @@
       padding: 20px;
       border-radius: 16px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      position: relative;
     }
-    .modal-box .btn-row { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end; flex-wrap: wrap; }
-    .modal-box .payment-methods { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
-    .modal-box .payment-methods .method {
-      padding: 8px 12px;
-      border: 1px solid #e2e8f0;
+    .modal-box .close-modal {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #94a3b8;
+      transition: color 0.2s;
+      background: none;
+      border: none;
+    }
+    .modal-box .close-modal:hover {
+      color: #ef4444;
+    }
+    .modal-box .modal-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .modal-box .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    /* Product preview inside modal */
+    .preview-product {
+      display: flex;
+      gap: 16px;
+      background: #f8fafc;
+      border-radius: 10px;
+      padding: 12px 16px;
+      border: 1px solid #eef2f6;
+      margin-bottom: 8px;
+    }
+    .preview-product .preview-img {
+      width: 80px;
+      height: 80px;
       border-radius: 8px;
+      overflow: hidden;
+      flex-shrink: 0;
+      background: #e2e8f0;
+    }
+    .preview-product .preview-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .preview-product .preview-info {
+      flex: 1;
+    }
+    .preview-product .preview-info .name {
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: #0f172a;
+    }
+    .preview-product .preview-info .price {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: #2563eb;
+    }
+    .preview-product .preview-info .desc {
+      font-size: 0.75rem;
+      color: #475569;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-top: 2px;
+    }
+    .preview-product .preview-info .category {
+      font-size: 0.6rem;
+      color: #64748b;
+      background: #f1f5f9;
+      padding: 1px 8px;
+      border-radius: 12px;
+      display: inline-block;
+    }
+
+    /* ===== MODAL PAYMENT ===== */
+    .modal-box .payment-methods {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin: 8px 0;
+    }
+    .modal-box .payment-methods .method {
+      padding: 6px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
       cursor: pointer;
       transition: 0.2s;
       display: flex;
       align-items: center;
       gap: 10px;
+      font-size: 0.85rem;
     }
-    .modal-box .payment-methods .method:hover { border-color: #2563eb; }
-    .modal-box .payment-methods .method.selected { border-color: #2563eb; background: #eff6ff; }
-    .modal-box .payment-methods .method i { font-size: 1.2rem; width: 24px; }
+    .modal-box .payment-methods .method:hover {
+      border-color: #2563eb;
+    }
+    .modal-box .payment-methods .method.selected {
+      border-color: #2563eb;
+      background: #eff6ff;
+    }
+    .modal-box .payment-methods .method i {
+      font-size: 1.1rem;
+      width: 20px;
+    }
     .modal-box .payment-details input,
     .modal-box .payment-details select {
       width: 100%;
-      padding: 8px;
-      margin: 4px 0;
+      padding: 6px;
+      margin: 3px 0;
       border: 1px solid #d1d5db;
-      border-radius: 6px;
-      font-size: 0.9rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
     }
 
-    /* ===== BOTTOM NAV ===== */
+    .bank-search-container {
+      position: relative;
+    }
+    .bank-search-container input {
+      width: 100%;
+      padding: 6px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+    }
+    .bank-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      max-height: 120px;
+      overflow-y: auto;
+      z-index: 10;
+      display: none;
+    }
+    .bank-dropdown.show {
+      display: block;
+    }
+    .bank-dropdown .bank-item {
+      padding: 4px 10px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    .bank-dropdown .bank-item:hover {
+      background: #f1f5f9;
+    }
+
+    /* ===== HEADER & BOTTOM NAV ===== */
+    .header {
+      background: #ffffff;
+      color: #1e293b;
+      padding: 10px 14px;
+      border-bottom: 1px solid #e8ecf1;
+      position: sticky;
+      top: 0;
+      z-index: 99;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .header h1 {
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: #0f172a;
+    }
+    .header a {
+      color: #64748b;
+      margin: 0 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.75rem;
+    }
+    .header a:hover {
+      color: #2563eb;
+    }
+    .header .header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
     .bottom-nav {
       position: fixed;
       bottom: 0;
@@ -341,8 +713,13 @@
       padding: 2px 8px;
       position: relative;
     }
-    .bottom-nav a i { font-size: 1.3rem; margin-bottom: 1px; }
-    .bottom-nav a.active { color: #2563eb; }
+    .bottom-nav a i {
+      font-size: 1.3rem;
+      margin-bottom: 1px;
+    }
+    .bottom-nav a.active {
+      color: #2563eb;
+    }
     .bottom-nav a .nav-badge {
       position: absolute;
       top: -2px;
@@ -357,87 +734,13 @@
       font-weight: 700;
       display: none;
     }
-    .bottom-nav a .nav-badge.show { display: block; }
-
-    .header {
-      background: #ffffff;
-      color: #1e293b;
-      padding: 10px 14px;
-      border-bottom: 1px solid #e8ecf1;
-      position: sticky;
-      top: 0;
-      z-index: 99;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
+    .bottom-nav a .nav-badge.show {
+      display: block;
     }
-    .header h1 { font-weight: 800; font-size: 1.1rem; color: #0f172a; }
-    .header a { color: #64748b; margin: 0 8px; text-decoration: none; font-weight: 600; font-size: 0.75rem; }
-    .header a:hover { color: #2563eb; }
-    .header .header-right { display: flex; align-items: center; gap: 8px; }
-
-    /* ===== LOCATION SUGGESTIONS ===== */
-    .location-suggestions {
-      background: white;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      max-height: 150px;
-      overflow-y: auto;
-      display: none;
-    }
-    .location-suggestions div {
-      padding: 6px 10px;
-      cursor: pointer;
-      border-bottom: 1px solid #e2e8f0;
-      font-size: 0.85rem;
-    }
-    .location-suggestions div:hover { background: #e2e8f0; }
-
-    .cart-empty {
-      text-align: center;
-      padding: 40px 20px;
-    }
-    .cart-empty i { font-size: 3rem; color: #94a3b8; margin-bottom: 12px; }
-    .cart-empty h2 { font-size: 1.2rem; color: #1e293b; }
-    .cart-empty p { color: #64748b; margin: 8px 0 16px; font-size: 0.9rem; }
-    .cart-empty .btn { padding: 10px 24px; }
-
-    .related-grid {
-      display: flex;
-      gap: 10px;
-      overflow-x: auto;
-      padding: 4px 0 10px;
-      -webkit-overflow-scrolling: touch;
-    }
-    .related-item {
-      flex: 0 0 110px;
-      background: #f8fafc;
-      border-radius: 8px;
-      overflow: hidden;
-      cursor: pointer;
-    }
-    .related-item img {
-      width: 100%;
-      height: 90px;
-      object-fit: cover;
-    }
-    .related-item .no-image {
-      height: 90px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2rem;
-      background: #e2e8f0;
-    }
-    .related-item .related-info { padding: 4px 6px; }
-    .related-item .related-name { font-weight: 600; font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .related-item .related-price { font-weight: 700; font-size: 0.7rem; color: #2563eb; }
   </style>
 </head>
 <body>
 
-<!-- ===== HEADER ===== -->
 <div class="header">
   <h1>🛍️ <span id="shopNameHeader">Our Business</span></h1>
   <div class="header-right">
@@ -450,193 +753,126 @@
   </div>
 </div>
 
-<!-- ===== CART PAGE ===== -->
 <div class="cart-page">
   <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Continue Shopping</a>
   <h1>🛒 Your Cart</h1>
-  <p class="sub">Review your items, choose delivery method, then place your order.</p>
+  <p class="sub">Review your items, then place your order.</p>
 
   <div id="stockTimer" class="timer" style="display:none;">⏳ Items reserved for <span id="timerDisplay">15:00</span></div>
 
   <div id="cartItemsContainer"></div>
 
   <div id="checkoutSections" style="display:none;">
-    <!-- ===== DELIVERY METHOD TOGGLE ===== -->
-    <div class="section">
-      <h3>📍 Delivery Method</h3>
-      <div class="delivery-toggle" id="deliveryToggle">
-        <button class="active" onclick="setDeliveryMethod('doorstep')">
-          <i class="fas fa-home"></i> Doorstep Delivery
-        </button>
-        <button onclick="setDeliveryMethod('pickup')">
-          <i class="fas fa-store"></i> Pickup Station
-        </button>
-      </div>
-    </div>
-
-    <!-- ===== ADDRESS / PICKUP SELECTION ===== -->
-    <div class="section" id="addressSection">
-      <h3 id="addressSectionTitle">📍 Delivery Address</h3>
-      <div id="addressListContainer"></div>
-      <div class="address-actions" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
-        <button class="btn btn-secondary" onclick="showAddAddress()" style="font-size:0.75rem; padding:4px 10px;">+ Add New Address</button>
-        <button class="btn btn-primary" onclick="detectLocation()" style="font-size:0.75rem; padding:4px 10px;"><i class="fas fa-map-marker-alt"></i> Use My Location</button>
-      </div>
-    </div>
-
-    <!-- ===== PICKUP STATIONS (hidden by default) ===== -->
-    <div class="section" id="pickupSection" style="display:none;">
-      <h3>📍 Pickup Stations Near You</h3>
-      <p class="sub-text">Select a pickup station where you'll collect your order.</p>
-      <div id="pickupStationsList"></div>
-      <div class="recipient-fields">
-        <input type="text" id="pickupRecipientName" placeholder="Recipient Name" />
-        <input type="text" id="pickupRecipientPhone" placeholder="Phone Number" />
-      </div>
-    </div>
-
-    <!-- ===== SHIPPING OPTIONS ===== -->
-    <div class="section">
-      <h3>🚚 Choose Your Shipping Speed</h3>
-      <div id="freeShippingBanner" class="free-shipping-banner">🎉 Your order qualifies for FREE Standard Shipping! (Total ≥ Ksh 40,000)</div>
-      <div class="shipping-options" id="shippingOptions"></div>
-      <div class="shipping-info">💡 Shipping fee is based on your order total – the more you buy, the more value you get.</div>
-    </div>
-
-    <!-- ===== PROMO CODE ===== -->
-    <div class="section">
-      <h3>🎁 Promo Code</h3>
-      <div class="promo-input">
-        <input type="text" id="promoInput" placeholder="Enter promo code">
-        <button class="btn btn-primary" onclick="applyPromo()">Apply</button>
-      </div>
-      <div id="promoMessage" style="font-size:0.75rem;"></div>
-    </div>
-
-    <!-- ===== ORDER NOTES ===== -->
-    <div class="section">
-      <h3>📝 Special Instructions</h3>
-      <textarea id="orderNotes" placeholder="e.g., Leave at the gate, call on arrival" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px; font-size:0.85rem;"></textarea>
-    </div>
-
-    <!-- ===== SUMMARY ===== -->
-    <div class="section" style="background:white; border:2px solid #e2e8f0;">
-      <h3>💰 Order Summary</h3>
-      <div id="summaryDetails">
-        <div class="summary-row"><span>Subtotal</span><span id="subtotalPrice">Ksh 0</span></div>
-        <div id="deliveryFeeRow" class="summary-row"><span>Delivery Fee</span><span id="deliveryFee">Ksh 0</span></div>
-        <div id="shippingSummaryRow" class="summary-row"><span>Shipping</span><span id="shippingPrice">Ksh 0</span></div>
-        <div id="discountSummaryRow" class="summary-row" style="display:none;"><span>Discount</span><span id="discountAmount">-Ksh 0</span></div>
-        <div class="summary-row total"><span>Total</span><span id="cartTotal">Ksh 0</span></div>
-      </div>
-      <button class="btn-place" id="placeOrderBtn" onclick="placeOrder()">
-        <i class="fas fa-check-circle"></i> Place Order
+    <!-- ===== REVIEW ALL PRODUCTS BUTTON ===== -->
+    <div style="margin: 6px 0;">
+      <button class="review-all-btn" onclick="openReviewAllModal()">
+        <i class="fas fa-eye"></i> Click here to review all products details before submitting
       </button>
+    </div>
+
+    <!-- ===== COMPACT GRID ===== -->
+    <div class="cart-grid">
+
+      <!-- COLUMN 1: Location -->
+      <div class="cart-section" id="locationSection">
+        <h3><i class="fas fa-map-marker-alt" style="color:#2563eb;"></i> Delivery Location</h3>
+        <button id="detectLocationBtn" class="detect-btn" onclick="detectMyLocation()">
+          <i class="fas fa-location-dot"></i> Use My Current Location
+        </button>
+        <div id="locationStatus" class="location-status"></div>
+        <div class="location-fields">
+          <div>
+            <label>Where should we deliver? *</label>
+            <textarea id="deliveryAddress" rows="2" placeholder="House number, street, estate, landmark..."></textarea>
+          </div>
+          <div>
+            <label>Delivery Instructions (optional)</label>
+            <input type="text" id="deliveryInstructions" placeholder="e.g., Call on arrival, leave at gate">
+          </div>
+        </div>
+        <input type="hidden" id="recipientName" value="">
+        <input type="hidden" id="recipientPhone" value="">
+        <input type="hidden" id="customerLat" value="">
+        <input type="hidden" id="customerLng" value="">
+        <input type="hidden" id="locationAccuracy" value="">
+      </div>
+
+      <!-- COLUMN 2: Shipping + Promo -->
+      <div class="cart-section">
+        <h3><i class="fas fa-truck" style="color:#f59e0b;"></i> Shipping Speed</h3>
+        <div id="freeShippingBanner" class="free-shipping-banner">🎉 Free Standard Shipping!</div>
+        <div class="shipping-options" id="shippingOptions"></div>
+        <div class="shipping-info">💡 Fee based on order total – more value when you buy more</div>
+      </div>
+
+      <!-- COLUMN 3: Promo + Notes + Summary -->
+      <div class="cart-section">
+        <h3><i class="fas fa-gift" style="color:#22c55e;"></i> Promo Code</h3>
+        <div class="promo-input">
+          <input type="text" id="promoInput" placeholder="Enter promo code">
+          <button onclick="applyPromo()">Apply</button>
+        </div>
+        <div class="promo-hint">
+          <i class="fas fa-info-circle"></i> 
+          What is a promo code? A discount code that gives you savings on your order.
+        </div>
+        <div id="promoMessage" style="font-size:0.65rem; margin-top:2px;"></div>
+
+        <div style="margin-top:8px; border-top:1px solid #e8ecf1; padding-top:6px;">
+          <h3 style="font-size:0.7rem; font-weight:700; margin:0 0 2px 0;"><i class="fas fa-pen" style="color:#64748b;"></i> Special Instructions</h3>
+          <textarea id="orderNotes" placeholder="e.g., Leave at gate, call on arrival" rows="1"></textarea>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===== SUMMARY (Full Width) ===== -->
+    <div class="cart-section" style="margin-top:10px; background:#f8fafc; border:2px solid #e2e8f0;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div style="flex:1; min-width:200px;">
+          <div class="summary-row"><span class="label">Subtotal</span><span class="amount" id="subtotalPrice">Ksh 0</span></div>
+          <div id="shippingSummaryRow" class="summary-row"><span class="label">Shipping</span><span class="amount" id="shippingPrice">Ksh 0</span></div>
+          <div id="discountSummaryRow" class="summary-row" style="display:none;"><span class="label">Discount</span><span class="amount" id="discountAmount">-Ksh 0</span></div>
+          <div class="summary-row total"><span>Total</span><span id="cartTotal">Ksh 0</span></div>
+        </div>
+        <button class="btn-place" id="placeOrderBtn" onclick="placeOrder()" style="max-width:250px;">
+          <i class="fas fa-check-circle"></i> Place Order
+        </button>
+      </div>
     </div>
   </div>
 
-  <!-- ===== RECOMMENDED ===== -->
-  <div id="recommendedSection" style="margin-top:24px;">
-    <h3>You may also like</h3>
+  <!-- Recommended -->
+  <div id="recommendedSection" style="margin-top:16px;">
+    <h3 style="font-size:0.9rem; font-weight:700;">You may also like</h3>
     <div id="recommendedGrid" class="related-grid"></div>
   </div>
 </div>
 
-<!-- ===== ADDRESS MODAL ===== -->
-<div class="modal-overlay" id="addressModal">
+<!-- ===== PRODUCT PREVIEW MODAL ===== -->
+<div class="modal-overlay" id="productPreviewModal">
   <div class="modal-box">
-    <h3>Add New Address</h3>
-    <div class="delivery-toggle" style="margin-bottom:10px;">
-      <button class="active" onclick="setModalDeliveryType('doorstep')" id="modalDoorstepBtn">
-        <i class="fas fa-home"></i> Doorstep
-      </button>
-      <button onclick="setModalDeliveryType('pickup')" id="modalPickupBtn">
-        <i class="fas fa-store"></i> Pickup Station
-      </button>
+    <button class="close-modal" onclick="closeProductPreview()">&times;</button>
+    <div class="modal-title" id="previewTitle">Product Details</div>
+    <div id="previewContent"></div>
+    <div style="margin-top:12px;">
+      <h4 style="font-size:0.8rem; font-weight:700; margin-bottom:6px;">You may also like</h4>
+      <div id="previewRelated" class="related-grid"></div>
     </div>
-
-    <!-- Doorstep Fields -->
-    <div id="modalDoorstepFields">
-      <label>Recipient Name</label>
-      <input type="text" id="modalRecipientName" placeholder="Full name" />
-
-      <label>Phone Number</label>
-      <input type="text" id="modalRecipientPhone" placeholder="0712345678" />
-
-      <label>County</label>
-      <select id="modalCounty" onchange="loadSubCounties()">
-        <option value="">Select County</option>
-      </select>
-
-      <label>Sub-County</label>
-      <select id="modalSubCounty" onchange="loadWards()">
-        <option value="">Select Sub-County</option>
-      </select>
-
-      <label>Ward / Area</label>
-      <select id="modalWard">
-        <option value="">Select Ward</option>
-      </select>
-
-      <label>Building Name</label>
-      <input type="text" id="modalBuilding" placeholder="e.g., Lenana Tower" />
-
-      <label>Floor / Room</label>
-      <input type="text" id="modalFloorRoom" placeholder="e.g., 3rd floor, Room 310" />
-
-      <label>Road / Street</label>
-      <input type="text" id="modalRoad" placeholder="e.g., Lenana Road" />
-
-      <label>Estate / Neighborhood</label>
-      <input type="text" id="modalEstate" placeholder="e.g., Kilimani" />
-
-      <label>Nearest Landmark</label>
-      <input type="text" id="modalLandmark" placeholder="e.g., Near Equity Bank" />
-
-      <label>Delivery Instructions</label>
-      <textarea id="modalInstructions" placeholder="e.g., Call on arrival, leave at gate" rows="2"></textarea>
-
-      <label>GPS Coordinates (optional)</label>
-      <div style="display:flex; gap:6px;">
-        <input type="text" id="modalLat" placeholder="Latitude" style="flex:1;" />
-        <input type="text" id="modalLng" placeholder="Longitude" style="flex:1;" />
-      </div>
-    </div>
-
-    <!-- Pickup Station Fields -->
-    <div id="modalPickupFields" style="display:none;">
-      <label>Recipient Name</label>
-      <input type="text" id="modalPickupRecipientName" placeholder="Full name" />
-
-      <label>Phone Number</label>
-      <input type="text" id="modalPickupRecipientPhone" placeholder="0712345678" />
-
-      <label>County</label>
-      <select id="modalPickupCounty" onchange="loadPickupSubCounties()">
-        <option value="">Select County</option>
-      </select>
-
-      <label>Sub-County</label>
-      <select id="modalPickupSubCounty" onchange="loadPickupWards()">
-        <option value="">Select Sub-County</option>
-      </select>
-
-      <label>Ward / Area</label>
-      <select id="modalPickupWard">
-        <option value="">Select Ward</option>
-      </select>
-
-      <label>Nearest Landmark (optional)</label>
-      <input type="text" id="modalPickupLandmark" placeholder="e.g., Near Equity Bank" />
-    </div>
-
-    <div style="margin-top:10px;">
-      <label><input type="checkbox" id="modalSetDefault" /> Set as default address</label>
-    </div>
-
     <div class="btn-row">
-      <button class="btn btn-secondary" onclick="closeAddressModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveAddress()">Save Address</button>
+      <button class="btn btn-secondary" onclick="closeProductPreview()" style="padding:6px 16px; border-radius:6px; border:1px solid #e2e8f0; background:white; cursor:pointer; font-weight:600;">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== REVIEW ALL MODAL ===== -->
+<div class="modal-overlay" id="reviewAllModal">
+  <div class="modal-box">
+    <button class="close-modal" onclick="closeReviewAll()">&times;</button>
+    <div class="modal-title">📋 Review All Products</div>
+    <div id="reviewAllContent"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeReviewAll()" style="padding:6px 16px; border-radius:6px; border:1px solid #e2e8f0; background:white; cursor:pointer; font-weight:600;">Close</button>
     </div>
   </div>
 </div>
@@ -644,16 +880,16 @@
 <!-- ===== PAYMENT MODAL ===== -->
 <div class="modal-overlay" id="paymentModal">
   <div class="modal-box">
+    <button class="close-modal" onclick="closePaymentModal()">&times;</button>
     <h3>💳 Choose Payment Method</h3>
     <div id="paymentBody">
       <p>Total amount: <strong id="paymentTotal">Ksh 0</strong></p>
       <div class="payment-methods" id="paymentMethods">
         <div class="method" onclick="selectPaymentMethod('mpesa')"><i class="fas fa-mobile-alt"></i> M-Pesa</div>
         <div class="method" onclick="selectPaymentMethod('airtel')"><i class="fas fa-phone"></i> Airtel Money</div>
-        <div class="method" onclick="selectPaymentMethod('paypal')"><i class="fab fa-paypal"></i> PayPal</div>
         <div class="method" onclick="selectPaymentMethod('bank')"><i class="fas fa-university"></i> Bank Transfer</div>
       </div>
-      <div id="paymentDetails" style="display:none; margin-top:10px;">
+      <div id="paymentDetails" style="display:none; margin-top:8px;">
         <div id="phoneField" style="display:none;">
           <label>Phone Number:</label>
           <input type="text" id="paymentPhone" placeholder="0712345678" class="payment-field">
@@ -672,14 +908,8 @@
           <label>PIN:</label>
           <input type="password" id="paymentBankPin" placeholder="Enter your PIN" class="payment-field">
         </div>
-        <div id="paypalField" style="display:none;">
-          <label>PayPal Email:</label>
-          <input type="email" id="paymentPaypalEmail" placeholder="your@email.com" class="payment-field">
-          <label>Password:</label>
-          <input type="password" id="paymentPaypalPin" placeholder="Enter your PayPal password" class="payment-field">
-        </div>
-        <button class="btn btn-success" onclick="submitPayment()" style="margin-top:6px;">Pay Now</button>
-        <div id="paymentStatus" style="margin-top:8px; font-size:0.9rem;"></div>
+        <button class="btn btn-success" onclick="submitPayment()" style="margin-top:4px; padding:8px 20px; border-radius:6px; border:none; background:#22c55e; color:white; font-weight:700; cursor:pointer;">Pay Now</button>
+        <div id="paymentStatus" style="margin-top:6px; font-size:0.85rem;"></div>
       </div>
     </div>
     <div class="btn-row">
@@ -688,7 +918,7 @@
   </div>
 </div>
 
-<!-- ===== BOTTOM NAV ===== -->
+<!-- Bottom Nav -->
 <div class="bottom-nav">
   <a href="/"><i class="fas fa-home"></i><span>Home</span></a>
   <a href="/category.html"><i class="fas fa-th-large"></i><span>Category</span></a>
@@ -705,25 +935,22 @@
 <script src="/app.js"></script>
 <script>
   // ================================================================
-  //  CART & CHECKOUT LOGIC (Kilimall-style Address System)
+  //  CART & CHECKOUT LOGIC – With Product Preview
   // ================================================================
 
   let cartItems = [];
   let selectedShippingTier = 'standard';
   let shippingCost = 0;
-  let deliveryFee = 0;
   let promoDiscount = 0;
-  let selectedAddressId = null;
-  let selectedPickupStationId = null;
-  let deliveryMethod = 'doorstep'; // 'doorstep' or 'pickup'
   let timerInterval = null;
   let reservationTime = 15 * 60;
   let pendingOrderId = null;
   let paymentTotal = 0;
+  let selectedPaymentMethod = '';
+  let allProductsForPreview = [];
 
   const FREE_SHIPPING_THRESHOLD = 40000;
 
-  // ---- Kenyan Banks ----
   const kenyanBanks = [
     "Equity Bank Kenya", "KCB Bank Kenya", "Co-operative Bank of Kenya",
     "NCBA Bank Kenya", "Stanbic Bank Kenya", "Standard Chartered Kenya",
@@ -746,397 +973,236 @@
   // ================================================================
   document.addEventListener('DOMContentLoaded', () => {
     loadShopProfile();
-    loadCounties();
-    loadPickupStations();
+    loadAllProductsForPreview();
     renderCartPage();
     updateCartBadge();
-    loadAddresses();
     loadRecommended();
     startReservationTimer();
     populateBankDropdown();
+
+    const user = window.currentUser;
+    if (user) {
+      document.getElementById('recipientName').value = user.name || '';
+      document.getElementById('recipientPhone').value = user.phone || user.email || '';
+    }
   });
 
   // ================================================================
-  //  DELIVERY METHOD
+  //  LOAD ALL PRODUCTS FOR PREVIEW
   // ================================================================
-  function setDeliveryMethod(method) {
-    deliveryMethod = method;
-    document.querySelectorAll('#deliveryToggle button').forEach(btn => btn.classList.remove('active'));
-    if (method === 'doorstep') {
-      document.getElementById('deliveryToggle').querySelector('button:first-child').classList.add('active');
-      document.getElementById('addressSection').style.display = 'block';
-      document.getElementById('pickupSection').style.display = 'none';
-      document.getElementById('addressSectionTitle').textContent = '📍 Delivery Address';
-      loadAddresses();
-    } else {
-      document.getElementById('deliveryToggle').querySelector('button:last-child').classList.add('active');
-      document.getElementById('addressSection').style.display = 'none';
-      document.getElementById('pickupSection').style.display = 'block';
-      document.getElementById('addressSectionTitle').textContent = '📍 Pickup Station';
-      loadPickupStations();
-    }
-    updateSummary(calculateSubtotal());
+  function loadAllProductsForPreview() {
+    fetch('/api/products')
+      .then(res => res.json())
+      .then(products => {
+        allProductsForPreview = products;
+      })
+      .catch(err => console.error('Error loading products for preview:', err));
   }
 
   // ================================================================
-  //  COUNTIES (Location Hierarchy)
+  //  PRODUCT PREVIEW MODAL
   // ================================================================
-  async function loadCounties() {
-    try {
-      const res = await fetch('/api/counties');
-      const counties = await res.json();
-      const selects = ['modalCounty', 'modalPickupCounty'];
-      selects.forEach(id => {
-        const select = document.getElementById(id);
-        if (select) {
-          select.innerHTML = '<option value="">Select County</option>';
-          counties.forEach(c => {
-            select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
-          });
-        }
-      });
-    } catch (err) {
-      console.error('Error loading counties:', err);
-    }
-  }
+  function openProductPreview(productId) {
+    const modal = document.getElementById('productPreviewModal');
+    const content = document.getElementById('previewContent');
+    const related = document.getElementById('previewRelated');
+    const title = document.getElementById('previewTitle');
 
-  async function loadSubCounties() {
-    const countyId = document.getElementById('modalCounty').value;
-    if (!countyId) return;
-    try {
-      const res = await fetch(`/api/sub-counties/${countyId}`);
-      const subCounties = await res.json();
-      const select = document.getElementById('modalSubCounty');
-      select.innerHTML = '<option value="">Select Sub-County</option>';
-      subCounties.forEach(sc => {
-        select.innerHTML += `<option value="${sc.id}">${sc.name}</option>`;
-      });
-    } catch (err) {
-      console.error('Error loading sub-counties:', err);
-    }
-  }
-
-  async function loadWards() {
-    const subCountyId = document.getElementById('modalSubCounty').value;
-    if (!subCountyId) return;
-    try {
-      const res = await fetch(`/api/wards/${subCountyId}`);
-      const wards = await res.json();
-      const select = document.getElementById('modalWard');
-      select.innerHTML = '<option value="">Select Ward</option>';
-      wards.forEach(w => {
-        select.innerHTML += `<option value="${w.id}">${w.name}</option>`;
-      });
-    } catch (err) {
-      console.error('Error loading wards:', err);
-    }
-  }
-
-  async function loadPickupSubCounties() {
-    const countyId = document.getElementById('modalPickupCounty').value;
-    if (!countyId) return;
-    try {
-      const res = await fetch(`/api/sub-counties/${countyId}`);
-      const subCounties = await res.json();
-      const select = document.getElementById('modalPickupSubCounty');
-      select.innerHTML = '<option value="">Select Sub-County</option>';
-      subCounties.forEach(sc => {
-        select.innerHTML += `<option value="${sc.id}">${sc.name}</option>`;
-      });
-    } catch (err) {
-      console.error('Error loading pickup sub-counties:', err);
-    }
-  }
-
-  async function loadPickupWards() {
-    const subCountyId = document.getElementById('modalPickupSubCounty').value;
-    if (!subCountyId) return;
-    try {
-      const res = await fetch(`/api/wards/${subCountyId}`);
-      const wards = await res.json();
-      const select = document.getElementById('modalPickupWard');
-      select.innerHTML = '<option value="">Select Ward</option>';
-      wards.forEach(w => {
-        select.innerHTML += `<option value="${w.id}">${w.name}</option>`;
-      });
-    } catch (err) {
-      console.error('Error loading pickup wards:', err);
-    }
-  }
-
-  // ================================================================
-  //  PICKUP STATIONS
-  // ================================================================
-  async function loadPickupStations() {
-    try {
-      const res = await fetch('/api/pickup-stations');
-      const stations = await res.json();
-      const container = document.getElementById('pickupStationsList');
-      if (!stations || stations.length === 0) {
-        container.innerHTML = '<p style="color:#94a3b8; font-size:0.85rem;">No pickup stations available near you.</p>';
-        return;
+    // Find product in allProducts or allProductsForPreview
+    let product = allProductsForPreview.find(p => p.id === productId);
+    if (!product) {
+      // Try to find in cart items
+      const cartItem = cartItems.find(item => item.id === productId);
+      if (cartItem) {
+        product = { id: cartItem.id, name: cartItem.name, price: cartItem.price, image: cartItem.image };
       }
-      container.innerHTML = stations.map(s => `
-        <div class="pickup-station-item" onclick="selectPickupStation(${s.id})" data-id="${s.id}">
-          <div class="info">
-            <div class="name">${s.name}</div>
-            <div class="address">${s.address}</div>
-            <div class="hours">${s.operating_hours || 'Mon - Sat 09:00-18:00'}</div>
+    }
+    if (!product) {
+      content.innerHTML = '<p style="color:#ef4444;">Product not found.</p>';
+      return;
+    }
+
+    title.textContent = `📦 ${product.name}`;
+
+    // Build product preview
+    const imageHtml = product.image ? `<img src="${product.image}" alt="${product.name}">` : '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#e2e8f0;font-size:2rem;">📦</div>';
+    const rating = product.rating ? `⭐ ${product.rating}` : '';
+    const category = product.category ? `<span class="category">${product.category}</span>` : '';
+    const desc = product.description || 'No description available.';
+
+    content.innerHTML = `
+      <div class="preview-product">
+        <div class="preview-img">${imageHtml}</div>
+        <div class="preview-info">
+          <div class="name">${product.name}</div>
+          <div class="price">${product.price}</div>
+          ${rating ? `<div style="font-size:0.75rem; color:#f59e0b;">${rating}</div>` : ''}
+          ${category}
+          <div class="desc">${desc}</div>
+          ${product.stock !== undefined ? `<div style="font-size:0.65rem; color:#64748b;">Stock: ${product.stock}</div>` : ''}
+        </div>
+      </div>
+    `;
+
+    // Related products
+    const relatedProducts = allProductsForPreview.filter(p => p.id !== productId).slice(0, 4);
+    if (relatedProducts.length > 0) {
+      related.innerHTML = relatedProducts.map(p => `
+        <div class="related-item" onclick="openProductPreview(${p.id})">
+          ${p.image ? `<img src="${p.image}" alt="${p.name}">` : `<div class="no-image">📦</div>`}
+          <div class="related-info">
+            <div class="related-name">${p.name}</div>
+            <div class="related-price">${p.price}</div>
           </div>
-          <div class="distance">${s.distance || ''}</div>
         </div>
       `).join('');
-    } catch (err) {
-      console.error('Error loading pickup stations:', err);
-    }
-  }
-
-  function selectPickupStation(id) {
-    selectedPickupStationId = id;
-    document.querySelectorAll('.pickup-station-item').forEach(el => {
-      el.classList.toggle('selected', parseInt(el.dataset.id) === id);
-    });
-    updateSummary(calculateSubtotal());
-  }
-
-  // ================================================================
-  //  ADDRESS BOOK
-  // ================================================================
-  async function loadAddresses() {
-    const token = window.customerToken;
-    if (!token) {
-      document.getElementById('addressListContainer').innerHTML = '<p style="color:#94a3b8; font-size:0.85rem;">Please login to add addresses.</p>';
-      return;
-    }
-    try {
-      const res = await fetch('/api/addresses', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const addresses = await res.json();
-      const container = document.getElementById('addressListContainer');
-      if (!addresses || addresses.length === 0) {
-        container.innerHTML = '<p style="color:#94a3b8; font-size:0.85rem;">No saved addresses. Add one below.</p>';
-        return;
-      }
-      container.innerHTML = addresses.map(addr => {
-        const selected = selectedAddressId === addr.id ? 'selected' : '';
-        let displayName = addr.location_name || addr.address || '';
-        if (displayName.length > 50) displayName = displayName.substring(0, 50) + '...';
-        return `
-          <div class="address-item ${selected}" onclick="selectAddress(${addr.id})">
-            <input type="radio" name="address" ${selected ? 'checked' : ''}>
-            <div>
-              <strong>${addr.label}</strong>
-              ${addr.address_type ? ` <span style="font-size:0.55rem; background:#e2e8f0; padding:0 6px; border-radius:8px;">${addr.address_type}</span>` : ''}
-              ${displayName ? `<span class="location-tag">📍 ${displayName}</span>` : ''}
-              <br><span style="font-size:0.7rem;">${addr.address}</span>
-              ${addr.recipient_name ? `<br><span style="font-size:0.65rem; color:#64748b;">${addr.recipient_name} · ${addr.recipient_phone}</span>` : ''}
-            </div>
-          </div>
-        `;
-      }).join('');
-      if (!selectedAddressId && addresses.length > 0) {
-        selectAddress(addresses[0].id);
-      }
-    } catch (err) {
-      console.error('Error loading addresses:', err);
-    }
-  }
-
-  function selectAddress(id) {
-    selectedAddressId = id;
-    loadAddresses();
-    updateSummary(calculateSubtotal());
-  }
-
-  // ================================================================
-  //  ADDRESS MODAL
-  // ================================================================
-  function showAddAddress() {
-    document.getElementById('addressModal').classList.add('active');
-    resetModalFields();
-    loadCounties();
-  }
-
-  function closeAddressModal() {
-    document.getElementById('addressModal').classList.remove('active');
-  }
-
-  function setModalDeliveryType(type) {
-    document.getElementById('modalDoorstepFields').style.display = type === 'doorstep' ? 'block' : 'none';
-    document.getElementById('modalPickupFields').style.display = type === 'pickup' ? 'block' : 'none';
-    document.getElementById('modalDoorstepBtn').classList.toggle('active', type === 'doorstep');
-    document.getElementById('modalPickupBtn').classList.toggle('active', type === 'pickup');
-  }
-
-  function resetModalFields() {
-    document.getElementById('modalRecipientName').value = '';
-    document.getElementById('modalRecipientPhone').value = '';
-    document.getElementById('modalBuilding').value = '';
-    document.getElementById('modalFloorRoom').value = '';
-    document.getElementById('modalRoad').value = '';
-    document.getElementById('modalEstate').value = '';
-    document.getElementById('modalLandmark').value = '';
-    document.getElementById('modalInstructions').value = '';
-    document.getElementById('modalLat').value = '';
-    document.getElementById('modalLng').value = '';
-    document.getElementById('modalPickupRecipientName').value = '';
-    document.getElementById('modalPickupRecipientPhone').value = '';
-    document.getElementById('modalPickupLandmark').value = '';
-    document.getElementById('modalSetDefault').checked = false;
-    setModalDeliveryType('doorstep');
-  }
-
-  async function saveAddress() {
-    const token = window.customerToken;
-    if (!token) { alert('Please login first.'); return; }
-
-    const type = document.getElementById('modalDoorstepFields').style.display !== 'none' ? 'doorstep' : 'pickup';
-
-    let data = {
-      address_type: type,
-      label: type === 'doorstep' ? 'Home' : 'Pickup',
-      set_default: document.getElementById('modalSetDefault').checked
-    };
-
-    if (type === 'doorstep') {
-      const recipientName = document.getElementById('modalRecipientName').value.trim();
-      const recipientPhone = document.getElementById('modalRecipientPhone').value.trim();
-      const countyId = document.getElementById('modalCounty').value;
-      const subCountyId = document.getElementById('modalSubCounty').value;
-      const wardId = document.getElementById('modalWard').value;
-      const building = document.getElementById('modalBuilding').value.trim();
-      const floorRoom = document.getElementById('modalFloorRoom').value.trim();
-      const road = document.getElementById('modalRoad').value.trim();
-      const estate = document.getElementById('modalEstate').value.trim();
-      const landmark = document.getElementById('modalLandmark').value.trim();
-      const instructions = document.getElementById('modalInstructions').value.trim();
-      const lat = document.getElementById('modalLat').value.trim();
-      const lng = document.getElementById('modalLng').value.trim();
-
-      if (!recipientName) { alert('Recipient name is required.'); return; }
-      if (!recipientPhone) { alert('Phone number is required.'); return; }
-      if (!countyId) { alert('Please select a county.'); return; }
-
-      // Build full address
-      const addressParts = [];
-      if (building) addressParts.push(building);
-      if (floorRoom) addressParts.push(floorRoom);
-      if (road) addressParts.push(road);
-      if (estate) addressParts.push(estate);
-      if (landmark) addressParts.push(`Near ${landmark}`);
-      const address = addressParts.join(', ') || 'Address';
-
-      data = {
-        ...data,
-        recipient_name: recipientName,
-        recipient_phone: recipientPhone,
-        county_id: countyId,
-        sub_county_id: subCountyId,
-        ward_id: wardId,
-        address: address,
-        building_name: building,
-        floor_room: floorRoom,
-        road: road,
-        estate: estate,
-        nearest_landmark: landmark,
-        delivery_instructions: instructions,
-        lat: lat,
-        lng: lng,
-        location_name: address
-      };
     } else {
-      // Pickup station
-      const recipientName = document.getElementById('modalPickupRecipientName').value.trim();
-      const recipientPhone = document.getElementById('modalPickupRecipientPhone').value.trim();
-      const countyId = document.getElementById('modalPickupCounty').value;
-      const subCountyId = document.getElementById('modalPickupSubCounty').value;
-      const wardId = document.getElementById('modalPickupWard').value;
-      const landmark = document.getElementById('modalPickupLandmark').value.trim();
-
-      if (!recipientName) { alert('Recipient name is required.'); return; }
-      if (!recipientPhone) { alert('Phone number is required.'); return; }
-      if (!countyId) { alert('Please select a county.'); return; }
-
-      data = {
-        ...data,
-        recipient_name: recipientName,
-        recipient_phone: recipientPhone,
-        county_id: countyId,
-        sub_county_id: subCountyId,
-        ward_id: wardId,
-        nearest_landmark: landmark,
-        address: `Pickup Station - ${landmark || 'Selected Station'}`
-      };
+      related.innerHTML = '<p style="font-size:0.75rem; color:#94a3b8;">No related products.</p>';
     }
 
-    try {
-      const res = await fetch('/api/addresses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(data)
-      });
-      const result = await res.json();
-      if (result.success) {
-        showToast('✅ Address saved successfully!', 'success');
-        closeAddressModal();
-        loadAddresses();
-        loadPickupStations();
-      } else {
-        showToast('❌ Failed to save address: ' + (result.error || 'Unknown error'), 'error');
-      }
-    } catch (err) {
-      showToast('❌ Network error: ' + err.message, 'error');
-    }
+    modal.classList.add('active');
+  }
+
+  function closeProductPreview() {
+    document.getElementById('productPreviewModal').classList.remove('active');
   }
 
   // ================================================================
-  //  DETECT LOCATION
+  //  REVIEW ALL PRODUCTS MODAL
   // ================================================================
-  function detectLocation() {
-    if (!navigator.geolocation) {
-      showToast('❌ Geolocation is not supported by your browser.', 'error');
+  function openReviewAllModal() {
+    const modal = document.getElementById('reviewAllModal');
+    const content = document.getElementById('reviewAllContent');
+
+    const cart = getCart();
+    if (!cart || cart.length === 0) {
+      content.innerHTML = '<p style="color:#94a3b8;">Your cart is empty.</p>';
       return;
     }
-    showToast('⏳ Detecting your location...', 'info');
+
+    let html = '';
+    cart.forEach(item => {
+      // Find full product details
+      const fullProduct = allProductsForPreview.find(p => p.id === item.id);
+      const priceNum = parseFloat(item.price.replace(/[^0-9.]/g, '')) || 0;
+      const subtotal = priceNum * item.quantity;
+      const imageHtml = item.image ? `<img src="${item.image}" alt="${item.name}">` : '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#e2e8f0;font-size:1.5rem;">📦</div>';
+      const desc = fullProduct?.description || 'No description available.';
+      const category = fullProduct?.category ? `<span class="category">${fullProduct.category}</span>` : '';
+
+      html += `
+        <div class="preview-product">
+          <div class="preview-img">${imageHtml}</div>
+          <div class="preview-info">
+            <div class="name">${item.name} ${item.variant_name && item.variant_name !== 'Default' ? `(${item.variant_name})` : ''}</div>
+            <div class="price">${item.price} × ${item.quantity} = <strong style="color:#2563eb;">Ksh ${subtotal.toFixed(2)}</strong></div>
+            ${category}
+            <div class="desc">${desc}</div>
+          </div>
+        </div>
+      `;
+    });
+
+    content.innerHTML = html;
+    modal.classList.add('active');
+  }
+
+  function closeReviewAll() {
+    document.getElementById('reviewAllModal').classList.remove('active');
+  }
+
+  // ================================================================
+  //  LOCATION DETECTION
+  // ================================================================
+  function detectMyLocation() {
+    const btn = document.getElementById('detectLocationBtn');
+    const status = document.getElementById('locationStatus');
+
+    if (!navigator.geolocation) {
+      status.textContent = '❌ Location detection not supported. Please enter your address manually.';
+      status.className = 'location-status error';
+      return;
+    }
+
+    btn.disabled = true;
+    status.textContent = '⏳ Getting your location...';
+    status.className = 'location-status loading';
+
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        // Reverse geocode to get address
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const accuracy = position.coords.accuracy;
+
+        document.getElementById('customerLat').value = lat;
+        document.getElementById('customerLng').value = lng;
+        document.getElementById('locationAccuracy').value = accuracy;
+
         try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18`);
           const data = await res.json();
-          const address = data.display_name || `${lat}, ${lng}`;
-          document.getElementById('modalLat').value = lat;
-          document.getElementById('modalLng').value = lng;
-          document.getElementById('modalLandmark').value = address.substring(0, 100);
-          // Try to extract county from address
-          const parts = address.split(',');
-          if (parts.length > 2) {
-            const county = parts[parts.length - 3]?.trim() || '';
-            // Match county to our list
-            const countySelect = document.getElementById('modalCounty');
-            for (let option of countySelect.options) {
-              if (option.text.toLowerCase().includes(county.toLowerCase())) {
-                countySelect.value = option.value;
-                loadSubCounties();
-                break;
-              }
-            }
-          }
-          showToast('✅ Location detected! Please complete the address details.', 'success');
-          showAddAddress();
+          const address = data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+          document.getElementById('deliveryAddress').value = address;
+          status.textContent = '✅ Location detected! Address filled in.';
+          status.className = 'location-status success';
+          showToast('✅ Location detected! Please review the address.', 'success');
         } catch (err) {
-          showToast('✅ Location detected! Please complete the address manually.', 'info');
-          showAddAddress();
+          document.getElementById('deliveryAddress').value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+          status.textContent = '✅ Location detected! Please add your full address.';
+          status.className = 'location-status success';
+          showToast('✅ Location detected! Please add your full address.', 'info');
         }
+        btn.disabled = false;
       },
-      (err) => {
-        showToast('❌ Could not detect location: ' + err.message, 'error');
+      (error) => {
+        console.error('Location error:', error);
+        let msg = 'Could not detect your location. ';
+        switch (error.code) {
+          case 1: msg += 'Please allow location access in your browser settings.'; break;
+          case 2: msg += 'Location unavailable. Please check your GPS.'; break;
+          case 3: msg += 'Location request timed out. Please try again.'; break;
+          default: msg += 'Please enter your address manually.';
+        }
+        status.textContent = '❌ ' + msg;
+        status.className = 'location-status error';
+        showToast('❌ ' + msg, 'error');
+        btn.disabled = false;
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 15000 }
     );
+  }
+
+  // ================================================================
+  //  VALIDATE LOCATION
+  // ================================================================
+  function validateLocation() {
+    const address = document.getElementById('deliveryAddress').value.trim();
+    const name = document.getElementById('recipientName').value.trim();
+    const phone = document.getElementById('recipientPhone').value.trim();
+
+    if (!address) {
+      showToast('❌ Please enter your delivery address.', 'error');
+      document.getElementById('deliveryAddress').focus();
+      return false;
+    }
+    if (address.length < 3) {
+      showToast('❌ Please enter a more detailed address.', 'error');
+      document.getElementById('deliveryAddress').focus();
+      return false;
+    }
+    if (!name) {
+      showToast('❌ Your name is missing from your profile. Please update your account.', 'error');
+      return false;
+    }
+    if (!phone) {
+      showToast('❌ Your phone number is missing from your profile. Please update your account.', 'error');
+      return false;
+    }
+    if (phone.replace(/[^0-9]/g, '').length < 10) {
+      showToast('❌ Please update your phone number in your profile.', 'error');
+      return false;
+    }
+    return true;
   }
 
   // ================================================================
@@ -1148,7 +1214,7 @@
     const checkoutSections = document.getElementById('checkoutSections');
 
     if (!cart || cart.length === 0) {
-      container.innerHTML = `<div class="cart-empty"><i class="fas fa-shopping-cart"></i><h2>Your cart is empty</h2><p>Looks like you haven't added any items yet.</p><a href="/" class="btn btn-primary">Start Shopping</a></div>`;
+      container.innerHTML = `<div class="cart-empty"><i class="fas fa-shopping-cart"></i><h2>Your cart is empty</h2><p>Looks like you haven't added any items yet.</p><a href="/" class="btn btn-primary" style="padding:10px 24px; border-radius:8px; background:#2563eb; color:white; text-decoration:none; font-weight:600; display:inline-block;">Start Shopping</a></div>`;
       checkoutSections.style.display = 'none';
       return;
     }
@@ -1161,12 +1227,16 @@
       const priceNum = parseFloat(item.price.replace(/[^0-9.]/g, '')) || 0;
       const subtotal = priceNum * item.quantity;
       total += subtotal;
-      const variantName = item.variant_name ? ` (${item.variant_name})` : '';
+      const variantName = item.variant_name && item.variant_name !== 'Default' ? ` (${item.variant_name})` : '';
+      const imageUrl = item.image || '';
+
       html += `
         <div class="cart-item" data-id="${item.id}">
-          <img src="${item.image || ''}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22 viewBox=%220 0 80 80%22%3E%3Crect width=%2280%22 height=%2280%22 fill=%22%23e2e8f0%22/%3E%3Ctext x=%2240%22 y=%2245%22 font-family=%22sans-serif%22 font-size=%2220%22 text-anchor=%22middle%22 fill=%22%2394a3b8%22%3E📦%3C/text%3E%3C/svg%3E'">
+          <div class="product-image" onclick="openProductPreview(${item.id})">
+            <img src="${imageUrl}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22 viewBox=%220 0 80 80%22%3E%3Crect width=%2280%22 height=%2280%22 fill=%22%23e2e8f0%22/%3E%3Ctext x=%2240%22 y=%2245%22 font-family=%22sans-serif%22 font-size=%2220%22 text-anchor=%22middle%22 fill=%22%2394a3b8%22%3E📦%3C/text%3E%3C/svg%3E'">
+          </div>
           <div class="details">
-            <div class="name">${item.name}${variantName}</div>
+            <div class="name" onclick="openProductPreview(${item.id})">${item.name}${variantName}</div>
             <div class="price">${item.price}</div>
           </div>
           <div class="qty-control">
@@ -1188,11 +1258,9 @@
   function updateSummary(total) {
     const subtotal = total;
     const shipping = shippingCost;
-    const deliveryFeeAmount = deliveryMethod === 'pickup' ? 0 : deliveryFee;
     const discount = promoDiscount;
-    const grandTotal = subtotal + shipping + deliveryFeeAmount - discount;
+    const grandTotal = subtotal + shipping - discount;
     document.getElementById('subtotalPrice').textContent = `Ksh ${subtotal.toFixed(2)}`;
-    document.getElementById('deliveryFee').textContent = `Ksh ${deliveryFeeAmount.toFixed(2)}`;
     document.getElementById('shippingPrice').textContent = `Ksh ${shipping.toFixed(2)}`;
     document.getElementById('cartTotal').textContent = `Ksh ${grandTotal.toFixed(2)}`;
     if (discount > 0) {
@@ -1214,30 +1282,20 @@
   }
 
   // ================================================================
-  //  SHIPPING OPTIONS
+  //  SHIPPING
   // ================================================================
   function getShippingTiers(subtotal) {
     let standard, express, overnight;
     if (subtotal >= FREE_SHIPPING_THRESHOLD) {
-      standard = 0;
-      express = 250;
-      overnight = 350;
+      standard = 0; express = 250; overnight = 350;
     } else if (subtotal >= 10000) {
-      standard = 150;
-      express = 250;
-      overnight = 300;
+      standard = 150; express = 250; overnight = 300;
     } else if (subtotal >= 2000) {
-      standard = 120;
-      express = 200;
-      overnight = 250;
+      standard = 120; express = 200; overnight = 250;
     } else if (subtotal >= 500) {
-      standard = 80;
-      express = 150;
-      overnight = 200;
+      standard = 80; express = 150; overnight = 200;
     } else {
-      standard = 50;
-      express = 100;
-      overnight = 150;
+      standard = 50; express = 100; overnight = 150;
     }
     return { standard, express, overnight };
   }
@@ -1257,9 +1315,9 @@
 
     const prices = getShippingTiers(subtotal);
     const tiers = [
-      { id: 'standard', label: 'Standard (3–5 days)', price: freeShipping ? 0 : prices.standard, reason: 'Affordable ground transport, fully tracked.', why: 'Best when you are not in a hurry.' },
-      { id: 'express', label: 'Express (1–2 days)', price: freeShipping ? 0 : prices.express, reason: 'Air freight, priority handling.', why: 'Great speed at a fair price.' },
-      { id: 'overnight', label: 'Overnight (Next Day)', price: freeShipping ? 0 : prices.overnight, reason: 'Dedicated courier, 60‑minute hand‑off.', why: 'For emergencies – the fastest option.' }
+      { id: 'standard', label: 'Standard (3-5 days)', price: freeShipping ? 0 : prices.standard },
+      { id: 'express', label: 'Express (1-2 days)', price: freeShipping ? 0 : prices.express },
+      { id: 'overnight', label: 'Overnight (Next Day)', price: freeShipping ? 0 : prices.overnight }
     ];
 
     let html = '';
@@ -1267,9 +1325,8 @@
       if (freeShipping && tier.id !== 'standard') {
         html += `
           <div class="shipping-option disabled" style="opacity:0.5; cursor:not-allowed;">
-            <div class="tier-name"><span>${tier.label}</span><span class="tier-price">Free</span></div>
-            <div class="tier-reason">${tier.reason}</div>
-            <div class="tier-why">💡 ${tier.why}</div>
+            <span class="tier-name">${tier.label}</span>
+            <span class="tier-price">Free</span>
           </div>
         `;
         return;
@@ -1278,27 +1335,15 @@
       const priceDisplay = tier.price === 0 ? 'Free' : `Ksh ${tier.price.toFixed(2)}`;
       html += `
         <div class="shipping-option ${selected}" onclick="selectShippingTier('${tier.id}', ${tier.price})">
-          <div class="tier-name"><span>${tier.label}</span><span class="tier-price">${priceDisplay}</span></div>
-          <div class="tier-reason">${tier.reason}</div>
-          <div class="tier-why">💡 ${tier.why}</div>
+          <span class="tier-name">${tier.label}</span>
+          <span class="tier-price">${priceDisplay}</span>
         </div>
       `;
     });
     container.innerHTML = html;
-    if (freeShipping) {
-      selectedShippingTier = 'standard';
-      shippingCost = 0;
-      updateSummary(calculateSubtotal());
-    }
   }
 
   function selectShippingTier(tier, price) {
-    const subtotal = calculateSubtotal();
-    const freeShipping = subtotal >= FREE_SHIPPING_THRESHOLD;
-    if (freeShipping && tier !== 'standard') {
-      showToast('You have free standard shipping. To use Express or Overnight, you would need to pay extra.', 'info');
-      return;
-    }
     selectedShippingTier = tier;
     shippingCost = price;
     updateSummary(calculateSubtotal());
@@ -1311,7 +1356,8 @@
   function applyPromo() {
     const input = document.getElementById('promoInput');
     const code = input.value.trim();
-    if (!code) { promoDiscount = 0; document.getElementById('promoMessage').textContent = ''; updateSummary(calculateSubtotal()); return; }
+    const msgEl = document.getElementById('promoMessage');
+    if (!code) { promoDiscount = 0; msgEl.textContent = ''; updateSummary(calculateSubtotal()); return; }
     fetch('/api/promo/validate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1321,18 +1367,18 @@
       .then(data => {
         if (data.valid) {
           promoDiscount = data.discount;
-          document.getElementById('promoMessage').textContent = '✅ Promo applied!';
-          document.getElementById('promoMessage').style.color = '#16a34a';
+          msgEl.textContent = '✅ Promo applied!';
+          msgEl.style.color = '#16a34a';
         } else {
           promoDiscount = 0;
-          document.getElementById('promoMessage').textContent = '❌ ' + data.message;
-          document.getElementById('promoMessage').style.color = '#ef4444';
+          msgEl.textContent = '❌ ' + data.message;
+          msgEl.style.color = '#ef4444';
         }
         updateSummary(calculateSubtotal());
       })
       .catch(() => {
         promoDiscount = 0;
-        document.getElementById('promoMessage').textContent = 'Error validating promo.';
+        msgEl.textContent = 'Error validating promo.';
         updateSummary(calculateSubtotal());
       });
   }
@@ -1359,7 +1405,7 @@
   }
 
   // ================================================================
-  //  PAYMENT MODAL
+  //  PAYMENT
   // ================================================================
   function openPaymentModal(amount) {
     paymentTotal = amount;
@@ -1368,10 +1414,8 @@
     document.getElementById('paymentDetails').style.display = 'none';
     document.getElementById('phoneField').style.display = 'none';
     document.getElementById('bankField').style.display = 'none';
-    document.getElementById('paypalField').style.display = 'none';
     document.querySelectorAll('.method').forEach(el => el.classList.remove('selected'));
     document.getElementById('paymentStatus').textContent = '';
-    document.getElementById('paymentStatus').style.color = '';
     populateBankDropdown();
   }
 
@@ -1382,21 +1426,15 @@
     document.getElementById('paymentDetails').style.display = 'block';
     document.getElementById('phoneField').style.display = 'none';
     document.getElementById('bankField').style.display = 'none';
-    document.getElementById('paypalField').style.display = 'none';
     if (method === 'mpesa' || method === 'airtel') {
       document.getElementById('phoneField').style.display = 'block';
-      document.getElementById('paymentPhone').placeholder = method === 'mpesa' ? '0712345678' : '0712345678';
       document.getElementById('paymentPhone').value = '';
     } else if (method === 'bank') {
       document.getElementById('bankField').style.display = 'block';
       document.getElementById('paymentAccount').value = '';
       document.getElementById('bankSearch').value = '';
       document.getElementById('selectedBank').value = '';
-    } else if (method === 'paypal') {
-      document.getElementById('paypalField').style.display = 'block';
-      document.getElementById('paymentPaypalEmail').value = '';
     }
-    document.getElementById('paymentStatus').textContent = '';
   }
 
   function populateBankDropdown() {
@@ -1433,27 +1471,19 @@
       document.getElementById('paymentStatus').style.color = '#ef4444';
       return;
     }
-    let phone = '',
-      account = '',
-      bank = '',
-      pin = '';
+    let phone = '', account = '', bank = '', pin = '';
     if (selectedPaymentMethod === 'mpesa' || selectedPaymentMethod === 'airtel') {
       phone = document.getElementById('paymentPhone').value.trim();
       pin = document.getElementById('paymentPin').value.trim();
-      if (!phone) { document.getElementById('paymentStatus').textContent = '❌ Phone number required.'; document.getElementById('paymentStatus').style.color = '#ef4444'; return; }
-      if (!pin) { document.getElementById('paymentStatus').textContent = '❌ PIN required.'; document.getElementById('paymentStatus').style.color = '#ef4444'; return; }
+      if (!phone) { document.getElementById('paymentStatus').textContent = '❌ Phone number required.'; return; }
+      if (!pin) { document.getElementById('paymentStatus').textContent = '❌ PIN required.'; return; }
     } else if (selectedPaymentMethod === 'bank') {
       bank = document.getElementById('selectedBank').value || document.getElementById('bankSearch').value;
       account = document.getElementById('paymentAccount').value.trim();
       pin = document.getElementById('paymentBankPin').value.trim();
-      if (!bank) { document.getElementById('paymentStatus').textContent = '❌ Please select a bank.'; document.getElementById('paymentStatus').style.color = '#ef4444'; return; }
-      if (!account) { document.getElementById('paymentStatus').textContent = '❌ Account number required.'; document.getElementById('paymentStatus').style.color = '#ef4444'; return; }
-      if (!pin) { document.getElementById('paymentStatus').textContent = '❌ PIN required.'; document.getElementById('paymentStatus').style.color = '#ef4444'; return; }
-    } else if (selectedPaymentMethod === 'paypal') {
-      const email = document.getElementById('paymentPaypalEmail').value.trim();
-      pin = document.getElementById('paymentPaypalPin').value.trim();
-      if (!email) { document.getElementById('paymentStatus').textContent = '❌ PayPal email required.'; document.getElementById('paymentStatus').style.color = '#ef4444'; return; }
-      if (!pin) { document.getElementById('paymentStatus').textContent = '❌ Password required.'; document.getElementById('paymentStatus').style.color = '#ef4444'; return; }
+      if (!bank) { document.getElementById('paymentStatus').textContent = '❌ Please select a bank.'; return; }
+      if (!account) { document.getElementById('paymentStatus').textContent = '❌ Account number required.'; return; }
+      if (!pin) { document.getElementById('paymentStatus').textContent = '❌ PIN required.'; return; }
     }
 
     const token = window.customerToken;
@@ -1462,31 +1492,34 @@
     document.getElementById('paymentStatus').textContent = '⏳ Processing payment...';
     document.getElementById('paymentStatus').style.color = '#2563eb';
 
-    // Build address data based on delivery method
-    let addressData = {};
-    if (deliveryMethod === 'doorstep' && selectedAddressId) {
-      addressData.address_id = selectedAddressId;
-    } else if (deliveryMethod === 'pickup' && selectedPickupStationId) {
-      addressData.pickup_station_id = selectedPickupStationId;
-      addressData.recipient_name = document.getElementById('pickupRecipientName').value.trim();
-      addressData.recipient_phone = document.getElementById('pickupRecipientPhone').value.trim();
-    }
+    const deliveryAddress = document.getElementById('deliveryAddress').value.trim();
+    const recipientName = document.getElementById('recipientName').value.trim();
+    const recipientPhone = document.getElementById('recipientPhone').value.trim();
+    const deliveryInstructions = document.getElementById('deliveryInstructions').value.trim();
+    const customerLat = document.getElementById('customerLat').value;
+    const customerLng = document.getElementById('customerLng').value;
+    const locationAccuracy = document.getElementById('locationAccuracy').value;
 
     fetch('/api/payments/initiate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({
-          orderId: pendingOrderId,
-          method: selectedPaymentMethod,
-          amount: paymentTotal,
-          phone: phone,
-          account: account,
-          bank: bank,
-          pin: pin,
-          delivery_method: deliveryMethod,
-          address_data: addressData
-        })
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({
+        orderId: pendingOrderId,
+        method: selectedPaymentMethod,
+        amount: paymentTotal,
+        phone: phone,
+        account: account,
+        bank: bank,
+        pin: pin,
+        delivery_address: deliveryAddress,
+        recipient_name: recipientName,
+        recipient_phone: recipientPhone,
+        delivery_instructions: deliveryInstructions,
+        customer_lat: customerLat,
+        customer_lng: customerLng,
+        location_accuracy: locationAccuracy
       })
+    })
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -1529,30 +1562,12 @@
       return;
     }
 
-    // Validate address/pickup
-    if (deliveryMethod === 'doorstep') {
-      if (!selectedAddressId) {
-        alert('Please select a delivery address.');
-        return;
-      }
-    } else {
-      if (!selectedPickupStationId) {
-        alert('Please select a pickup station.');
-        return;
-      }
-      const recipientName = document.getElementById('pickupRecipientName').value.trim();
-      const recipientPhone = document.getElementById('pickupRecipientPhone').value.trim();
-      if (!recipientName || !recipientPhone) {
-        alert('Please enter recipient name and phone for pickup.');
-        return;
-      }
-    }
+    if (!validateLocation()) return;
 
     let total = calculateSubtotal();
     const shipping = shippingCost;
-    const deliveryFeeAmount = deliveryMethod === 'pickup' ? 0 : deliveryFee;
     const discount = promoDiscount;
-    const grandTotal = total + shipping + deliveryFeeAmount - discount;
+    const grandTotal = total + shipping - discount;
     if (grandTotal <= 0) {
       alert('Invalid total amount.');
       return;
@@ -1567,36 +1582,38 @@
       variant_name: item.variant_name || 'Default',
       variant_id: item.variant_id || null
     }));
+
+    const deliveryAddress = document.getElementById('deliveryAddress').value.trim();
+    const recipientName = document.getElementById('recipientName').value.trim();
+    const recipientPhone = document.getElementById('recipientPhone').value.trim();
+    const deliveryInstructions = document.getElementById('deliveryInstructions').value.trim();
+    const customerLat = document.getElementById('customerLat').value;
+    const customerLng = document.getElementById('customerLng').value;
+    const locationAccuracy = document.getElementById('locationAccuracy').value;
     const orderNotes = document.getElementById('orderNotes').value.trim();
 
     const token = window.customerToken;
 
-    // Build address data
-    let addressData = {};
-    if (deliveryMethod === 'doorstep') {
-      addressData.address_id = selectedAddressId;
-    } else {
-      addressData.pickup_station_id = selectedPickupStationId;
-      addressData.recipient_name = document.getElementById('pickupRecipientName').value.trim();
-      addressData.recipient_phone = document.getElementById('pickupRecipientPhone').value.trim();
-    }
-
     fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({
-          items,
-          total: grandTotal,
-          shipping_tier: selectedShippingTier,
-          shipping_cost: shipping,
-          order_notes: orderNotes,
-          promo_code: document.getElementById('promoInput').value.trim(),
-          discount: discount,
-          delivery_method: deliveryMethod,
-          address_data: addressData,
-          delivery_fee: deliveryFeeAmount
-        })
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({
+        items,
+        total: grandTotal,
+        shipping_tier: selectedShippingTier,
+        shipping_cost: shipping,
+        order_notes: orderNotes,
+        promo_code: document.getElementById('promoInput').value.trim(),
+        discount: discount,
+        delivery_address: deliveryAddress,
+        recipient_name: recipientName,
+        recipient_phone: recipientPhone,
+        delivery_instructions: deliveryInstructions,
+        customer_lat: customerLat,
+        customer_lng: customerLng,
+        location_accuracy: locationAccuracy
       })
+    })
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -1614,9 +1631,10 @@
   // ================================================================
   function startReservationTimer() {
     if (getCart().length === 0) { document.getElementById('stockTimer').style.display = 'none'; return; }
-    document.getElementById('stockTimer').style.display = 'block';
+    document.getElementById('stockTimer').style.display = 'inline-block';
     let timeLeft = reservationTime;
     const timerDisplay = document.getElementById('timerDisplay');
+    if (timerInterval) clearInterval(timerInterval);
     timerInterval = setInterval(() => {
       timeLeft--;
       const mins = Math.floor(timeLeft / 60);
@@ -1657,23 +1675,16 @@
   window.placeOrder = placeOrder;
   window.selectShippingTier = selectShippingTier;
   window.applyPromo = applyPromo;
-  window.showAddAddress = showAddAddress;
-  window.closeAddressModal = closeAddressModal;
-  window.saveAddress = saveAddress;
-  window.selectAddress = selectAddress;
-  window.detectLocation = detectLocation;
-  window.selectPickupStation = selectPickupStation;
-  window.setDeliveryMethod = setDeliveryMethod;
-  window.setModalDeliveryType = setModalDeliveryType;
-  window.loadSubCounties = loadSubCounties;
-  window.loadWards = loadWards;
-  window.loadPickupSubCounties = loadPickupSubCounties;
-  window.loadPickupWards = loadPickupWards;
+  window.detectMyLocation = detectMyLocation;
   window.selectPaymentMethod = selectPaymentMethod;
   window.submitPayment = submitPayment;
   window.closePaymentModal = closePaymentModal;
   window.filterBanks = filterBanks;
   window.selectBank = selectBank;
+  window.openProductPreview = openProductPreview;
+  window.closeProductPreview = closeProductPreview;
+  window.openReviewAllModal = openReviewAllModal;
+  window.closeReviewAll = closeReviewAll;
 </script>
 </body>
 </html>
