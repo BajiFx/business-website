@@ -8,11 +8,9 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    /* ===== RESET & BASE ===== */
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #f1f5f9; font-family: 'Segoe UI', system-ui, sans-serif; padding-bottom: 80px; }
 
-    /* ===== HEADER ===== */
     .header {
       background: #ffffff; color: #1e293b; padding: 8px 14px;
       border-bottom: 1px solid #e8ecf1; position: sticky; top: 0; z-index: 99;
@@ -23,12 +21,10 @@
     .header a:hover { color: #2563eb; }
     .header .header-right { display: flex; align-items: center; gap: 6px; }
 
-    /* ===== PAGE ===== */
     .account-page { max-width: 1200px; margin: 10px auto; padding: 0 12px; }
     .account-page h1 { font-size: 1.2rem; font-weight: 800; }
     .back-link { display: inline-block; margin-bottom: 10px; color: #2563eb; text-decoration: none; font-weight: 600; font-size: 0.85rem; }
 
-    /* ===== PROFILE CARD ===== */
     .account-card {
       background: white; border-radius: 14px; padding: 16px 20px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 12px;
@@ -98,7 +94,6 @@
     .btn-secondary:hover { background: #cbd5e1; }
     .btn-sm { padding: 3px 12px; font-size: 0.65rem; }
 
-    /* ===== STATS GRID ===== */
     .stats-grid {
       display: flex;
       flex-wrap: wrap;
@@ -148,7 +143,6 @@
     .stat-card.cancelled { background: linear-gradient(145deg, #fca5a5, #f87171); }
     .stat-card.pending_payment { background: linear-gradient(145deg, #fde68a, #fcd34d); }
 
-    /* ===== ADDRESS BOOK ===== */
     .address-item {
       display: flex;
       align-items: center;
@@ -168,7 +162,6 @@
     .address-item .address-text { font-size: 0.75rem; color: #475569; }
     .address-item .actions { display: flex; gap: 4px; }
 
-    /* ===== ORDER TABLE ===== */
     .order-table-wrapper {
       overflow-x: auto;
       margin-top: 8px;
@@ -247,7 +240,6 @@
       background: #dbeafe;
     }
 
-    /* ===== ORDER DETAIL ROW ===== */
     .order-detail-row {
       display: none;
       background: #f8fafc;
@@ -410,7 +402,6 @@
       font-size: 0.85rem;
     }
 
-    /* ===== MODAL ===== */
     .modal-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0,0,0,0.5); z-index: 9999;
@@ -427,7 +418,6 @@
     .location-suggestions div { padding:6px 10px; cursor:pointer; border-bottom:1px solid #e2e8f0; font-size:0.85rem; }
     .location-suggestions div:hover { background:#e2e8f0; }
 
-    /* ===== BOTTOM NAV ===== */
     .bottom-nav {
       position: fixed; bottom: 0; left: 0; right: 0;
       background: #ffffff; border-top: 1px solid #e8ecf1;
@@ -469,7 +459,6 @@
   <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Shop</a>
   <h1>👤 My Account</h1>
 
-  <!-- Profile Card -->
   <div class="account-card" id="accountCard">
     <div class="profile-header">
       <div class="avatar" id="avatarInitial">G</div>
@@ -483,23 +472,21 @@
       <button class="btn btn-success" onclick="viewOrders()"><i class="fas fa-box"></i> My Orders</button>
       <button class="btn btn-primary" onclick="location.href='/cart.html'"><i class="fas fa-shopping-cart"></i> Cart</button>
       <button class="btn btn-danger" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+      <button class="btn btn-danger" onclick="deleteAccount()"><i class="fas fa-trash"></i> Delete Account</button>
     </div>
   </div>
 
-  <!-- Address Book -->
   <div class="account-card">
     <h3 style="font-size:0.9rem; font-weight:700; margin:0 0 4px 0;">📍 Saved Addresses</h3>
     <div id="addressBookContainer"><p class="empty-msg">Loading addresses...</p></div>
     <button class="btn btn-primary btn-sm" onclick="showAddAddress()"><i class="fas fa-plus"></i> Add Address</button>
   </div>
 
-  <!-- Customer Dashboard Stats -->
   <div class="account-card">
     <h3 style="font-size:0.9rem; font-weight:700; margin:0 0 8px 0;">📊 Your Order Dashboard</h3>
     <div class="stats-grid" id="customerStatsGrid"></div>
   </div>
 
-  <!-- Orders Table -->
   <div id="orderHistory" style="margin-top:12px;">
     <h2 style="font-size:1.1rem; font-weight:800;">📦 My Orders</h2>
     <div id="ordersContainer">
@@ -507,7 +494,6 @@
     </div>
   </div>
 
-  <!-- Payment History -->
   <div class="account-card" style="margin-top:12px;">
     <h3 style="font-size:0.9rem; font-weight:700; margin:0 0 8px 0;">💳 Payment History</h3>
     <div id="paymentHistoryContainer"><p class="empty-msg">Loading payments...</p></div>
@@ -550,7 +536,7 @@
 <script src="/app.js"></script>
 <script>
 // ============================================================
-//  CUSTOMER ACCOUNT PAGE – With Table Layout
+//  CUSTOMER ACCOUNT PAGE – Full Functionality
 // ============================================================
 
 const token = window.customerToken;
@@ -575,9 +561,6 @@ function initSocket() {
   socket.on('return-requested', () => { loadCustomerDashboard(); });
 }
 
-// ============================================================
-//  LOAD DASHBOARD
-// ============================================================
 function loadCustomerDashboard() {
   Promise.all([
     fetch('/api/orders', { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
@@ -600,9 +583,6 @@ function loadCustomerDashboard() {
   });
 }
 
-// ============================================================
-//  STATS
-// ============================================================
 function renderCustomerStats(orders) {
   const grid = document.getElementById('customerStatsGrid');
   const statuses = ['pending_payment', 'pending', 'confirmed', 'shipped', 'delivered', 'received', 'cancelled'];
@@ -652,9 +632,6 @@ function filterOrdersByStatus(status) {
   renderOrdersTable(filtered);
 }
 
-// ============================================================
-//  RENDER ORDERS TABLE
-// ============================================================
 function renderOrdersTable(orders) {
   const container = document.getElementById('ordersContainer');
   if (!orders || orders.length === 0) {
@@ -699,7 +676,6 @@ function renderOrdersTable(orders) {
       </tr>
     `;
 
-    // Detail row
     html += `
       <tr class="order-detail-row ${isExpanded ? 'active' : ''}" id="detail-row-${order.id}">
         <td colspan="5">
@@ -719,21 +695,16 @@ function renderOrdersTable(orders) {
 
   container.innerHTML = html;
 
-  // Load chat for expanded orders
   if (expandedOrderId) {
     loadOrderChat(expandedOrderId);
     if (socket) socket.emit('join-order-room', expandedOrderId);
   }
 }
 
-// ============================================================
-//  BUILD ORDER DETAIL HTML
-// ============================================================
 function buildOrderDetail(order) {
   let history = order.status_history || [];
   if (typeof history === 'string') history = JSON.parse(history);
 
-  // Timeline
   const statusesList = ['pending_payment', 'pending', 'confirmed', 'shipped', 'delivered', 'received', 'cancelled'];
   let timelineHtml = '<div class="timeline">';
   statusesList.forEach(s => {
@@ -747,7 +718,6 @@ function buildOrderDetail(order) {
   });
   timelineHtml += '</div>';
 
-  // Status message
   let statusMessage = '';
   switch (order.status) {
     case 'pending_payment': statusMessage = 'Awaiting payment confirmation.'; break;
@@ -760,7 +730,6 @@ function buildOrderDetail(order) {
     default: statusMessage = '';
   }
 
-  // Items table
   let itemsHtml = '';
   if (order.items && order.items.length > 0) {
     itemsHtml = `
@@ -791,7 +760,6 @@ function buildOrderDetail(order) {
     itemsHtml = '<p style="font-size:0.8rem; color:#94a3b8;">No items</p>';
   }
 
-  // Delivery info
   let deliveryHtml = '';
   if (order.delivery_address || order.customer_lat) {
     deliveryHtml = `
@@ -805,7 +773,6 @@ function buildOrderDetail(order) {
     `;
   }
 
-  // Return/Refund info
   let extraInfo = '';
   if (returnsMap[order.id]) {
     const ret = returnsMap[order.id];
@@ -818,7 +785,6 @@ function buildOrderDetail(order) {
     extraInfo += `<span style="background:#dbeafe; padding:2px 10px; border-radius:20px; font-size:0.6rem; display:inline-block;">💰 Refund Pending</span>`;
   }
 
-  // Action buttons
   let actionsHtml = `
     <div class="action-buttons">
       <a href="/order-tracking.html?id=${order.id}" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> Track</a>
@@ -835,7 +801,6 @@ function buildOrderDetail(order) {
   }
   actionsHtml += `</div>`;
 
-  // Chat
   const chatId = `detail-chat-${order.id}`;
   const chatInputId = `detail-chat-input-${order.id}`;
 
@@ -881,9 +846,6 @@ function buildOrderDetail(order) {
   `;
 }
 
-// ============================================================
-//  TOGGLE ORDER DETAILS
-// ============================================================
 function toggleOrderDetails(orderId) {
   if (expandedOrderId === orderId) {
     expandedOrderId = null;
@@ -901,9 +863,6 @@ function toggleOrderDetails(orderId) {
   }
 }
 
-// ============================================================
-//  LOAD ORDER CHAT
-// ============================================================
 function loadOrderChat(orderId) {
   const chatBox = document.getElementById(`detail-chat-${orderId}`);
   if (!chatBox) return;
@@ -932,9 +891,6 @@ function loadOrderChat(orderId) {
   });
 }
 
-// ============================================================
-//  SEND ORDER CHAT
-// ============================================================
 function sendOrderChat(orderId, inputId, chatId) {
   const input = document.getElementById(inputId);
   const msg = input.value.trim();
@@ -961,9 +917,6 @@ function sendOrderChat(orderId, inputId, chatId) {
   .catch(() => alert('Network error.'));
 }
 
-// ============================================================
-//  ORDER ACTIONS
-// ============================================================
 async function cancelOrder(id) {
   const reason = prompt('Please provide a reason for cancellation:');
   if (!reason) return;
@@ -1051,9 +1004,7 @@ async function requestReturn(id) {
 }
 window.requestReturn = requestReturn;
 
-// ============================================================
-//  ADDRESS FUNCTIONS
-// ============================================================
+// ===== ADDRESS FUNCTIONS =====
 function loadAddresses() {
   const container = document.getElementById('addressBookContainer');
   const token = window.customerToken;
@@ -1178,9 +1129,7 @@ function deleteAddress(id) {
   .catch(() => alert('Network error.'));
 }
 
-// ============================================================
-//  PAYMENT HISTORY
-// ============================================================
+// ===== PAYMENT HISTORY =====
 function loadPaymentHistory() {
   const container = document.getElementById('paymentHistoryContainer');
   const token = window.customerToken;
@@ -1209,36 +1158,61 @@ function loadPaymentHistory() {
     .catch(() => { container.innerHTML = '<p class="empty-msg">Error loading payment history.</p>'; });
 }
 
-// ============================================================
-//  LOGOUT
-// ============================================================
+// ===== LOGOUT =====
 function logout() {
-  localStorage.removeItem('customerToken');
-  window.location.href = '/';
+  if (typeof window.logout === 'function') {
+    window.logout();
+  } else {
+    localStorage.removeItem('customerToken');
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('guest_cart');
+    window.location.href = '/';
+  }
 }
 window.logout = logout;
 
-// ============================================================
-//  VIEW ORDERS
-// ============================================================
+// ===== DELETE ACCOUNT =====
+async function deleteAccount() {
+  if (!confirm('⚠️ Are you sure you want to delete your account? This action cannot be undone and will delete all your data including orders, addresses, and payment history.')) return;
+  if (!confirm('⚠️ This is permanent! All your data will be lost. Are you absolutely sure?')) return;
+  
+  const token = window.customerToken;
+  try {
+    const res = await fetch('/api/auth/customer/delete', {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert('✅ Your account has been deleted.');
+      localStorage.removeItem('customerToken');
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('guest_cart');
+      window.location.href = '/';
+    } else {
+      alert('❌ Failed to delete account: ' + (data.error || 'Unknown error'));
+    }
+  } catch (err) {
+    alert('❌ Network error. Please try again.');
+  }
+}
+window.deleteAccount = deleteAccount;
+
+// ===== VIEW ORDERS =====
 function viewOrders() {
   document.getElementById('orderHistory').scrollIntoView({ behavior: 'smooth' });
 }
 window.viewOrders = viewOrders;
 
-// ============================================================
-//  INIT
-// ============================================================
+// ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {
   const user = window.currentUser || JSON.parse(localStorage.getItem('currentUser') || '{}');
 
-  // Set profile info
   if (user.name) {
     document.getElementById('accountName').textContent = user.name;
     document.getElementById('accountEmail').textContent = user.email;
     document.getElementById('avatarInitial').textContent = user.name.charAt(0).toUpperCase();
 
-    // Fix: Properly format the member since date
     if (user.createdAt) {
       const date = new Date(user.createdAt);
       if (!isNaN(date.getTime())) {
@@ -1270,6 +1244,7 @@ window.setDefaultAddress = setDefaultAddress;
 window.deleteAddress = deleteAddress;
 window.logout = logout;
 window.viewOrders = viewOrders;
+window.deleteAccount = deleteAccount;
 window.selectAddressSuggestion = selectAddressSuggestion;
 </script>
 </body>

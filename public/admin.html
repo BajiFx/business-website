@@ -431,6 +431,32 @@
       gap: 6px;
     }
 
+    /* ===== CUSTOMER TABLE ===== */
+    .customer-table-wrapper {
+      overflow-x: auto;
+      margin-top: 8px;
+    }
+    .customer-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    .customer-table th {
+      background: #f8fafc;
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 700;
+      color: #475569;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    .customer-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #f1f4f8;
+    }
+
+    /* ===== AUTH ===== */
     .auth-container {
       max-width: 380px;
       margin: 30px auto;
@@ -493,6 +519,7 @@
     .auth-status.success { color: #16a34a; background: #f0fdf4; }
     .hidden { display: none !important; }
 
+    /* ===== RESPONSIVE ===== */
     @media (max-width: 768px) {
       .dashboard-container { flex-direction: column; }
       .sidebar-cards {
@@ -521,17 +548,19 @@
   <h1><i class="fas fa-chart-pie"></i> Admin Panel</h1>
   <div class="nav-links">
     <a href="/" target="_blank">← Shop</a>
-    <a href="/admin.html" class="active">Dashboard</a>
+    <a href="/admin.html" class="active">📊 Dashboard</a>
     <a href="/admin-orders.html">📦 Orders</a>
-    <button class="logout-btn" id="logoutBtn" onclick="logout()">Logout</button>
+    <a href="#" onclick="scrollToSection('customerContainer')">👥 Customers</a>
+    <a href="#" onclick="scrollToSection('promoContainer')">🎁 Promos</a>
+    <button class="logout-btn" onclick="logout()">Logout</button>
   </div>
 </div>
 
 <!-- ===== AUTH ===== -->
 <div id="authContainer" class="auth-container">
   <div class="auth-tabs">
-    <button id="loginTab" class="active" onclick="showTab('login')">Login</button>
-    <button id="registerTab" onclick="showTab('register')">Register</button>
+    <button id="loginTab" class="active" onclick="showTab('login')">🔑 Login</button>
+    <button id="registerTab" onclick="showTab('register')">📝 Register</button>
   </div>
   <div id="loginForm" class="auth-form active">
     <h2>Welcome Back</h2>
@@ -566,10 +595,7 @@
 
 <!-- ===== DASHBOARD ===== -->
 <div id="dashboardContainer" class="hidden dashboard-container">
-  <!-- Sidebar Cards -->
   <div class="sidebar-cards" id="statsGrid"></div>
-
-  <!-- Order Panel -->
   <div class="order-panel" id="orderPanel">
     <div class="panel-header">
       <h2 id="panelTitle">📋 Orders <span class="badge" id="panelBadge">Click a card</span></h2>
@@ -582,13 +608,12 @@
 </div>
 
 <!-- ============================================================ -->
-<!--  SHOP PROFILE & PAYMENT SETTINGS & POLICIES                  -->
+<!--  SHOP PROFILE & PAYMENT SETTINGS                             -->
 <!-- ============================================================ -->
 <div id="settingsContainer" class="hidden settings-section" style="max-width: 1200px; margin: 20px auto; padding: 0 12px;">
   <h2>🏪 Shop Profile & Payment Settings</h2>
   <form id="shopForm" enctype="multipart/form-data">
     <div class="form-row">
-      <!-- Basic Info -->
       <div class="full"><label>Shop Name</label><input type="text" id="shopName" name="name" placeholder="My Shop" /></div>
       <div class="full"><label>Location</label><input type="text" id="shopLocation" name="location" placeholder="Nairobi, Kenya" /></div>
       <div class="full"><label>Address</label><input type="text" id="shopAddress" name="address" placeholder="Street, Building" /></div>
@@ -598,8 +623,6 @@
           <input type="text" id="shopLongitude" name="longitude" placeholder="Longitude" />
         </div>
       </div>
-
-      <!-- Logo & Cover -->
       <div class="full">
         <label>Logo</label>
         <input type="file" id="shopLogo" name="logo" accept="image/*" />
@@ -614,25 +637,18 @@
           <img id="coverPreviewImg" src="" alt="Cover" style="width:100%; height:100%; object-fit:cover; display:none;" />
         </div>
       </div>
-
-      <!-- Description -->
       <div class="full"><label>Description</label><textarea id="shopDesc" name="description" rows="3" placeholder="Describe your business..."></textarea></div>
       <div><label>Mission</label><textarea id="shopMission" name="mission" rows="2" placeholder="Your mission..."></textarea></div>
       <div><label>Vision</label><textarea id="shopVision" name="vision" rows="2" placeholder="Your vision..."></textarea></div>
-
-      <!-- Social Links -->
       <div class="full"><label><i class="fab fa-whatsapp"></i> WhatsApp</label><input type="text" id="shopWhatsapp" name="whatsapp" placeholder="254712345678" /></div>
       <div><label><i class="fab fa-tiktok"></i> TikTok</label><input type="text" id="shopTiktok" name="tiktok" placeholder="@myshop" /></div>
       <div><label><i class="fab fa-instagram"></i> Instagram</label><input type="text" id="shopInstagram" name="instagram" placeholder="@myshop" /></div>
       <div><label><i class="fab fa-facebook"></i> Facebook</label><input type="text" id="shopFacebook" name="facebook" placeholder="username" /></div>
       <div><label><i class="fas fa-phone"></i> Phone</label><input type="text" id="shopPhone" name="phone" placeholder="+254700000000" /></div>
 
-      <!-- ===== PAYMENT SETTINGS ===== -->
       <div class="full" style="border-top: 2px solid #e2e8f0; padding-top: 16px; margin-top: 8px;">
         <h3 style="font-size:1rem; font-weight:700; margin-bottom:12px;">💳 Payment Methods</h3>
       </div>
-
-      <!-- M-Pesa -->
       <div class="full">
         <div class="checkbox-group">
           <label><input type="checkbox" id="mpesaEnabled" name="mpesa_enabled" /> Enable M-Pesa</label>
@@ -640,8 +656,6 @@
         <label>M-Pesa Paybill Number</label>
         <input type="text" id="mpesaNumber" name="mpesa_number" placeholder="e.g., 123456" />
       </div>
-
-      <!-- Airtel Money -->
       <div class="full">
         <div class="checkbox-group">
           <label><input type="checkbox" id="airtelEnabled" name="airtel_enabled" /> Enable Airtel Money</label>
@@ -649,8 +663,6 @@
         <label>Airtel Money Number</label>
         <input type="text" id="airtelNumber" name="airtel_number" placeholder="e.g., 0712345678" />
       </div>
-
-      <!-- Bank Transfer -->
       <div class="full">
         <div class="checkbox-group">
           <label><input type="checkbox" id="bankEnabled" name="bank_enabled" /> Enable Bank Transfer</label>
@@ -662,8 +674,6 @@
         <label>Account Holder Name</label>
         <input type="text" id="bankAccountName" name="bank_account_name" placeholder="Your Business Name" />
       </div>
-
-      <!-- PayPal -->
       <div class="full">
         <div class="checkbox-group">
           <label><input type="checkbox" id="paypalEnabled" name="paypal_enabled" /> Enable PayPal</label>
@@ -672,18 +682,15 @@
         <input type="email" id="paypalEmail" name="paypal_email" placeholder="your@email.com" />
       </div>
 
-      <!-- ===== POLICIES SECTION ===== -->
       <div class="full" style="border-top: 2px solid #e2e8f0; padding-top: 16px; margin-top: 8px;">
         <h3 style="font-size:1rem; font-weight:700; margin-bottom:12px;">📋 Shop Policies</h3>
       </div>
-
       <div class="full">
         <div class="checkbox-group">
           <label><input type="checkbox" id="deliveryEnabled" name="delivery_enabled" /> Enable Delivery</label>
           <label><input type="checkbox" id="onlineOrdersEnabled" name="online_orders_enabled" /> Enable Online Orders</label>
         </div>
       </div>
-
       <div class="full"><label>Shipping Policy</label>
         <textarea id="shippingPolicy" name="shipping_policy" rows="4" placeholder="Our shipping policy..."></textarea>
       </div>
@@ -696,8 +703,6 @@
       <div class="full"><label>Privacy Policy</label>
         <textarea id="privacyPolicy" name="privacy_policy" rows="3" placeholder="Privacy policy..."></textarea>
       </div>
-
-      <!-- Submit -->
       <div class="full">
         <button type="submit" class="btn-save">💾 Save Shop & Payment Settings</button>
         <div id="settingsStatus" style="margin-top:8px; font-size:0.9rem;"></div>
@@ -711,8 +716,6 @@
 <!-- ============================================================ -->
 <div id="productContainer" class="hidden settings-section" style="max-width: 1200px; margin: 20px auto; padding: 0 12px;">
   <h2>📦 Product Manager</h2>
-
-  <!-- Add / Edit Product Form -->
   <form id="productForm" enctype="multipart/form-data">
     <input type="hidden" id="editProductId" value="" />
     <div class="form-row">
@@ -721,22 +724,19 @@
       <div><label>Old Price (Ksh)</label><input type="text" id="pOldPrice" name="old_price" placeholder="e.g., 799" /></div>
       <div><label>Discount (%)</label><input type="text" id="pDiscount" name="discount_percent" placeholder="e.g., 20" /></div>
       <div><label>Category</label><input type="text" id="pCategory" name="category" placeholder="e.g., Electronics, Fashion" /></div>
+      <div><label>Stock</label><input type="number" id="pStock" name="stock" placeholder="0" value="0" /></div>
       <div><label>Contact</label><input type="text" id="pContact" name="contact" value="+254700000000" /></div>
       <div><label>Rating</label><input type="text" id="pRating" name="rating" placeholder="e.g., 4.5" /></div>
       <div><label>Badge 1</label><input type="text" id="pBadge1" name="badge1" placeholder="Brand Official" /></div>
       <div><label>Badge 2</label><input type="text" id="pBadge2" name="badge2" placeholder="Fulfilled By Kilimall" /></div>
-      <div class="full"><label>Shipping Info</label><input type="text" id="pShipping" name="shipping" placeholder="Ships from Mavoko, select an address to view delivery times." /></div>
+      <div class="full"><label>Shipping Info</label><input type="text" id="pShipping" name="shipping" placeholder="Ships from Mavoko" /></div>
       <div class="full"><label>Description</label><textarea id="pDescription" name="description" rows="4" placeholder="Full product description..."></textarea></div>
       <div class="full checkbox-group">
         <label><input type="checkbox" id="pFlashSale" name="isFlashSale" /> 🔥 Flash Sale</label>
         <label><input type="checkbox" id="pNewArrival" name="isNewArrival" /> 🆕 New Arrival</label>
       </div>
-
-      <!-- Media Upload -->
       <div><label>Main Image</label><input type="file" id="pImage" name="image" accept="image/*" /></div>
       <div><label>Video</label><input type="file" id="pVideo" name="video" accept="video/*" /></div>
-
-      <!-- Variants -->
       <div class="full">
         <label>Color Variants</label>
         <div id="variantsContainer"></div>
@@ -746,8 +746,6 @@
     <button type="submit" class="btn-save" id="productSubmitBtn">➕ Add Product</button>
     <button type="button" class="btn-secondary" onclick="cancelEditProduct()" id="cancelEditBtn" style="display:none;">Cancel Edit</button>
   </form>
-
-  <!-- Product List -->
   <div style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
     <h3>📋 Your Products</h3>
     <div id="adminProductList"></div>
@@ -755,9 +753,9 @@
 </div>
 
 <!-- ============================================================ -->
-<!--  PROMO CODES MANAGEMENT                                        -->
+<!--  PROMO CODES MANAGEMENT                                       -->
 <!-- ============================================================ -->
-<div id="promoContainer" class="settings-section" style="max-width: 1200px; margin: 20px auto; padding: 0 12px;">
+<div id="promoContainer" class="hidden settings-section" style="max-width: 1200px; margin: 20px auto; padding: 0 12px;">
   <h2>🎁 Promo Codes</h2>
   <form id="promoForm" onsubmit="createPromo(event)">
     <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:end;">
@@ -778,15 +776,39 @@
 <!-- ============================================================ -->
 <!--  LOCATION REQUESTS                                            -->
 <!-- ============================================================ -->
-<div id="locationRequestsContainer" class="settings-section" style="max-width: 1200px; margin: 20px auto; padding: 0 12px;">
+<div id="locationRequestsContainer" class="hidden settings-section" style="max-width: 1200px; margin: 20px auto; padding: 0 12px;">
   <h2>📍 Location Access Requests</h2>
   <div id="locationRequestsList"><p class="empty-msg">Loading...</p></div>
 </div>
 
 <!-- ============================================================ -->
+<!--  CUSTOMER MANAGEMENT                                          -->
+<!-- ============================================================ -->
+<div id="customerContainer" class="hidden settings-section" style="max-width: 1200px; margin: 20px auto; padding: 0 12px;">
+  <h2>👥 Customer Management</h2>
+  <div class="customer-table-wrapper">
+    <table class="customer-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Orders</th>
+          <th>Total Spent</th>
+          <th>Joined</th>
+        </tr>
+      </thead>
+      <tbody id="customerTableBody">
+        <tr><td colspan="6" style="text-align:center; padding:20px; color:#94a3b8;">Loading customers...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============================================================ -->
 <!--  ADMIN LOGS                                                  -->
 <!-- ============================================================ -->
-<div id="logsContainer" class="settings-section" style="max-width: 1200px; margin: 20px auto; padding: 0 12px;">
+<div id="logsContainer" class="hidden settings-section" style="max-width: 1200px; margin: 20px auto; padding: 0 12px;">
   <h2>📋 Admin Activity Logs</h2>
   <div id="logsList" style="max-height:400px; overflow-y:auto;"></div>
 </div>
@@ -811,6 +833,7 @@
     document.getElementById('loginTab').classList.toggle('active', tab === 'login');
     document.getElementById('registerTab').classList.toggle('active', tab === 'register');
   }
+
   function togglePassword(inputId, btn) {
     const input = document.getElementById(inputId);
     const icon = btn.querySelector('i');
@@ -821,6 +844,10 @@
       input.type = 'password';
       icon.className = 'fas fa-eye';
     }
+  }
+
+  function scrollToSection(id) {
+    document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
   }
 
   async function checkAdminExists() {
@@ -934,6 +961,7 @@
     document.getElementById('productContainer').classList.add('hidden');
     document.getElementById('promoContainer').classList.add('hidden');
     document.getElementById('locationRequestsContainer').classList.add('hidden');
+    document.getElementById('customerContainer').classList.add('hidden');
     document.getElementById('logsContainer').classList.add('hidden');
     document.getElementById('logoutBtn').classList.add('hidden');
     if (socket) { socket.disconnect(); socket = null; }
@@ -947,6 +975,7 @@
     document.getElementById('productContainer').classList.remove('hidden');
     document.getElementById('promoContainer').classList.remove('hidden');
     document.getElementById('locationRequestsContainer').classList.remove('hidden');
+    document.getElementById('customerContainer').classList.remove('hidden');
     document.getElementById('logsContainer').classList.remove('hidden');
     document.getElementById('logoutBtn').classList.remove('hidden');
     initSocket();
@@ -956,6 +985,7 @@
     loadPromoCodes();
     loadLocationRequests();
     loadAdminLogs();
+    loadCustomers();
   }
 
   function initSocket() {
@@ -964,7 +994,6 @@
     socket.on('new-order-chat-message', () => { if (currentStatus) loadOrdersByStatus(currentStatus); });
     socket.on('order-status-updated', () => { if (currentStatus) loadOrdersByStatus(currentStatus); });
     socket.on('new-order', () => { loadDashboardStats(); if (currentStatus) loadOrdersByStatus(currentStatus); });
-    socket.on('bank-transfer-pending', () => { loadDashboardStats(); });
   }
 
   // ================================================================
@@ -1021,6 +1050,7 @@
     if (status === 'returns') { loadReturns(); return; }
     loadOrdersByStatus(status);
   }
+
   function refreshCurrentOrders() {
     if (currentStatus === 'returns') loadReturns();
     else if (currentStatus) loadOrdersByStatus(currentStatus);
@@ -1564,6 +1594,7 @@
             ${p.isFlashSale ? '🔥' : ''} ${p.isNewArrival ? '🆕' : ''}
             ${p.variants && p.variants.length > 0 ? `<span style="font-size:0.65rem; color:#64748b;">(${p.variants.length} colors)</span>` : ''}
             ${p.category ? `<span style="font-size:0.55rem; color:#64748b; background:#f1f5f9; padding:1px 8px; border-radius:8px;">${p.category}</span>` : ''}
+            <span style="font-size:0.55rem; color:#64748b;">Stock: ${p.stock || 0}</span>
           </div>
           <div class="actions">
             <button class="btn-secondary" onclick="editProduct(${p.id})">✏️ Edit</button>
@@ -1636,6 +1667,7 @@
       document.getElementById('pOldPrice').value = product.old_price || '';
       document.getElementById('pDiscount').value = product.discount_percent || '';
       document.getElementById('pCategory').value = product.category || '';
+      document.getElementById('pStock').value = product.stock || 0;
       document.getElementById('pContact').value = product.contact || '+254700000000';
       document.getElementById('pRating').value = product.rating || '';
       document.getElementById('pBadge1').value = product.badge1 || '';
@@ -1760,6 +1792,33 @@
   }
 
   // ================================================================
+  //  CUSTOMER MANAGEMENT
+  // ================================================================
+  async function loadCustomers() {
+    try {
+      const res = await fetch('/api/admin/customers', { headers: authHeaders() });
+      const customers = await res.json();
+      const tbody = document.getElementById('customerTableBody');
+      if (!customers || customers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#94a3b8;">No customers yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = customers.map(c => `
+        <tr>
+          <td style="padding:6px 10px; border-bottom:1px solid #f1f4f8;">${c.name}</td>
+          <td style="padding:6px 10px; border-bottom:1px solid #f1f4f8;">${c.email}</td>
+          <td style="padding:6px 10px; border-bottom:1px solid #f1f4f8;">${c.phone || '—'}</td>
+          <td style="padding:6px 10px; border-bottom:1px solid #f1f4f8;">${c.order_count || 0}</td>
+          <td style="padding:6px 10px; border-bottom:1px solid #f1f4f8;">Ksh ${parseFloat(c.total_spent || 0).toFixed(2)}</td>
+          <td style="padding:6px 10px; border-bottom:1px solid #f1f4f8;">${new Date(c.created_at).toLocaleDateString()}</td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      console.error('Error loading customers:', err);
+    }
+  }
+
+  // ================================================================
   //  ADMIN LOGS
   // ================================================================
   async function loadAdminLogs() {
@@ -1796,6 +1855,7 @@
   window.logout = logout;
   window.showTab = showTab;
   window.togglePassword = togglePassword;
+  window.scrollToSection = scrollToSection;
   window.handleCardClick = handleCardClick;
   window.refreshCurrentOrders = refreshCurrentOrders;
   window.addVariantRow = addVariantRow;
@@ -1816,6 +1876,7 @@
   window.deletePromo = deletePromo;
   window.approveLocation = approveLocation;
   window.rejectLocation = rejectLocation;
+  window.loadCustomers = loadCustomers;
 </script>
 </body>
 </html>

@@ -14,6 +14,7 @@ const cloudinary = require('cloudinary').v2;
 const nodemailer = require('nodemailer');
 const { body, validationResult } = require('express-validator');
 const PDFDocument = require('pdfkit');
+const crypto = require('crypto');
 require('dotenv').config();
 
 // Increase max listeners
@@ -310,7 +311,7 @@ async function getSetting(key, defaultValue) {
   return result.rows[0].value;
 }
 
-// ---- Shipping cost calculation (same logic as frontend) ----
+// ---- Shipping cost calculation ----
 function calculateShippingCost(subtotal, tier) {
   const FREE_SHIPPING_THRESHOLD = 40000;
   let standard, express, overnight;
@@ -331,6 +332,11 @@ function calculateShippingCost(subtotal, tier) {
     case 'overnight': return overnight;
     default: return standard;
   }
+}
+
+// ---- Password Reset Token Generator ----
+function generateResetToken() {
+  return crypto.randomBytes(32).toString('hex');
 }
 
 // ============================================================
@@ -457,10 +463,10 @@ app.get('/api/shop/policies', async (req, res) => {
     const result = await pool.query('SELECT shipping_policy, return_policy, terms_policy, privacy_policy, delivery_enabled, online_orders_enabled FROM shop LIMIT 1');
     if (result.rows.length === 0) {
       return res.json({
-        shipping_policy: 'We deliver to all major towns in Kenya. Delivery takes 2-5 working days.',
-        return_policy: 'Returns are accepted within 14 days of delivery. Products must be in original condition.',
-        terms_policy: 'By using our platform, you agree to our terms and conditions.',
-        privacy_policy: 'We protect your personal data and never share it with third parties.',
+        shipping_policy: '🚚 We deliver to all major towns in Kenya. Delivery takes 2-5 working days.',
+        return_policy: '🔄 Returns are accepted within 14 days of delivery. Products must be in original condition.',
+        terms_policy: '📋 By using our platform, you agree to our terms and conditions.',
+        privacy_policy: '🔒 We protect your personal data and never share it with third parties.',
         delivery_enabled: true,
         online_orders_enabled: true
       });
@@ -507,7 +513,9 @@ app.get('/api/products', async (req, res) => {
       } else if (product.image) {
         firstImage = product.image;
       }
-      return { ...product, variants, image: firstImage };
+      let totalStock = 0;
+      variants.forEach(v => { totalStock += v.stock || 0; });
+      return { ...product, variants, image: firstImage, stock: totalStock || product.stock || 0 };
     }));
     res.json(products);
   } catch (err) {
@@ -553,7 +561,7 @@ app.post('/api/products', authMiddleware, upload.fields([{ name: 'image' }, { na
   try {
     const { name, price, category, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival, description,
             shipping_fee, free_shipping_eligible, return_enabled, return_window_days, restocking_fee_percent,
-            return_shipping_paid_by, return_condition, variants, old_price, discount_percent } = req.body;
+            return_shipping_paid_by, return_condition, variants, old_price, discount_percent, stock } = req.body;
 
     let mainImage = null;
     if (req.files['image']) {
@@ -565,13 +573,13 @@ app.post('/api/products', authMiddleware, upload.fields([{ name: 'image' }, { na
     const result = await pool.query(`
       INSERT INTO products (name, price, old_price, discount_percent, category, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival,
         image, description, shipping_fee, free_shipping_eligible, return_enabled, return_window_days,
-        restocking_fee_percent, return_shipping_paid_by, return_condition)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING *
+        restocking_fee_percent, return_shipping_paid_by, return_condition, stock)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING *
     `, [name, price, old_price || null, discount_percent || null, category, contact, rating, badge1, badge2,
         shipping, isFlashSale === 'true', isNewArrival === 'true', mainImage, description,
         shipping_fee, free_shipping_eligible === 'true', return_enabled !== 'false',
         return_window_days || 14, restocking_fee_percent || 0, return_shipping_paid_by || 'buyer',
-        return_condition || 'unopened']);
+        return_condition || 'unopened', stock || 0]);
 
     const product = result.rows[0];
 
@@ -605,7 +613,7 @@ app.put('/api/products/:id', authMiddleware, upload.fields([{ name: 'image' }, {
     const id = parseInt(req.params.id);
     const { name, price, category, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival, description,
             shipping_fee, free_shipping_eligible, return_enabled, return_window_days, restocking_fee_percent,
-            return_shipping_paid_by, return_condition, variants, old_price, discount_percent } = req.body;
+            return_shipping_paid_by, return_condition, variants, old_price, discount_percent, stock } = req.body;
 
     const existing = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
     if (existing.rows.length === 0) return res.status(404).json({ error: 'Product not found' });
@@ -625,20 +633,18 @@ app.put('/api/products/:id', authMiddleware, upload.fields([{ name: 'image' }, {
           isFlashSale = $11, isNewArrival = $12, image = $13, description = $14,
           shipping_fee = $15, free_shipping_eligible = $16,
           return_enabled = $17, return_window_days = $18, restocking_fee_percent = $19,
-          return_shipping_paid_by = $20, return_condition = $21
-      WHERE id = $22 RETURNING *
+          return_shipping_paid_by = $20, return_condition = $21, stock = $22
+      WHERE id = $23 RETURNING *
     `, [name, price, old_price || null, discount_percent || null, category,
         contact, rating, badge1, badge2, shipping,
         isFlashSale === 'true', isNewArrival === 'true', image, description,
         shipping_fee, free_shipping_eligible === 'true',
         return_enabled !== 'false', return_window_days || 14, restocking_fee_percent || 0,
-        return_shipping_paid_by || 'buyer', return_condition || 'unopened', id]);
+        return_shipping_paid_by || 'buyer', return_condition || 'unopened', stock || 0, id]);
 
     const product = result.rows[0];
 
-    // --- FIX: Only delete variants if new variants are provided ---
     if (variants && typeof variants === 'string') {
-      // Delete existing variants only if we have new ones to replace them
       await pool.query('DELETE FROM product_variants WHERE product_id = $1', [id]);
       const variantData = JSON.parse(variants);
       const variantImages = req.files['variantImages'] || [];
@@ -656,7 +662,6 @@ app.put('/api/products/:id', authMiddleware, upload.fields([{ name: 'image' }, {
         );
       }
     }
-    // If no variants sent, keep existing ones unchanged.
 
     res.json({ success: true, product });
   } catch (err) {
@@ -781,7 +786,7 @@ app.post('/api/auth/register', [
     const hashedPassword = await bcrypt.hash(password, 10);
     await pool.query('INSERT INTO admin_users (email, password) VALUES ($1, $2)', [email, hashedPassword]);
     const token = generateToken(email, 'admin');
-    res.json({ success: true, token, message: 'Admin account created successfully!' });
+    res.json({ success: true, token, message: '✅ Admin account created successfully!' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -817,10 +822,12 @@ app.get('/api/auth/verify', authMiddleware, (req, res) => {
   res.json({ authenticated: true, role: req.role });
 });
 
-// ---- Customer Auth ----
+// ---- Customer Auth (WITH PHONE NUMBER REQUIRED) ----
 app.post('/api/auth/customer/register', [
   body('name').notEmpty().withMessage('Name required'),
   body('email').isEmail().withMessage('Invalid email'),
+  body('phone').notEmpty().withMessage('Phone number required'),
+  body('phone').isLength({ min: 10, max: 15 }).withMessage('Phone number must be 10-15 digits'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
 ], async (req, res) => {
   const errors = validationResult(req);
@@ -829,13 +836,27 @@ app.post('/api/auth/customer/register', [
   }
 
   try {
-    const { name, email, password } = req.body;
+    const { name, email, phone, password } = req.body;
+    
+    // Clean phone number (remove non-digits)
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    
+    // Check if email already exists
     const existing = await pool.query('SELECT * FROM customers WHERE email = $1', [email]);
-    if (existing.rows.length > 0) return res.status(409).json({ error: 'Email already registered.' });
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ error: 'Email already registered.' });
+    }
+    
+    // Check if phone already exists
+    const existingPhone = await pool.query('SELECT * FROM customers WHERE phone = $1', [cleanPhone]);
+    if (existingPhone.rows.length > 0) {
+      return res.status(409).json({ error: 'Phone number already registered.' });
+    }
+    
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await pool.query(
-      'INSERT INTO customers (name, email, password, phone) VALUES ($1, $2, $3, $4) RETURNING id, name, email, phone',
-      [name, email, hashedPassword, '']
+      'INSERT INTO customers (name, email, password, phone) VALUES ($1, $2, $3, $4) RETURNING id, name, email, phone, created_at',
+      [name, email, hashedPassword, cleanPhone]
     );
     const customer = result.rows[0];
     await pool.query('INSERT INTO carts (customer_id, items) VALUES ($1, $2)', [customer.id, '[]']);
@@ -910,6 +931,111 @@ app.post('/api/auth/customer/check-email', async (req, res) => {
     const result = await pool.query('SELECT id FROM customers WHERE email = $1', [email]);
     res.json({ exists: result.rows.length > 0 });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Delete Account ----
+app.delete('/api/auth/customer/delete', authMiddleware, async (req, res) => {
+  try {
+    const customerId = req.userId;
+    await pool.query('BEGIN');
+    await pool.query(`
+      DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE customer_id = $1)
+    `, [customerId]);
+    await pool.query(`
+      DELETE FROM order_chat_messages WHERE order_id IN (SELECT id FROM orders WHERE customer_id = $1)
+    `, [customerId]);
+    await pool.query('DELETE FROM orders WHERE customer_id = $1', [customerId]);
+    await pool.query('DELETE FROM carts WHERE customer_id = $1', [customerId]);
+    await pool.query('DELETE FROM customer_addresses WHERE customer_id = $1', [customerId]);
+    await pool.query('DELETE FROM wishlist WHERE customer_id = $1', [customerId]);
+    await pool.query('DELETE FROM returns WHERE customer_id = $1', [customerId]);
+    await pool.query('DELETE FROM product_reviews WHERE customer_id = $1', [customerId]);
+    await pool.query('DELETE FROM payments WHERE customer_id = $1', [customerId]);
+    await pool.query('DELETE FROM location_requests WHERE customer_id = $1', [customerId]);
+    await pool.query('DELETE FROM chat_messages WHERE customer_id = $1', [customerId]);
+    await pool.query('DELETE FROM customers WHERE id = $1', [customerId]);
+    await pool.query('COMMIT');
+    res.json({ success: true, message: 'Account deleted successfully.' });
+  } catch (err) {
+    await pool.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Password Reset ----
+app.post('/api/auth/forgot-password', [
+  body('email').isEmail().withMessage('Invalid email')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  try {
+    const { email } = req.body;
+    const result = await pool.query('SELECT id, email FROM customers WHERE email = $1', [email]);
+    if (result.rows.length === 0) {
+      return res.json({ success: true, message: 'If your email is registered, you will receive a reset link.' });
+    }
+
+    const token = generateResetToken();
+    const expiresAt = new Date(Date.now() + 3600000);
+
+    await pool.query(
+      'INSERT INTO password_resets (email, token, expires_at) VALUES ($1, $2, $3) ON CONFLICT (email) DO UPDATE SET token = $2, expires_at = $3',
+      [email, token, expiresAt]
+    );
+
+    const resetLink = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password.html?token=${token}`;
+    await sendEmail({
+      to: email,
+      subject: '🔑 Reset Your Password',
+      html: `
+        <h2>Password Reset Request</h2>
+        <p>Click the link below to reset your password. This link expires in 1 hour.</p>
+        <p><a href="${resetLink}" style="background:#2563eb;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;">Reset Password</a></p>
+        <p>If you didn't request this, please ignore this email.</p>
+      `,
+      text: `Reset your password by visiting: ${resetLink}`
+    });
+
+    res.json({ success: true, message: 'If your email is registered, you will receive a reset link.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/reset-password', [
+  body('token').notEmpty().withMessage('Token required'),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  try {
+    const { token, password } = req.body;
+    const result = await pool.query(
+      'SELECT email FROM password_resets WHERE token = $1 AND expires_at > NOW()',
+      [token]
+    );
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'Invalid or expired reset token.' });
+    }
+
+    const email = result.rows[0].email;
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await pool.query('UPDATE customers SET password = $1 WHERE email = $2', [hashedPassword, email]);
+    await pool.query('DELETE FROM password_resets WHERE token = $1', [token]);
+
+    res.json({ success: true, message: '✅ Password reset successfully! You can now login.' });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1036,14 +1162,14 @@ app.post('/api/promo/validate', async (req, res) => {
       discount = promo.discount_value;
     }
     discount = Math.min(discount, subtotal);
-    res.json({ valid: true, discount, message: 'Promo applied!' });
+    res.json({ valid: true, discount, message: '🎉 Promo applied!' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ---- PROMO CODES ADMIN (NEW) ----
+// ---- PROMO CODES ADMIN ----
 app.get('/api/admin/promo-codes', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   try {
@@ -1059,9 +1185,6 @@ app.post('/api/admin/promo-codes', authMiddleware, [
   body('code').notEmpty().withMessage('Code required'),
   body('discount_type').isIn(['percentage', 'fixed']).withMessage('Invalid type'),
   body('discount_value').isNumeric().withMessage('Discount value must be a number'),
-  body('min_order_value').optional().isNumeric(),
-  body('expires_at').optional().isISO8601(),
-  body('usage_limit').optional().isInt()
 ], async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const errors = validationResult(req);
@@ -1117,8 +1240,7 @@ app.get('/api/customer/chat', authMiddleware, async (req, res) => {
     const result = await pool.query(
       `SELECT cm.*, c.name AS customer_name
        FROM chat_messages cm
-       LEFT JOIN customers c ON cm.customer_id = c.id
-       WHERE cm.customer_id = $1
+       LEFT JOIN customers c ON cm.customer_id = c.id       WHERE cm.customer_id = $1
        ORDER BY timestamp DESC LIMIT 20`,
       [req.userId]
     );
@@ -1247,7 +1369,7 @@ app.post('/api/admin/location/update', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
-// PAYMENT ROUTES (M-Pesa, Airtel, Bank)
+// PAYMENT ROUTES
 // ============================================================
 
 async function initiateMpesaPayment(phone, amount, orderId, accountRef) {
@@ -1445,7 +1567,7 @@ app.post('/api/payments/initiate', authMiddleware, async (req, res) => {
     res.json({
       success: isSuccess,
       payment: payment,
-      message: isSuccess ? 'Payment successful! Your order has been confirmed.' : 'Payment failed. Please try again.',
+      message: isSuccess ? '✅ Payment successful! Your order has been confirmed.' : '❌ Payment failed. Please try again.',
       transactionId
     });
 
@@ -1492,7 +1614,6 @@ app.get('/api/payments/customer', authMiddleware, async (req, res) => {
 
 app.post('/api/orders', authMiddleware, [
   body('items').isArray().withMessage('Items must be an array'),
-  // We no longer require total because we recalc
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -1512,19 +1633,15 @@ app.post('/api/orders', authMiddleware, [
   } = req.body;
 
   try {
-    // --- SERVER-SIDE RECALCULATION ---
-    // 1. Calculate subtotal from items
     let subtotal = 0;
     for (const item of items) {
       const priceNum = parseFloat(item.price.replace(/[^0-9.]/g,'')) || 0;
       subtotal += priceNum * item.quantity;
     }
 
-    // 2. Calculate shipping cost based on subtotal and tier
     const tier = shipping_tier || 'standard';
     const shippingCost = calculateShippingCost(subtotal, tier);
 
-    // 3. Validate promo code and calculate discount
     let discount = 0;
     if (promo_code) {
       const promoResult = await pool.query(
@@ -1540,16 +1657,13 @@ app.post('/api/orders', authMiddleware, [
             discount = promo.discount_value;
           }
           discount = Math.min(discount, subtotal);
-          // Increment usage
           await pool.query('UPDATE promo_codes SET used_count = used_count + 1 WHERE id = $1', [promo.id]);
         }
       }
     }
 
-    // 4. Final total
     const total = subtotal + shippingCost - discount;
 
-    // --- Now proceed with order creation ---
     let orderRef;
     let unique = false;
     while (!unique) {
@@ -1597,6 +1711,16 @@ app.post('/api/orders', authMiddleware, [
     await pool.query('COMMIT');
 
     io.emit('new-order', { orderId: order.id });
+
+    try {
+      const customerResult = await pool.query('SELECT name, email FROM customers WHERE id = $1', [customerId]);
+      if (customerResult.rows.length > 0) {
+        const mailData = orderConfirmationEmail(order, customerResult.rows[0].name);
+        await sendEmail({ to: customerResult.rows[0].email, ...mailData });
+      }
+    } catch (emailErr) {
+      console.error('⚠️ Email send failed:', emailErr.message);
+    }
 
     res.status(201).json({ success: true, order, requiresPayment: true });
 
@@ -1691,13 +1815,13 @@ app.get('/api/orders/:id/tracking', authMiddleware, async (req, res) => {
     order.items = itemsResult.rows;
     let statusMessage = '';
     switch (order.status) {
-      case 'pending_payment': statusMessage = 'Awaiting payment confirmation.'; break;
-      case 'pending': statusMessage = 'Your order is being reviewed.'; break;
-      case 'confirmed': statusMessage = 'Your order is confirmed and being prepared.'; break;
-      case 'shipped': statusMessage = 'Your order is on the way.'; break;
-      case 'delivered': statusMessage = 'Please collect within 7 working days.'; break;
-      case 'received': statusMessage = 'You have confirmed receipt. Thank you!'; break;
-      case 'cancelled': statusMessage = 'This order has been cancelled.'; break;
+      case 'pending_payment': statusMessage = '⏳ Awaiting payment confirmation.'; break;
+      case 'pending': statusMessage = '📋 Your order is being reviewed.'; break;
+      case 'confirmed': statusMessage = '✅ Your order is confirmed and being prepared.'; break;
+      case 'shipped': statusMessage = '🚚 Your order is on the way.'; break;
+      case 'delivered': statusMessage = '📦 Please collect within 7 working days.'; break;
+      case 'received': statusMessage = '✔️ You have confirmed receipt. Thank you!'; break;
+      case 'cancelled': statusMessage = '❌ This order has been cancelled.'; break;
       default: statusMessage = 'Status unknown.';
     }
     res.json({ ...order, statusMessage });
@@ -2048,7 +2172,6 @@ app.put('/api/orders/:id/confirm', authMiddleware, async (req, res) => {
     await appendOrderStatus(orderId, 'confirmed');
     await logAdminActivity(req.userId, 'CONFIRM_ORDER', { orderId });
 
-    // --- DECREMENT STOCK ---
     const itemsResult = await pool.query('SELECT * FROM order_items WHERE order_id = $1', [orderId]);
     for (const item of itemsResult.rows) {
       if (item.variant_id) {
@@ -2057,41 +2180,40 @@ app.put('/api/orders/:id/confirm', authMiddleware, async (req, res) => {
           [item.quantity, item.variant_id]
         );
       } else {
-        // If no variant, maybe decrement product stock? Not implemented; we could ignore.
+        await pool.query(
+          'UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1',
+          [item.quantity, item.product_id]
+        );
       }
     }
 
     const items = itemsResult.rows;
 
     const ref = order.order_ref || `#${order.id}`;
-    let message = `<h2>✅ Order ${ref} Confirmed!</h2>`;
-    message += `<p>Dear ${order.customer_name},</p>`;
-    message += `<p>Your order has been confirmed. Here are the details:</p>`;
-    message += `<table border="1" cellpadding="5" style="border-collapse:collapse; width:100%; font-family:Arial, sans-serif;">`;
-    message += `<tr style="background:#f1f5f9;"><th>Product</th><th>Variant</th><th>Qty</th><th>Unit Price</th><th>Subtotal</th><th>Product ID</th><th>Status</th></tr>`;
+    let message = `✅ **Order ${ref} Confirmed!**\n\n`;
+    message += `Dear ${order.customer_name},\n\n`;
+    message += `Your order has been confirmed. Here are the details:\n\n`;
+    message += `📦 **Order Items:**\n`;
     let total = 0;
-    items.forEach(item => {
+    items.forEach((item, index) => {
       const priceNum = parseFloat(item.price.replace(/[^0-9.]/g, '')) || 0;
       const subtotal = priceNum * item.quantity;
       total += subtotal;
+      const variant = item.variant_name || 'Default';
       const uniqueId = item.unique_id || '—';
-      const variantName = item.variant_name || 'Default';
-      message += `<tr>
-        <td>${item.product_name}</td>
-        <td>${variantName}</td>
-        <td>${item.quantity}</td>
-        <td>Ksh ${priceNum.toFixed(2)}</td>
-        <td>Ksh ${subtotal.toFixed(2)}</td>
-        <td style="font-family:monospace; font-size:0.8rem;">${uniqueId}</td>
-        <td>✅</td>
-      </tr>`;
+      message += `${index+1}. ${item.product_name} (${variant}) x${item.quantity} – Ksh ${subtotal.toFixed(2)} (ID: ${uniqueId})\n`;
     });
-    message += `</table>`;
-    message += `<p><strong>Total: Ksh ${Number(order.total).toFixed(2)}</strong></p>`;
-    message += `<p>📦 Order Date: ${new Date(order.created_at).toLocaleString()}</p>`;
-    message += `<p>🆔 Order Reference: ${ref}</p>`;
-    message += `<p>📍 Delivery: ${order.delivery_address || order.delivery_location_name || 'Not provided'}</p>`;
-    message += `<p>Thank you for shopping with us!</p>`;
+    message += `\n💰 **Total:** Ksh ${Number(order.total).toFixed(2)}\n\n`;
+    message += `📍 **Delivery Location:**\n`;
+    message += `   ${order.delivery_address || 'Not provided'}\n`;
+    if (order.recipient_name) message += `   👤 Recipient: ${order.recipient_name} (${order.recipient_phone || 'N/A'})\n`;
+    if (order.delivery_instructions) message += `   📝 Instructions: ${order.delivery_instructions}\n`;
+    if (order.customer_lat && order.customer_lng) {
+      message += `   🗺️ GPS: ${order.customer_lat}, ${order.customer_lng}\n`;
+    }
+    message += `\n📅 Order Date: ${new Date(order.created_at).toLocaleString()}\n`;
+    message += `🆔 Reference: ${ref}\n\n`;
+    message += `Thank you for shopping with us! 🙏`;
 
     await pool.query('INSERT INTO order_chat_messages (order_id, from_user, message) VALUES ($1, $2, $3)',
       [orderId, 'Seller', message]);
@@ -2105,7 +2227,7 @@ app.put('/api/orders/:id/confirm', authMiddleware, async (req, res) => {
         console.error('⚠️ Email send failed:', emailErr.message);
       }
     }
-    res.json({ success: true, message: 'Order confirmed.' });
+    res.json({ success: true, message: '✅ Order confirmed.' });
   } catch (err) {
     console.error('Confirm error:', err);
     res.status(500).json({ error: err.message });
@@ -2343,11 +2465,17 @@ app.get('/api/admin/logs', authMiddleware, async (req, res) => {
   }
 });
 
-// ---- Bulk shipping rules ----
-app.get('/api/admin/bulk-rules', authMiddleware, async (req, res) => {
+// ---- Customer Management (Admin) ----
+app.get('/api/admin/customers', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   try {
-    const result = await pool.query('SELECT * FROM bulk_shipping_rules ORDER BY created_at DESC');
+    const result = await pool.query(`
+      SELECT id, name, email, phone, created_at,
+      (SELECT COUNT(*) FROM orders WHERE customer_id = customers.id) as order_count,
+      (SELECT SUM(total) FROM orders WHERE customer_id = customers.id AND status IN ('confirmed', 'shipped', 'delivered', 'received')) as total_spent
+      FROM customers
+      ORDER BY created_at DESC
+    `);
     res.json(result.rows);
   } catch (err) {
     console.error(err);
@@ -2355,30 +2483,80 @@ app.get('/api/admin/bulk-rules', authMiddleware, async (req, res) => {
   }
 });
 
-app.post('/api/admin/bulk-rules', authMiddleware, async (req, res) => {
+app.get('/api/admin/customers/:id', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
-  const { trigger_type, trigger_value, bulk_calculation, bulk_rate, discount_percent, tier, applicable_to, product_id } = req.body;
+  const id = parseInt(req.params.id);
   try {
-    await pool.query(`
-      INSERT INTO bulk_shipping_rules (trigger_type, trigger_value, bulk_calculation, bulk_rate, discount_percent, tier, applicable_to, product_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-    `, [trigger_type, trigger_value, bulk_calculation, bulk_rate || null, discount_percent || null,
-        tier || 'standard', applicable_to || 'all', product_id || null]);
-    await logAdminActivity(req.userId, 'CREATE_BULK_RULE', { trigger_type });
-    res.json({ success: true });
+    const result = await pool.query(`
+      SELECT id, name, email, phone, created_at
+      FROM customers WHERE id = $1
+    `, [id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Customer not found' });
+    res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete('/api/admin/bulk-rules/:id', authMiddleware, async (req, res) => {
+// ---- Bulk Order Actions ----
+app.post('/api/admin/orders/bulk', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
-  const id = parseInt(req.params.id);
+  const { orderIds, action, status, tracking_number } = req.body;
+  if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
+    return res.status(400).json({ error: 'No orders selected.' });
+  }
   try {
-    await pool.query('DELETE FROM bulk_shipping_rules WHERE id = $1', [id]);
-    await logAdminActivity(req.userId, 'DELETE_BULK_RULE', { id });
-    res.json({ success: true });
+    const results = [];
+    for (const id of orderIds) {
+      const orderId = parseInt(id);
+      if (action === 'update_status' && status) {
+        await pool.query(
+          `UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2`,
+          [status, orderId]
+        );
+        await appendOrderStatus(orderId, status, 'Bulk status update');
+        results.push({ id: orderId, status });
+      } else if (action === 'delete') {
+        await pool.query('DELETE FROM order_items WHERE order_id = $1', [orderId]);
+        await pool.query('DELETE FROM order_chat_messages WHERE order_id = $1', [orderId]);
+        await pool.query('DELETE FROM orders WHERE id = $1', [orderId]);
+        results.push({ id: orderId, action: 'deleted' });
+      }
+    }
+    await logAdminActivity(req.userId, 'BULK_ORDER_ACTION', { action, count: orderIds.length });
+    res.json({ success: true, results });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Export Orders (CSV) ----
+app.get('/api/admin/orders/export', authMiddleware, async (req, res) => {
+  if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
+  try {
+    const result = await pool.query(`
+      SELECT o.id, o.order_ref, o.created_at, o.status, o.total,
+             c.name as customer_name, c.email as customer_email,
+             o.delivery_address, o.recipient_name, o.recipient_phone
+      FROM orders o
+      JOIN customers c ON o.customer_id = c.id
+      ORDER BY o.created_at DESC
+    `);
+    const rows = result.rows;
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'No orders to export.' });
+    }
+
+    let csv = 'Order ID,Reference,Date,Status,Total,Customer,Email,Delivery Address,Recipient,Phone\n';
+    rows.forEach(row => {
+      csv += `${row.id},${row.order_ref || 'N/A'},${new Date(row.created_at).toLocaleDateString()},${row.status},${row.total},${row.customer_name},${row.customer_email},${row.delivery_address || 'N/A'},${row.recipient_name || 'N/A'},${row.recipient_phone || 'N/A'}\n`;
+    });
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=orders-${new Date().toISOString().slice(0,10)}.csv`);
+    res.send(csv);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -2407,24 +2585,24 @@ app.get('/api/orders/:id/receipt', authMiddleware, async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename=receipt-${order.order_ref || order.id}.pdf`);
     doc.pipe(res);
 
-    doc.fontSize(20).text('RECEIPT', { align: 'center' });
+    doc.fontSize(20).text('🧾 RECEIPT', { align: 'center' });
     doc.moveDown();
     doc.fontSize(12).text(`Order #: ${order.order_ref || order.id}`, { align: 'center' });
     doc.text(`Date: ${new Date(order.created_at).toLocaleString()}`, { align: 'center' });
     doc.text(`Status: ${order.status.toUpperCase()}`, { align: 'center' });
     doc.moveDown();
 
-    doc.fontSize(14).text('Customer Details:');
+    doc.fontSize(14).text('👤 Customer Details:');
     doc.fontSize(12).text(`Name: ${order.customer_name}`);
     doc.text(`Email: ${order.customer_email}`);
     doc.moveDown();
 
-    doc.fontSize(14).text('Delivery Details:');
+    doc.fontSize(14).text('📍 Delivery Details:');
     doc.fontSize(12).text(`Address: ${order.delivery_address || 'N/A'}`);
     doc.text(`Recipient: ${order.recipient_name || 'N/A'} (${order.recipient_phone || 'N/A'})`);
     doc.moveDown();
 
-    doc.fontSize(14).text('Order Items:');
+    doc.fontSize(14).text('📦 Order Items:');
     doc.moveDown(0.5);
     let total = 0;
     items.forEach((item, index) => {
@@ -2442,7 +2620,7 @@ app.get('/api/orders/:id/receipt', authMiddleware, async (req, res) => {
     doc.fontSize(14).text(`Total: Ksh ${total.toFixed(2)}`, { align: 'right' });
 
     doc.moveDown(2);
-    doc.fontSize(10).text('Thank you for your purchase!', { align: 'center' });
+    doc.fontSize(10).text('Thank you for your purchase! 🙏', { align: 'center' });
     doc.text('This is a system-generated receipt.', { align: 'center' });
 
     doc.end();
@@ -2452,7 +2630,7 @@ app.get('/api/orders/:id/receipt', authMiddleware, async (req, res) => {
   }
 });
 
-// ---- Send Order Confirmation (NEW) ----
+// ---- Send Order Confirmation ----
 app.post('/api/orders/:id/send-confirmation', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
 
@@ -2478,7 +2656,6 @@ app.post('/api/orders/:id/send-confirmation', authMiddleware, async (req, res) =
     let message = `✅ **Order ${ref} Confirmed!**\n\n`;
     message += `Dear ${order.customer_name},\n\n`;
     message += `Your order has been confirmed. Here are the details:\n\n`;
-
     message += `📦 **Order Items:**\n`;
     let total = 0;
     items.forEach((item, index) => {
@@ -2490,7 +2667,6 @@ app.post('/api/orders/:id/send-confirmation', authMiddleware, async (req, res) =
       message += `${index+1}. ${item.product_name} (${variant}) x${item.quantity} – Ksh ${subtotal.toFixed(2)} (ID: ${uniqueId})\n`;
     });
     message += `\n💰 **Total:** Ksh ${Number(order.total).toFixed(2)}\n\n`;
-
     message += `📍 **Delivery Location:**\n`;
     message += `   ${order.delivery_address || 'Not provided'}\n`;
     if (order.recipient_name) message += `   👤 Recipient: ${order.recipient_name} (${order.recipient_phone || 'N/A'})\n`;
@@ -2514,7 +2690,7 @@ app.post('/api/orders/:id/send-confirmation', authMiddleware, async (req, res) =
       timestamp: new Date()
     });
 
-    res.json({ success: true, message: 'Confirmation sent to customer.' });
+    res.json({ success: true, message: '✅ Confirmation sent to customer.' });
 
   } catch (err) {
     console.error(err);
@@ -2628,9 +2804,27 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
+// ---------- Create password_resets table if not exists ----------
+async function initDatabase() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS password_resets (
+        email VARCHAR(255) PRIMARY KEY,
+        token VARCHAR(255) NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Password resets table ready');
+  } catch (err) {
+    console.error('❌ Error creating password_resets table:', err);
+  }
+}
+
 // ---------- Start Server ----------
+initDatabase();
 server.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
   console.log(`☁️ Cloudinary ready`);
-  console.log(`📦 Neon PostgreSQL connected`);
+  console.log(`📦 PostgreSQL connected`);
 });
