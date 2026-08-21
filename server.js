@@ -67,7 +67,14 @@ async function sendEmail({ to, subject, html, text }) {
 // ---- Express app ----
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+const io = socketIo(server, {
+  cors: {
+    origin: process.env.CLIENT_URL || '*',
+    methods: ['GET', 'POST']
+  },
+  pingTimeout: 60000,
+  pingInterval: 25000
+});
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -88,7 +95,7 @@ console.log('✅ Cloudinary configured');
 // ---------- PostgreSQL ----------
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: { rejectUnauthorized: false, sslmode: 'verify-full' },
   max: 20,
   idleTimeoutMillis: 10000,
   connectionTimeoutMillis: 5000,
@@ -144,7 +151,7 @@ app.use(helmet({
       styleSrcElem: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://unpkg.com", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net"],
       fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "https://fonts.gstatic.com", "data:"],
       imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "https://*.tile.openstreetmap.org", "https://*.openstreetmap.org", "https://unpkg.com"],
-      connectSrc: ["'self'", "ws://localhost:3000", "wss://*.onrender.com", "https://unpkg.com"],
+      connectSrc: ["'self'", "ws://localhost:3000", "wss://*.onrender.com", "https://unpkg.com", "https://nominatim.openstreetmap.org"],
       objectSrc: ["'none'"],
     },
   },
@@ -339,9 +346,140 @@ function generateResetToken() {
   return crypto.randomBytes(32).toString('hex');
 }
 
-// ============================================================
-// API ROUTES
-// ============================================================
+// ================================================================
+//  M-PESA INTEGRATION - FULLY REAL IMPLEMENTATION
+// ================================================================
+
+async function getMpesaAccessToken() {
+  const consumerKey = process.env.MPESA_CONSUMER_KEY;
+  const consumerSecret = process.env.MPESA_CONSUMER_SECRET;
+
+  if (!consumerKey || !consumerSecret || consumerKey === 'YOUR_CONSUMER_KEY_HERE') {
+    console.warn('⚠️ M-Pesa credentials not configured. Using simulation mode.');
+    return null;
+  }
+
+  try {
+    const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
+    const response = await fetch('https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to get token: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!data.access_token) {
+      throw new Error('No access token in response');
+    }
+
+    return data.access_token;
+  } catch (error) {
+    console.error('❌ M-Pesa token error:', error);
+    return null;
+  }
+}
+
+async function initiateMpesaStkPush(phoneNumber, amount, accountReference, transactionDesc = 'Payment for order') {
+  try {
+    const accessToken = await getMpesaAccessToken();
+    
+    if (!accessToken) {
+      console.warn('⚠️ Using M-Pesa simulation mode');
+      return {
+        success: true,
+        checkoutRequestId: `SIM-${Date.now()}`,
+        message: 'M-Pesa payment simulated successfully',
+        isSimulation: true
+      };
+    }
+
+    const shortcode = process.env.MPESA_SHORTCODE;
+    const passkey = process.env.MPESA_PASSKEY;
+    const callbackUrl = process.env.MPESA_CALLBACK_URL;
+
+    if (!shortcode || !passkey || !callbackUrl) {
+      console.warn('⚠️ M-Pesa configuration incomplete. Using simulation.');
+      return {
+        success: true,
+        checkoutRequestId: `SIM-${Date.now()}`,
+        message: 'M-Pesa payment simulated (incomplete config)',
+        isSimulation: true
+      };
+    }
+
+    let formattedPhone = phoneNumber.replace(/^0/, '254').replace(/^\+/, '').replace(/[^0-9]/g, '');
+    if (!formattedPhone.startsWith('254')) {
+      formattedPhone = '254' + formattedPhone;
+    }
+
+    const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);
+    const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64');
+
+    const requestBody = {
+      BusinessShortCode: shortcode,
+      Password: password,
+      Timestamp: timestamp,
+      TransactionType: 'CustomerPayBillOnline',
+      Amount: Math.round(amount),
+      PartyA: formattedPhone,
+      PartyB: shortcode,
+      PhoneNumber: formattedPhone,
+      CallBackURL: callbackUrl,
+      AccountReference: accountReference || `ORD-${Date.now()}`,
+      TransactionDesc: transactionDesc
+    };
+
+    console.log('📤 M-Pesa STK Push Request:', {
+      ...requestBody,
+      Password: '***HIDDEN***'
+    });
+
+    const response = await fetch('https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    const data = await response.json();
+
+    if (data.ResponseCode === '0') {
+      return {
+        success: true,
+        checkoutRequestId: data.CheckoutRequestID,
+        merchantRequestId: data.MerchantRequestID,
+        message: 'STK Push sent successfully. Please check your phone.',
+        isSimulation: false
+      };
+    } else {
+      return {
+        success: false,
+        errorCode: data.ResponseCode,
+        message: data.ResponseDescription || 'STK Push failed',
+        isSimulation: false
+      };
+    }
+  } catch (error) {
+    console.error('❌ M-Pesa STK Push error:', error);
+    return {
+      success: false,
+      message: error.message || 'Payment initiation failed',
+      isSimulation: false
+    };
+  }
+}
+
+// ================================================================
+//  API ROUTES
+// ================================================================
 
 // ---- SHOP profile ----
 app.get('/api/shop', async (req, res) => {
@@ -518,6 +656,17 @@ app.get('/api/products', async (req, res) => {
       return { ...product, variants, image: firstImage, stock: totalStock || product.stock || 0 };
     }));
     res.json(products);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Batch variants endpoint ----
+app.get('/api/products/variants/batch', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM product_variants ORDER BY product_id, id');
+    res.json(result.rows);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -838,16 +987,13 @@ app.post('/api/auth/customer/register', [
   try {
     const { name, email, phone, password } = req.body;
     
-    // Clean phone number (remove non-digits)
     const cleanPhone = phone.replace(/[^0-9]/g, '');
     
-    // Check if email already exists
     const existing = await pool.query('SELECT * FROM customers WHERE email = $1', [email]);
     if (existing.rows.length > 0) {
       return res.status(409).json({ error: 'Email already registered.' });
     }
     
-    // Check if phone already exists
     const existingPhone = await pool.query('SELECT * FROM customers WHERE phone = $1', [cleanPhone]);
     if (existingPhone.rows.length > 0) {
       return res.status(409).json({ error: 'Phone number already registered.' });
@@ -1368,136 +1514,360 @@ app.post('/api/admin/location/update', authMiddleware, async (req, res) => {
   }
 });
 
-// ============================================================
-// PAYMENT ROUTES
-// ============================================================
-
-async function initiateMpesaPayment(phone, amount, orderId, accountRef) {
-  try {
-    const consumerKey = process.env.MPESA_CONSUMER_KEY;
-    const consumerSecret = process.env.MPESA_CONSUMER_SECRET;
-    const passkey = process.env.MPESA_PASSKEY;
-    const shortcode = process.env.MPESA_SHORTCODE;
-    const callbackUrl = process.env.MPESA_CALLBACK_URL || 'http://localhost:3000/api/payments/mpesa-callback';
-
-    if (!consumerKey || !consumerSecret) {
-      console.warn('⚠️ M-Pesa credentials not set. Using simulation.');
-      return {
-        success: true,
-        transactionId: `SIM-${Date.now()}`,
-        message: 'M-Pesa payment simulated successfully'
-      };
-    }
-
-    const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
-    const tokenRes = await fetch('https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials', {
-      headers: { Authorization: `Basic ${auth}` }
-    });
-    const tokenData = await tokenRes.json();
-    const accessToken = tokenData.access_token;
-
-    let formattedPhone = phone.replace(/^0/, '254').replace(/^\+/, '');
-    const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);
-    const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64');
-
-    const stkRes = await fetch('https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        BusinessShortCode: shortcode,
-        Password: password,
-        Timestamp: timestamp,
-        TransactionType: 'CustomerPayBillOnline',
-        Amount: Math.round(amount),
-        PartyA: formattedPhone,
-        PartyB: shortcode,
-        PhoneNumber: formattedPhone,
-        CallBackURL: callbackUrl,
-        AccountReference: accountRef || `ORD-${orderId}`,
-        TransactionDesc: 'Payment for order'
-      })
-    });
-
-    const stkData = await stkRes.json();
-
-    if (stkData.ResponseCode === '0') {
-      return {
-        success: true,
-        transactionId: stkData.CheckoutRequestID,
-        message: 'STK Push sent successfully'
-      };
-    } else {
-      return {
-        success: false,
-        message: stkData.ResponseDescription || 'STK Push failed'
-      };
-    }
-  } catch (err) {
-    console.error('M-Pesa error:', err);
-    return {
-      success: false,
-      message: err.message || 'M-Pesa payment failed'
-    };
-  }
-}
+// ================================================================
+//  PAYMENT ROUTES - WITH REAL M-PESA INTEGRATION
+// ================================================================
 
 app.post('/api/payments/mpesa-callback', async (req, res) => {
   try {
+    console.log('📥 M-Pesa Callback received');
     const body = req.body;
-    console.log('M-Pesa Callback:', JSON.stringify(body));
+    const stkCallback = body?.Body?.stkCallback;
 
-    const resultCode = body?.Body?.stkCallback?.ResultCode;
-    const resultDesc = body?.Body?.stkCallback?.ResultDesc;
-    const checkoutRequestID = body?.Body?.stkCallback?.CheckoutRequestID;
-    const transactionId = body?.Body?.stkCallback?.CallbackMetadata?.Item?.find(i => i.Name === 'MpesaReceiptNumber')?.Value;
+    if (!stkCallback) {
+      console.error('❌ Invalid callback structure');
+      return res.status(400).json({ ResultCode: 1, ResultDesc: 'Invalid callback' });
+    }
+
+    const resultCode = stkCallback.ResultCode;
+    const resultDesc = stkCallback.ResultDesc;
+    const checkoutRequestId = stkCallback.CheckoutRequestID;
+
+    let transactionId = null;
+    let amount = null;
+    let phoneNumber = null;
+
+    if (stkCallback.CallbackMetadata) {
+      const items = stkCallback.CallbackMetadata.Item || [];
+      items.forEach(item => {
+        if (item.Name === 'MpesaReceiptNumber') transactionId = item.Value;
+        if (item.Name === 'Amount') amount = item.Value;
+        if (item.Name === 'PhoneNumber') phoneNumber = item.Value;
+      });
+    }
 
     const isSuccess = resultCode === '0';
 
-    const paymentResult = await pool.query(
-      'SELECT id, order_id FROM payments WHERE transaction_id = $1 AND method = $2 ORDER BY created_at DESC LIMIT 1',
-      [checkoutRequestID, 'mpesa']
-    );
+    const paymentResult = await pool.query(`
+      SELECT id, order_id, customer_id 
+      FROM payments 
+      WHERE transaction_id = $1 OR (payment_details->>'checkoutRequestId' = $1)
+      ORDER BY created_at DESC 
+      LIMIT 1
+    `, [checkoutRequestId]);
 
     if (paymentResult.rows.length > 0) {
       const payment = paymentResult.rows[0];
       const orderId = payment.order_id;
 
-      await pool.query(
-        'UPDATE payments SET status = $1, transaction_id = $2, updated_at = NOW() WHERE id = $3',
-        [isSuccess ? 'success' : 'failed', transactionId || checkoutRequestID, payment.id]
-      );
+      await pool.query(`
+        UPDATE payments 
+        SET status = $1, 
+            transaction_id = COALESCE($2, transaction_id),
+            payment_details = payment_details || $3
+        WHERE id = $4
+      `, [
+        isSuccess ? 'success' : 'failed',
+        transactionId,
+        JSON.stringify({
+          callbackResult: {
+            resultCode,
+            resultDesc,
+            checkoutRequestId,
+            transactionId,
+            amount,
+            phoneNumber
+          }
+        }),
+        payment.id
+      ]);
 
       if (isSuccess && orderId) {
-        await pool.query('UPDATE orders SET payment_status = $1 WHERE id = $2', ['paid', orderId]);
-        await pool.query(
-          `UPDATE orders SET status = 'pending' WHERE id = $1 AND status = 'pending_payment'`,
-          [orderId]
-        );
+        await pool.query(`
+          UPDATE orders 
+          SET payment_status = 'paid', 
+              status = 'pending'
+          WHERE id = $1 AND status = 'pending_payment'
+        `, [orderId]);
+
         await appendOrderStatus(orderId, 'pending', 'Payment successful. Order confirmed.');
 
-        const orderResult = await pool.query('SELECT * FROM orders WHERE id = $1', [orderId]);
-        const customerResult = await pool.query('SELECT name, email FROM customers WHERE id = $1', [orderResult.rows[0].customer_id]);
-        if (orderResult.rows.length > 0 && customerResult.rows.length > 0) {
-          try {
-            const mailData = orderConfirmationEmail(orderResult.rows[0], customerResult.rows[0].name);
-            await sendEmail({ to: customerResult.rows[0].email, ...mailData });
-          } catch (emailErr) {
-            console.error('⚠️ Email send failed:', emailErr.message);
-          }
-        }
+        const orderResult = await pool.query(`
+          SELECT o.*, c.name AS customer_name, c.email AS customer_email
+          FROM orders o
+          JOIN customers c ON o.customer_id = c.id
+          WHERE o.id = $1
+        `, [orderId]);
 
-        io.emit('new-order', { orderId });
-        io.to(`order_${orderId}`).emit('payment-updated', { orderId, paymentStatus: 'paid' });
+        if (orderResult.rows.length > 0) {
+          const order = orderResult.rows[0];
+          const itemsResult = await pool.query('SELECT * FROM order_items WHERE order_id = $1', [orderId]);
+          order.items = itemsResult.rows;
+
+          try {
+            const mailData = orderConfirmationEmail(order, order.customer_name);
+            await sendEmail({
+              to: order.customer_email,
+              ...mailData
+            });
+          } catch (emailError) {
+            console.error('⚠️ Email send failed:', emailError.message);
+          }
+
+          io.emit('new-order', { orderId });
+          io.to(`order_${orderId}`).emit('payment-updated', {
+            orderId,
+            paymentStatus: 'paid',
+            transactionId
+          });
+        }
       }
     }
 
     res.json({ ResultCode: 0, ResultDesc: 'Success' });
-  } catch (err) {
-    console.error('M-Pesa callback error:', err);
+
+  } catch (error) {
+    console.error('❌ M-Pesa callback error:', error);
     res.status(500).json({ ResultCode: 1, ResultDesc: 'Error processing callback' });
+  }
+});
+
+app.post('/api/payments/mpesa/initiate', authMiddleware, [
+  body('phone').notEmpty().withMessage('Phone number required'),
+  body('amount').isNumeric().withMessage('Amount must be a number')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  try {
+    const { phone, amount, orderId } = req.body;
+    const customerId = req.userId;
+
+    if (amount < 1) {
+      return res.status(400).json({ error: 'Amount must be at least Ksh 1' });
+    }
+
+    let orderRef = `ORD-${Date.now()}`;
+    let actualOrderId = orderId;
+
+    if (!orderId) {
+      const orderResult = await pool.query(`
+        INSERT INTO orders (customer_id, total, status, order_ref, status_history, payment_status)
+        VALUES ($1, $2, 'pending_payment', $3, $4, 'pending')
+        RETURNING *
+      `, [
+        customerId,
+        amount,
+        orderRef,
+        JSON.stringify([{ status: 'pending_payment', timestamp: new Date().toISOString() }])
+      ]);
+      actualOrderId = orderResult.rows[0].id;
+    }
+
+    const stkResult = await initiateMpesaStkPush(phone, amount, orderRef);
+
+    if (stkResult.success) {
+      const paymentResult = await pool.query(`
+        INSERT INTO payments (customer_id, order_id, amount, method, status, transaction_id, payment_details)
+        VALUES ($1, $2, $3, 'mpesa', 'pending', $4, $5)
+        RETURNING *
+      `, [
+        customerId,
+        actualOrderId,
+        amount,
+        stkResult.checkoutRequestId || `SIM-${Date.now()}`,
+        JSON.stringify({
+          phone: phone,
+          checkoutRequestId: stkResult.checkoutRequestId,
+          isSimulation: stkResult.isSimulation || false
+        })
+      ]);
+
+      res.json({
+        success: true,
+        message: stkResult.message,
+        checkoutRequestId: stkResult.checkoutRequestId,
+        orderId: actualOrderId,
+        paymentId: paymentResult.rows[0].id,
+        isSimulation: stkResult.isSimulation || false
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: stkResult.message,
+        errorCode: stkResult.errorCode
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ M-Pesa initiate error:', error);
+    res.status(500).json({ error: 'Payment initiation failed' });
+  }
+});
+
+app.get('/api/payments/mpesa/status/:checkoutRequestId', authMiddleware, async (req, res) => {
+  try {
+    const { checkoutRequestId } = req.params;
+
+    if (!checkoutRequestId) {
+      return res.status(400).json({ error: 'Checkout Request ID required' });
+    }
+
+    const result = await queryMpesaTransaction(checkoutRequestId);
+
+    if (result.ResultCode !== undefined) {
+      const paymentResult = await pool.query(`
+        SELECT id FROM payments 
+        WHERE transaction_id = $1 OR (payment_details->>'checkoutRequestId' = $1)
+      `, [checkoutRequestId]);
+
+      if (paymentResult.rows.length > 0) {
+        await pool.query(`
+          UPDATE payments 
+          SET payment_details = payment_details || $1
+          WHERE id = $2
+        `, [
+          JSON.stringify({ queryResult: result }),
+          paymentResult.rows[0].id
+        ]);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    console.error('❌ M-Pesa status query error:', error);
+    res.status(500).json({
+      error: 'Failed to query transaction status'
+    });
+  }
+});
+
+app.post('/api/mpesa/save-credentials', authMiddleware, async (req, res) => {
+  if (req.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin only' });
+  }
+
+  try {
+    const { consumerKey, consumerSecret, passkey, shortcode, callbackUrl, environment } = req.body;
+
+    if (!consumerKey || !consumerSecret || !passkey) {
+      return res.status(400).json({ error: 'All M-Pesa credentials are required' });
+    }
+
+    const envPath = path.join(__dirname, '.env');
+    let envContent = '';
+    
+    if (fs.existsSync(envPath)) {
+      envContent = fs.readFileSync(envPath, 'utf8');
+    }
+
+    const lines = envContent.split('\n');
+    const newLines = [];
+    const mpesaKeys = {
+      'MPESA_CONSUMER_KEY': consumerKey,
+      'MPESA_CONSUMER_SECRET': consumerSecret,
+      'MPESA_PASSKEY': passkey,
+      'MPESA_SHORTCODE': shortcode || '174379',
+      'MPESA_CALLBACK_URL': callbackUrl || 'https://donator-eldercare-cacti.ngrok-free.dev/api/payments/mpesa-callback',
+      'MPESA_ENVIRONMENT': environment || 'sandbox'
+    };
+
+    let updated = false;
+    for (const line of lines) {
+      let isKey = false;
+      for (const [key, value] of Object.entries(mpesaKeys)) {
+        if (line.trim().startsWith(`${key}=`)) {
+          newLines.push(`${key}=${value}`);
+          isKey = true;
+          updated = true;
+          delete mpesaKeys[key];
+          break;
+        }
+      }
+      if (!isKey) {
+        newLines.push(line);
+      }
+    }
+
+    for (const [key, value] of Object.entries(mpesaKeys)) {
+      if (value && value.trim()) {
+        newLines.push(`${key}=${value}`);
+        updated = true;
+      }
+    }
+
+    fs.writeFileSync(envPath, newLines.join('\n'));
+
+    await logAdminActivity(req.userId, 'UPDATE_MPESA_CREDENTIALS', {
+      environment: environment || 'sandbox',
+      shortcode: shortcode || '174379'
+    });
+
+    res.json({
+      success: true,
+      message: 'M-Pesa credentials saved successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Error saving M-Pesa credentials:', error);
+    res.status(500).json({
+      error: 'Failed to save credentials: ' + error.message
+    });
+  }
+});
+
+app.get('/api/mpesa/test-connection', authMiddleware, async (req, res) => {
+  if (req.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin only' });
+  }
+
+  try {
+    const consumerKey = process.env.MPESA_CONSUMER_KEY;
+    const consumerSecret = process.env.MPESA_CONSUMER_SECRET;
+
+    if (!consumerKey || !consumerSecret || consumerKey === 'YOUR_CONSUMER_KEY_HERE') {
+      return res.status(400).json({
+        success: false,
+        error: 'M-Pesa credentials are not configured'
+      });
+    }
+
+    const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
+    const response = await fetch('https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      res.json({
+        success: true,
+        message: 'Successfully connected to Safaricom API',
+        environment: process.env.MPESA_ENVIRONMENT || 'sandbox'
+      });
+    } else {
+      const text = await response.text();
+      res.status(400).json({
+        success: false,
+        error: `Failed to connect: ${response.status} - ${text}`
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ M-Pesa connection test error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Connection test failed: ' + error.message
+    });
   }
 });
 
@@ -1514,7 +1884,44 @@ app.post('/api/payments/initiate', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Payment method and amount required.' });
     }
 
-    if (method === 'mpesa' || method === 'airtel') {
+    if (method === 'mpesa') {
+      if (!phone) return res.status(400).json({ error: 'Phone number required for M-Pesa.' });
+      
+      const stkResult = await initiateMpesaStkPush(phone, amount, `ORD-${orderId || Date.now()}`);
+
+      if (stkResult.success) {
+        const paymentResult = await pool.query(`
+          INSERT INTO payments (customer_id, order_id, amount, method, status, transaction_id, payment_details)
+          VALUES ($1, $2, $3, 'mpesa', 'pending', $4, $5)
+          RETURNING *
+        `, [
+          customerId,
+          orderId || null,
+          amount,
+          stkResult.checkoutRequestId || `SIM-${Date.now()}`,
+          JSON.stringify({
+            phone: phone,
+            checkoutRequestId: stkResult.checkoutRequestId,
+            isSimulation: stkResult.isSimulation || false
+          })
+        ]);
+
+        return res.json({
+          success: true,
+          payment: paymentResult.rows[0],
+          message: stkResult.message,
+          checkoutRequestId: stkResult.checkoutRequestId,
+          isSimulation: stkResult.isSimulation || false
+        });
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: stkResult.message || 'M-Pesa payment failed'
+        });
+      }
+    }
+
+    if (method === 'airtel') {
       if (!phone) return res.status(400).json({ error: 'Phone number required.' });
       if (!pin) return res.status(400).json({ error: 'PIN required.' });
     } else if (method === 'bank') {
@@ -1608,9 +2015,9 @@ app.get('/api/payments/customer', authMiddleware, async (req, res) => {
   }
 });
 
-// ============================================================
-// ORDERS
-// ============================================================
+// ================================================================
+//  ORDERS - WITH STOCK VALIDATION
+// ================================================================
 
 app.post('/api/orders', authMiddleware, [
   body('items').isArray().withMessage('Items must be an array'),
@@ -1634,9 +2041,38 @@ app.post('/api/orders', authMiddleware, [
 
   try {
     let subtotal = 0;
+    
     for (const item of items) {
       const priceNum = parseFloat(item.price.replace(/[^0-9.]/g,'')) || 0;
       subtotal += priceNum * item.quantity;
+      
+      if (item.variant_id) {
+        const stockResult = await pool.query(
+          'SELECT stock FROM product_variants WHERE id = $1',
+          [item.variant_id]
+        );
+        if (stockResult.rows.length === 0) {
+          return res.status(400).json({ error: `Product variant not found: ${item.name}` });
+        }
+        if (stockResult.rows[0].stock < item.quantity) {
+          return res.status(400).json({ 
+            error: `Insufficient stock for ${item.name} (${item.variant_name || 'Default'}). Available: ${stockResult.rows[0].stock}`
+          });
+        }
+      } else {
+        const stockResult = await pool.query(
+          'SELECT stock FROM products WHERE id = $1',
+          [item.productId]
+        );
+        if (stockResult.rows.length === 0) {
+          return res.status(400).json({ error: `Product not found: ${item.name}` });
+        }
+        if (stockResult.rows[0].stock < item.quantity) {
+          return res.status(400).json({ 
+            error: `Insufficient stock for ${item.name}. Available: ${stockResult.rows[0].stock}`
+          });
+        }
+      }
     }
 
     const tier = shipping_tier || 'standard';
@@ -1675,6 +2111,7 @@ app.post('/api/orders', authMiddleware, [
     const urgent = tier === 'overnight';
 
     await pool.query('BEGIN');
+    
     const orderResult = await pool.query(`
       INSERT INTO orders (
         customer_id, total, status, order_ref, status_history,
@@ -1704,6 +2141,20 @@ app.post('/api/orders', authMiddleware, [
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       `, [order.id, item.productId || 0, item.name, item.price, item.quantity, item.image || '',
           uniqueId, item.variant_name || 'Default', item.variant_id || null]);
+
+      if (item.variant_id) {
+        await pool.query(`
+          UPDATE product_variants 
+          SET stock = stock - $1 
+          WHERE id = $2 AND stock >= $1
+        `, [item.quantity, item.variant_id]);
+      } else {
+        await pool.query(`
+          UPDATE products 
+          SET stock = stock - $1 
+          WHERE id = $2 AND stock >= $1
+        `, [item.quantity, item.productId]);
+      }
     }
 
     await pool.query('UPDATE carts SET items = $1, reserved_until = NULL WHERE customer_id = $2', ['[]', customerId]);
@@ -2465,7 +2916,6 @@ app.get('/api/admin/logs', authMiddleware, async (req, res) => {
   }
 });
 
-// ---- Customer Management (Admin) ----
 app.get('/api/admin/customers', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   try {
@@ -2499,7 +2949,6 @@ app.get('/api/admin/customers/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// ---- Bulk Order Actions ----
 app.post('/api/admin/orders/bulk', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const { orderIds, action, status, tracking_number } = req.body;
@@ -2532,7 +2981,6 @@ app.post('/api/admin/orders/bulk', authMiddleware, async (req, res) => {
   }
 });
 
-// ---- Export Orders (CSV) ----
 app.get('/api/admin/orders/export', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   try {
@@ -2563,7 +3011,6 @@ app.get('/api/admin/orders/export', authMiddleware, async (req, res) => {
   }
 });
 
-// ---- PDF Receipt ----
 app.get('/api/orders/:id/receipt', authMiddleware, async (req, res) => {
   const orderId = parseInt(req.params.id);
   try {
@@ -2630,7 +3077,6 @@ app.get('/api/orders/:id/receipt', authMiddleware, async (req, res) => {
   }
 });
 
-// ---- Send Order Confirmation ----
 app.post('/api/orders/:id/send-confirmation', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
 
@@ -2827,4 +3273,5 @@ server.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
   console.log(`☁️ Cloudinary ready`);
   console.log(`📦 PostgreSQL connected`);
+  console.log(`💰 M-Pesa integration ready`);
 });

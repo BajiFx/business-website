@@ -1,10 +1,16 @@
 {
   "name": "business-website",
   "version": "1.0.0",
+  "type": "commonjs",
   "description": "Business website with admin and public views",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "mpesa:check": "node mpesa-credentials-check.js",
+    "mpesa:setup": "node mpesa-credentials-helper.js",
+    "mpesa:test": "node test-mpesa.js",
+    "airtel:setup": "node airtel-credentials-helper.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
