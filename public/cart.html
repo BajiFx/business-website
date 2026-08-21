@@ -7,7 +7,6 @@
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
-    /* ===== CART PAGE – COMPACT GRID LAYOUT ===== */
     .cart-page {
       max-width: 1200px;
       margin: 0 auto;
@@ -35,7 +34,6 @@
       text-decoration: underline;
     }
 
-    /* ===== CART ITEMS ===== */
     .cart-item {
       display: flex;
       gap: 12px;
@@ -128,7 +126,6 @@
       padding: 4px;
     }
 
-    /* ===== REVIEW ALL PRODUCTS BUTTON ===== */
     .review-all-btn {
       display: inline-block;
       padding: 6px 16px;
@@ -148,7 +145,6 @@
       border-color: #2563eb;
     }
 
-    /* ===== COMPACT GRID ===== */
     .cart-grid {
       display: grid;
       grid-template-columns: 1fr;
@@ -188,7 +184,6 @@
       margin-bottom: 4px;
     }
 
-    /* ===== LOCATION ===== */
     .detect-btn {
       width: 100%;
       padding: 6px 12px;
@@ -251,7 +246,6 @@
       box-shadow: 0 0 0 3px rgba(37,99,235,0.08);
     }
 
-    /* ===== SHIPPING ===== */
     .shipping-options {
       display: grid;
       grid-template-columns: 1fr;
@@ -303,7 +297,6 @@
       border-radius: 4px;
     }
 
-    /* ===== PROMO ===== */
     .promo-input {
       display: flex;
       gap: 4px;
@@ -339,7 +332,6 @@
       color: #f59e0b;
     }
 
-    /* ===== ORDER NOTES ===== */
     .cart-section textarea {
       width: 100%;
       padding: 4px 8px;
@@ -356,7 +348,6 @@
       box-shadow: 0 0 0 3px rgba(37,99,235,0.08);
     }
 
-    /* ===== SUMMARY ===== */
     .summary-row {
       display: flex;
       justify-content: space-between;
@@ -395,7 +386,6 @@
       background: #16a34a;
     }
 
-    /* ===== TIMER ===== */
     .timer {
       color: #ef4444;
       font-weight: 700;
@@ -407,7 +397,6 @@
       display: inline-block;
     }
 
-    /* ===== CART EMPTY ===== */
     .cart-empty {
       text-align: center;
       padding: 30px 20px;
@@ -427,7 +416,6 @@
       font-size: 0.85rem;
     }
 
-    /* ===== RECOMMENDED ===== */
     .related-grid {
       display: flex;
       gap: 8px;
@@ -471,7 +459,6 @@
       color: #2563eb;
     }
 
-    /* ===== PRODUCT PREVIEW MODAL ===== */
     .modal-overlay {
       position: fixed;
       top: 0;
@@ -526,7 +513,6 @@
       flex-wrap: wrap;
     }
 
-    /* Product preview inside modal */
     .preview-product {
       display: flex;
       gap: 16px;
@@ -580,7 +566,6 @@
       display: inline-block;
     }
 
-    /* ===== MODAL PAYMENT ===== */
     .modal-box .payment-methods {
       display: flex;
       flex-direction: column;
@@ -653,12 +638,11 @@
       background: #f1f5f9;
     }
 
-    /* ===== HEADER & BOTTOM NAV ===== */
     .header {
-      background: #ffffff;
-      color: #1e293b;
-      padding: 10px 14px;
-      border-bottom: 1px solid #e8ecf1;
+      background: #0f172a;
+      color: white;
+      padding: 10px 16px;
+      border-bottom: 1px solid #1e293b;
       position: sticky;
       top: 0;
       z-index: 99;
@@ -670,22 +654,41 @@
     .header h1 {
       font-weight: 800;
       font-size: 1.1rem;
-      color: #0f172a;
+      color: white;
     }
+    .header h1 span { color: #facc15; }
     .header a {
-      color: #64748b;
+      color: #94a3b8;
       margin: 0 8px;
       text-decoration: none;
       font-weight: 600;
       font-size: 0.75rem;
+      transition: color 0.3s;
     }
     .header a:hover {
-      color: #2563eb;
+      color: white;
     }
     .header .header-right {
       display: flex;
       align-items: center;
       gap: 8px;
+    }
+    .header .header-right .cart-link {
+      position: relative;
+    }
+    .header .header-right .cart-link #cartBadge {
+      position: absolute;
+      top: -6px;
+      right: -8px;
+      background: #ef4444;
+      color: white;
+      border-radius: 50%;
+      padding: 0 5px;
+      font-size: 0.55rem;
+      min-width: 16px;
+      text-align: center;
+      font-weight: 700;
+      display: none;
     }
 
     .bottom-nav {
@@ -744,11 +747,11 @@
 <div class="header">
   <h1>🛍️ <span id="shopNameHeader">Our Business</span></h1>
   <div class="header-right">
-    <a href="/">Home</a>
-    <a href="/account.html">Account</a>
-    <a href="/cart.html" style="position:relative;">
+    <a href="/"><i class="fas fa-home"></i> Home</a>
+    <a href="/account.html"><i class="fas fa-user"></i> Account</a>
+    <a href="/cart.html" class="cart-link">
       <i class="fas fa-shopping-cart" style="font-size:1.2rem;"></i>
-      <span id="cartBadge" style="position:absolute; top:-6px; right:-8px; background:#ef4444; color:white; border-radius:50%; padding:0 5px; font-size:0.55rem; min-width:16px; text-align:center; font-weight:700; display:none;">0</span>
+      <span id="cartBadge">0</span>
     </a>
   </div>
 </div>
@@ -763,17 +766,14 @@
   <div id="cartItemsContainer"></div>
 
   <div id="checkoutSections" style="display:none;">
-    <!-- ===== REVIEW ALL PRODUCTS BUTTON ===== -->
     <div style="margin: 6px 0;">
       <button class="review-all-btn" onclick="openReviewAllModal()">
         <i class="fas fa-eye"></i> Click here to review all products details before submitting
       </button>
     </div>
 
-    <!-- ===== COMPACT GRID ===== -->
     <div class="cart-grid">
 
-      <!-- COLUMN 1: Location -->
       <div class="cart-section" id="locationSection">
         <h3><i class="fas fa-map-marker-alt" style="color:#2563eb;"></i> Delivery Location</h3>
         <button id="detectLocationBtn" class="detect-btn" onclick="detectMyLocation()">
@@ -797,7 +797,6 @@
         <input type="hidden" id="locationAccuracy" value="">
       </div>
 
-      <!-- COLUMN 2: Shipping + Promo -->
       <div class="cart-section">
         <h3><i class="fas fa-truck" style="color:#f59e0b;"></i> Shipping Speed</h3>
         <div id="freeShippingBanner" class="free-shipping-banner">🎉 Free Standard Shipping!</div>
@@ -805,7 +804,6 @@
         <div class="shipping-info">💡 Fee based on order total – more value when you buy more</div>
       </div>
 
-      <!-- COLUMN 3: Promo + Notes + Summary -->
       <div class="cart-section">
         <h3><i class="fas fa-gift" style="color:#22c55e;"></i> Promo Code</h3>
         <div class="promo-input">
@@ -826,7 +824,6 @@
 
     </div>
 
-    <!-- ===== SUMMARY (Full Width) ===== -->
     <div class="cart-section" style="margin-top:10px; background:#f8fafc; border:2px solid #e2e8f0;">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
         <div style="flex:1; min-width:200px;">
@@ -842,7 +839,6 @@
     </div>
   </div>
 
-  <!-- Recommended -->
   <div id="recommendedSection" style="margin-top:16px;">
     <h3 style="font-size:0.9rem; font-weight:700;">You may also like</h3>
     <div id="recommendedGrid" class="related-grid"></div>
@@ -935,7 +931,7 @@
 <script src="/app.js"></script>
 <script>
   // ================================================================
-  //  CART & CHECKOUT LOGIC – With Product Preview
+  //  CART & CHECKOUT LOGIC – All Features Preserved
   // ================================================================
 
   let cartItems = [];
@@ -1008,10 +1004,8 @@
     const related = document.getElementById('previewRelated');
     const title = document.getElementById('previewTitle');
 
-    // Find product in allProducts or allProductsForPreview
     let product = allProductsForPreview.find(p => p.id === productId);
     if (!product) {
-      // Try to find in cart items
       const cartItem = cartItems.find(item => item.id === productId);
       if (cartItem) {
         product = { id: cartItem.id, name: cartItem.name, price: cartItem.price, image: cartItem.image };
@@ -1024,7 +1018,6 @@
 
     title.textContent = `📦 ${product.name}`;
 
-    // Build product preview
     const imageHtml = product.image ? `<img src="${product.image}" alt="${product.name}">` : '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#e2e8f0;font-size:2rem;">📦</div>';
     const rating = product.rating ? `⭐ ${product.rating}` : '';
     const category = product.category ? `<span class="category">${product.category}</span>` : '';
@@ -1044,7 +1037,6 @@
       </div>
     `;
 
-    // Related products
     const relatedProducts = allProductsForPreview.filter(p => p.id !== productId).slice(0, 4);
     if (relatedProducts.length > 0) {
       related.innerHTML = relatedProducts.map(p => `
@@ -1082,7 +1074,6 @@
 
     let html = '';
     cart.forEach(item => {
-      // Find full product details
       const fullProduct = allProductsForPreview.find(p => p.id === item.id);
       const priceNum = parseFloat(item.price.replace(/[^0-9.]/g, '')) || 0;
       const subtotal = priceNum * item.quantity;
