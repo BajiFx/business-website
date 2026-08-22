@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
+    /* All your existing styles remain the same */
     .cart-page {
       max-width: 1200px;
       margin: 0 auto;
@@ -384,10 +385,6 @@
     }
     .btn-place:hover {
       background: #16a34a;
-    }
-    .btn-place:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
     }
 
     .timer {
@@ -955,7 +952,7 @@
 <script src="/app.js"></script>
 <script>
   // ================================================================
-  //  CART & CHECKOUT LOGIC – CORRECT FLOW
+  //  CART & CHECKOUT LOGIC – COMPLETE FIXED VERSION
   // ================================================================
 
   let cartItems = [];
@@ -1425,13 +1422,11 @@
 
   // ================================================================
   //  PLACE ORDER - CREATES ORDER, OPENS PAYMENT MODAL
-  //  NO "PROCESSING..." - JUST A QUICK SPINNER
   // ================================================================
 
   function placeOrder() {
     console.log('🛒 Place Order button clicked');
 
-    // Check if user is logged in
     if (typeof isLoggedIn !== 'function') {
       console.error('❌ isLoggedIn function not found!');
       showToast('❌ Please refresh the page and try again.', 'error');
@@ -1448,7 +1443,6 @@
       return;
     }
 
-    // Get cart
     if (typeof getCart !== 'function') {
       console.error('❌ getCart function not found!');
       showToast('❌ Cart not loaded. Please refresh.', 'error');
@@ -1463,12 +1457,10 @@
       return;
     }
 
-    // Validate location
     if (!validateLocation()) {
       return;
     }
 
-    // Calculate totals
     let subtotal = 0;
     cart.forEach(item => {
       const priceNum = parseFloat(item.price.replace(/[^0-9.]/g, '')) || 0;
@@ -1486,7 +1478,6 @@
       return;
     }
 
-    // Build items array
     const items = cart.map(item => ({
       productId: item.id,
       name: item.name,
@@ -1497,7 +1488,6 @@
       variant_id: item.variant_id || null
     }));
 
-    // Get delivery details
     const deliveryAddress = document.getElementById('deliveryAddress')?.value?.trim() || '';
     const recipientName = document.getElementById('recipientName')?.value?.trim() || '';
     const recipientPhone = document.getElementById('recipientPhone')?.value?.trim() || '';
@@ -1508,7 +1498,6 @@
     const orderNotes = document.getElementById('orderNotes')?.value?.trim() || '';
     const promoCode = document.getElementById('promoInput')?.value?.trim() || '';
 
-    // Get token
     const token = window.customerToken || localStorage.getItem('customerToken');
     if (!token) {
       showToast('❌ Please login first', 'error');
@@ -1517,7 +1506,6 @@
 
     console.log('📤 Creating order...');
 
-    // Show quick loading on button
     const btn = document.getElementById('placeOrderBtn');
     if (btn) {
       btn.disabled = true;
@@ -1556,20 +1544,17 @@
     .then(data => {
       console.log('📥 Response data:', data);
       
-      // Re-enable button
       if (btn) {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-check-circle"></i> Place Order';
       }
 
       if (data.success) {
-        // Store order ID
         pendingOrderId = data.order.id;
         window.pendingOrderId = data.order.id;
 
         showToast('✅ Order created! Please complete payment.', 'success');
         
-        // Open payment modal
         if (typeof openPaymentModal === 'function') {
           openPaymentModal(grandTotal, data.order.id);
         } else {
@@ -1577,7 +1562,6 @@
           showToast('✅ Order created! Please go to your orders to complete payment.', 'success');
         }
         
-        // Clear cart
         if (typeof clearCart === 'function') {
           clearCart();
         } else {
@@ -1597,7 +1581,6 @@
     .catch(error => {
       console.error('❌ Order error:', error);
       
-      // Re-enable button
       if (btn) {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-check-circle"></i> Place Order';
@@ -1618,6 +1601,9 @@
 
   function processPayment() {
     console.log('💳 Process Payment button clicked');
+    console.log('Selected method:', selectedPaymentMethod);
+    console.log('Order ID:', pendingOrderId);
+    console.log('Amount:', paymentTotal);
     
     const method = selectedPaymentMethod;
     
@@ -1627,7 +1613,6 @@
     }
     
     if (method === 'mpesa') {
-      // Show processing on the pay button
       const payBtn = document.getElementById('payNowBtn');
       if (payBtn) {
         payBtn.disabled = true;
@@ -1653,29 +1638,33 @@
     const phone = document.getElementById('paymentPhone').value.trim();
     const status = document.getElementById('paymentStatus');
     
+    console.log('📱 Initiating M-Pesa payment...');
+    console.log('Phone:', phone);
+    console.log('Order ID:', orderId);
+    console.log('Amount:', amount);
+    
     if (!phone) {
       showToast('❌ Please enter your phone number', 'error');
-      // Re-enable button
       const payBtn = document.getElementById('payNowBtn');
       if (payBtn) {
         payBtn.disabled = false;
-        payBtn.innerHTML = '💳 Pay Now';
+        payBtn.innerHTML = '📱 Pay with M-Pesa';
       }
       return;
     }
 
     const cleanPhone = phone.replace(/[^0-9]/g, '');
     if (cleanPhone.length < 10 || cleanPhone.length > 15) {
-      showToast('❌ Please enter a valid phone number', 'error');
+      showToast('❌ Please enter a valid phone number (e.g., 0712345678)', 'error');
       const payBtn = document.getElementById('payNowBtn');
       if (payBtn) {
         payBtn.disabled = false;
-        payBtn.innerHTML = '💳 Pay Now';
+        payBtn.innerHTML = '📱 Pay with M-Pesa';
       }
       return;
     }
 
-    status.textContent = '⏳ Sending M-Pesa request...';
+    status.textContent = '⏳ Sending M-Pesa STK Push...';
     status.style.color = '#2563eb';
 
     try {
@@ -1685,10 +1674,12 @@
         const payBtn = document.getElementById('payNowBtn');
         if (payBtn) {
           payBtn.disabled = false;
-          payBtn.innerHTML = '💳 Pay Now';
+          payBtn.innerHTML = '📱 Pay with M-Pesa';
         }
         return;
       }
+
+      console.log('📤 Sending request to /api/payments/mpesa/initiate');
 
       const response = await fetch('/api/payments/mpesa/initiate', {
         method: 'POST',
@@ -1704,12 +1695,12 @@
       });
 
       const data = await response.json();
+      console.log('📥 M-Pesa Response:', data);
 
-      // Re-enable button
       const payBtn = document.getElementById('payNowBtn');
       if (payBtn) {
         payBtn.disabled = false;
-        payBtn.innerHTML = '💳 Pay Now';
+        payBtn.innerHTML = '📱 Pay with M-Pesa';
       }
 
       if (data.success) {
@@ -1725,7 +1716,7 @@
       }
 
     } catch (error) {
-      console.error('M-Pesa error:', error);
+      console.error('❌ M-Pesa error:', error);
       status.textContent = '❌ Network error. Please try again.';
       status.style.color = '#ef4444';
       showToast('❌ Network error. Please try again.', 'error');
@@ -1733,7 +1724,7 @@
       const payBtn = document.getElementById('payNowBtn');
       if (payBtn) {
         payBtn.disabled = false;
-        payBtn.innerHTML = '💳 Pay Now';
+        payBtn.innerHTML = '📱 Pay with M-Pesa';
       }
     }
   }
@@ -1744,8 +1735,11 @@
     let attempts = 0;
     const maxAttempts = 60;
 
+    console.log('🔄 Starting M-Pesa polling for:', checkoutRequestId);
+
     mpesaPollingInterval = setInterval(async () => {
       attempts++;
+      console.log(`⏳ Polling attempt ${attempts}/${maxAttempts}`);
 
       try {
         const token = window.customerToken || localStorage.getItem('customerToken');
@@ -1754,6 +1748,7 @@
         });
 
         const data = await response.json();
+        console.log('📥 Polling response:', data);
 
         if (data.data && data.data.ResultCode !== undefined) {
           clearInterval(mpesaPollingInterval);
@@ -1786,7 +1781,7 @@
         }
 
       } catch (error) {
-        console.error('Polling error:', error);
+        console.error('❌ Polling error:', error);
       }
     }, 5000);
   }
@@ -1801,7 +1796,7 @@
       const payBtn = document.getElementById('payNowBtn');
       if (payBtn) {
         payBtn.disabled = false;
-        payBtn.innerHTML = '💳 Pay Now';
+        payBtn.innerHTML = '📱 Pay with Airtel Money';
       }
       return;
     }
@@ -1812,7 +1807,7 @@
       const payBtn = document.getElementById('payNowBtn');
       if (payBtn) {
         payBtn.disabled = false;
-        payBtn.innerHTML = '💳 Pay Now';
+        payBtn.innerHTML = '📱 Pay with Airtel Money';
       }
       return;
     }
@@ -1827,7 +1822,7 @@
         const payBtn = document.getElementById('payNowBtn');
         if (payBtn) {
           payBtn.disabled = false;
-          payBtn.innerHTML = '💳 Pay Now';
+          payBtn.innerHTML = '📱 Pay with Airtel Money';
         }
         return;
       }
@@ -1850,7 +1845,7 @@
       const payBtn = document.getElementById('payNowBtn');
       if (payBtn) {
         payBtn.disabled = false;
-        payBtn.innerHTML = '💳 Pay Now';
+        payBtn.innerHTML = '📱 Pay with Airtel Money';
       }
 
       if (data.success) {
@@ -1874,7 +1869,7 @@
       const payBtn = document.getElementById('payNowBtn');
       if (payBtn) {
         payBtn.disabled = false;
-        payBtn.innerHTML = '💳 Pay Now';
+        payBtn.innerHTML = '📱 Pay with Airtel Money';
       }
     }
   }
@@ -1934,6 +1929,7 @@
 
   // ---- SELECT PAYMENT METHOD ----
   function selectPaymentMethod(method) {
+    console.log('📱 Selecting payment method:', method);
     selectedPaymentMethod = method;
     
     document.querySelectorAll('.method').forEach(el => el.classList.remove('selected'));
@@ -1949,17 +1945,21 @@
       if (method === 'mpesa') {
         payBtn.textContent = '📱 Pay with M-Pesa';
         payBtn.onclick = processPayment;
+        payBtn.disabled = false;
       } else if (method === 'airtel') {
         payBtn.textContent = '📱 Pay with Airtel Money';
         payBtn.onclick = processPayment;
+        payBtn.disabled = false;
       } else {
         payBtn.textContent = '💳 Pay Now';
         payBtn.onclick = processPayment;
+        payBtn.disabled = false;
       }
     }
   }
 
   function openPaymentModal(amount, orderId) {
+    console.log('💳 Opening payment modal for:', amount, orderId);
     paymentTotal = amount;
     pendingOrderId = orderId;
     
@@ -1976,7 +1976,6 @@
       document.getElementById('paymentPhone').value = user.phone;
     }
     
-    // Reset pay button
     const payBtn = document.getElementById('payNowBtn');
     if (payBtn) {
       payBtn.disabled = false;
@@ -2002,7 +2001,6 @@
   // ---- SUBMIT PAYMENT (Bank Transfer) ----
   function submitPayment() {
     showToast('💳 Bank Transfer payment processing...', 'info');
-    // Bank transfer logic here
   }
 
   // ---- BANK SEARCH ----
