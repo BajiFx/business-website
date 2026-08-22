@@ -963,7 +963,7 @@
 <script src="/app.js"></script>
 <script>
   // ================================================================
-  //  CART & CHECKOUT LOGIC – STRUCTURED ADDRESS
+  //  CART & CHECKOUT LOGIC – CORRECT FLOW
   // ================================================================
 
   let cartItems = [];
@@ -1385,7 +1385,7 @@
   }
 
   // ================================================================
-  //  PLACE ORDER - STRUCTURED ADDRESS
+  //  PLACE ORDER - CREATES ORDER, OPENS PAYMENT MODAL (NO PROCESSING)
   // ================================================================
 
   function placeOrder() {
@@ -1508,13 +1508,16 @@
     console.log('📤 County:', county);
     console.log('📤 Sub-County:', subCounty);
     console.log('📤 Location:', location);
-    console.log('📤 Full Address:', fullAddress);
 
     const btn = document.getElementById('placeOrderBtn');
     if (btn) {
       btn.disabled = true;
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
     }
+
+    // ✅ ADD TIMEOUT to prevent infinite loading
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     fetch('/api/orders', {
       method: 'POST',
@@ -1534,13 +1537,14 @@
         customer_lat: null,
         customer_lng: null,
         location_accuracy: null,
-        // Store structured address separately if needed
         delivery_county: county,
         delivery_sub_county: subCounty,
         delivery_location: location
-      })
+      }),
+      signal: controller.signal
     })
     .then(response => {
+      clearTimeout(timeoutId);
       console.log('📥 Response status:', response.status);
       if (!response.ok) {
         return response.json().then(data => {
@@ -1552,6 +1556,7 @@
     .then(data => {
       console.log('📥 Response data:', data);
       
+      // ✅ RESTORE button
       if (btn) {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-check-circle"></i> Place Order';
@@ -1563,6 +1568,7 @@
 
         showToast('✅ Order created! Please complete payment.', 'success');
         
+        // ✅ OPEN PAYMENT MODAL - NOT "Processing..."
         if (typeof openPaymentModal === 'function') {
           openPaymentModal(grandTotal, data.order.id);
         } else {
@@ -1587,6 +1593,7 @@
       }
     })
     .catch(error => {
+      clearTimeout(timeoutId);
       console.error('❌ Order error:', error);
       
       if (btn) {
@@ -1598,13 +1605,16 @@
       if (error.message) {
         errorMsg = error.message;
       }
+      if (error.name === 'AbortError') {
+        errorMsg = 'Request timed out. Please check your connection and try again.';
+      }
       
       showToast('❌ ' + errorMsg, 'error');
     });
   }
 
   // ================================================================
-  //  PAYMENT - M-PESA & AIRTEL
+  //  PAYMENT - PROCESSING ONLY HAPPENS HERE
   // ================================================================
 
   function processPayment() {
@@ -1620,24 +1630,26 @@
       return;
     }
     
+    // ✅ SHOW "Processing..." on the PAY button
+    const payBtn = document.getElementById('payNowBtn');
+    if (payBtn) {
+      payBtn.disabled = true;
+      payBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    }
+    
     if (method === 'mpesa') {
-      const payBtn = document.getElementById('payNowBtn');
-      if (payBtn) {
-        payBtn.disabled = true;
-        payBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-      }
       initiateMpesaPayment(pendingOrderId, paymentTotal);
     } else if (method === 'airtel') {
-      const payBtn = document.getElementById('payNowBtn');
-      if (payBtn) {
-        payBtn.disabled = true;
-        payBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-      }
       initiateAirtelPayment(pendingOrderId, paymentTotal);
     } else if (method === 'bank') {
       submitPayment();
     } else {
       showToast('❌ Please select a valid payment method', 'error');
+      // ✅ RESTORE pay button
+      if (payBtn) {
+        payBtn.disabled = false;
+        payBtn.innerHTML = '💳 Pay Now';
+      }
     }
   }
 
@@ -1653,6 +1665,7 @@
     
     if (!phone) {
       showToast('❌ Please enter your phone number', 'error');
+      // ✅ RESTORE pay button
       const payBtn = document.getElementById('payNowBtn');
       if (payBtn) {
         payBtn.disabled = false;
@@ -1705,6 +1718,7 @@
       const data = await response.json();
       console.log('📥 M-Pesa Response:', data);
 
+      // ✅ RESTORE pay button after response
       const payBtn = document.getElementById('payNowBtn');
       if (payBtn) {
         payBtn.disabled = false;
@@ -1729,6 +1743,7 @@
       status.style.color = '#ef4444';
       showToast('❌ Network error. Please try again.', 'error');
       
+      // ✅ RESTORE pay button on error
       const payBtn = document.getElementById('payNowBtn');
       if (payBtn) {
         payBtn.disabled = false;

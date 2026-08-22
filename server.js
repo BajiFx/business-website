@@ -1774,7 +1774,7 @@ app.post('/api/mpesa/save-credentials', authMiddleware, async (req, res) => {
       'MPESA_CONSUMER_SECRET': consumerSecret,
       'MPESA_PASSKEY': passkey,
       'MPESA_SHORTCODE': shortcode || '174379',
-      'MPESA_CALLBACK_URL': callbackUrl || 'https://donator-eldercare-cacti.ngrok-free.dev/api/payments/mpesa-callback',
+      'MPESA_CALLBACK_URL': callbackUrl || 'https://business-website-2wkq.onrender.com/api/payments/mpesa-callback',
       'MPESA_ENVIRONMENT': environment || 'sandbox'
     };
 
@@ -2042,6 +2042,7 @@ app.post('/api/orders', authMiddleware, [
   try {
     let subtotal = 0;
     
+    // ✅ VALIDATE STOCK FIRST - CRITICAL
     for (const item of items) {
       const priceNum = parseFloat(item.price.replace(/[^0-9.]/g,'')) || 0;
       subtotal += priceNum * item.quantity;
@@ -2177,11 +2178,16 @@ app.post('/api/orders', authMiddleware, [
 
   } catch (err) {
     await pool.query('ROLLBACK');
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    console.error('❌ Order creation error:', err);
+    res.status(500).json({ error: err.message || 'Order creation failed' });
   }
 });
 
+// ================================================================
+//  REST OF ORDERS ROUTES (kept from original)
+// ================================================================
+
+// GET /api/orders
 app.get('/api/orders', authMiddleware, async (req, res) => {
   try {
     let query = `
@@ -2230,6 +2236,7 @@ app.get('/api/orders', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/orders/:id
 app.get('/api/orders/:id', authMiddleware, async (req, res) => {
   const orderId = parseInt(req.params.id);
   try {
@@ -2250,6 +2257,7 @@ app.get('/api/orders/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/orders/:id/tracking
 app.get('/api/orders/:id/tracking', authMiddleware, async (req, res) => {
   const orderId = parseInt(req.params.id);
   try {
@@ -2282,6 +2290,7 @@ app.get('/api/orders/:id/tracking', authMiddleware, async (req, res) => {
   }
 });
 
+// PUT /api/orders/:id/cancel
 app.put('/api/orders/:id/cancel', authMiddleware, [
   body('reason').notEmpty().withMessage('Cancellation reason required')
 ], async (req, res) => {
@@ -2323,6 +2332,7 @@ app.put('/api/orders/:id/cancel', authMiddleware, [
   }
 });
 
+// PUT /api/orders/:id/refund
 app.put('/api/orders/:id/refund', authMiddleware, [
   body('reason').notEmpty().withMessage('Refund reason required')
 ], async (req, res) => {
@@ -2352,6 +2362,7 @@ app.put('/api/orders/:id/refund', authMiddleware, [
   }
 });
 
+// PUT /api/admin/orders/:id/refund
 app.put('/api/admin/orders/:id/refund', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const orderId = parseInt(req.params.id);
@@ -2374,6 +2385,7 @@ app.put('/api/admin/orders/:id/refund', authMiddleware, async (req, res) => {
   }
 });
 
+// PUT /api/orders/:id/replace
 app.put('/api/orders/:id/replace', authMiddleware, async (req, res) => {
   if (req.role !== 'customer') return res.status(403).json({ error: 'Customer only.' });
   const orderId = parseInt(req.params.id);
@@ -2442,6 +2454,7 @@ app.put('/api/orders/:id/replace', authMiddleware, async (req, res) => {
   }
 });
 
+// POST /api/orders/:id/replacement-payment
 app.post('/api/orders/:id/replacement-payment', authMiddleware, async (req, res) => {
   if (req.role !== 'customer') return res.status(403).json({ error: 'Customer only.' });
   const orderId = parseInt(req.params.id);
@@ -2479,6 +2492,7 @@ app.post('/api/orders/:id/replacement-payment', authMiddleware, async (req, res)
   }
 });
 
+// PUT /api/admin/orders/:id/replace
 app.put('/api/admin/orders/:id/replace', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const orderId = parseInt(req.params.id);
@@ -2507,6 +2521,7 @@ app.put('/api/admin/orders/:id/replace', authMiddleware, async (req, res) => {
   }
 });
 
+// POST /api/orders/:id/return
 app.post('/api/orders/:id/return', authMiddleware, [
   body('product_id').isInt().withMessage('Product ID required'),
   body('reason').notEmpty().withMessage('Return reason required')
@@ -2551,6 +2566,7 @@ app.post('/api/orders/:id/return', authMiddleware, [
   }
 });
 
+// PUT /api/admin/returns/:id
 app.put('/api/admin/returns/:id', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const returnId = parseInt(req.params.id);
@@ -2574,6 +2590,7 @@ app.put('/api/admin/returns/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// POST /api/orders/:id/reorder
 app.post('/api/orders/:id/reorder', authMiddleware, async (req, res) => {
   const orderId = parseInt(req.params.id);
   try {
@@ -2604,6 +2621,7 @@ app.post('/api/orders/:id/reorder', authMiddleware, async (req, res) => {
   }
 });
 
+// PUT /api/orders/:id/confirm
 app.put('/api/orders/:id/confirm', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const orderId = parseInt(req.params.id);
@@ -2685,6 +2703,7 @@ app.put('/api/orders/:id/confirm', authMiddleware, async (req, res) => {
   }
 });
 
+// PUT /api/orders/:id/status
 app.put('/api/orders/:id/status', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const orderId = parseInt(req.params.id);
@@ -2734,6 +2753,7 @@ app.put('/api/orders/:id/status', authMiddleware, async (req, res) => {
   }
 });
 
+// PUT /api/orders/:id/receive
 app.put('/api/orders/:id/receive', authMiddleware, async (req, res) => {
   if (req.role !== 'customer') return res.status(403).json({ error: 'Customer only.' });
   const orderId = parseInt(req.params.id);
@@ -2769,6 +2789,7 @@ app.put('/api/orders/:id/receive', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/orders/:id/chat
 app.get('/api/orders/:id/chat', authMiddleware, async (req, res) => {
   const orderId = parseInt(req.params.id);
   try {
@@ -2784,6 +2805,7 @@ app.get('/api/orders/:id/chat', authMiddleware, async (req, res) => {
   }
 });
 
+// POST /api/orders/:id/chat
 app.post('/api/orders/:id/chat', authMiddleware, async (req, res) => {
   const orderId = parseInt(req.params.id);
   const { message } = req.body;
@@ -2806,6 +2828,7 @@ app.post('/api/orders/:id/chat', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/admin/dashboard
 app.get('/api/admin/dashboard', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   try {
@@ -2840,6 +2863,7 @@ app.get('/api/admin/dashboard', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/admin/returns
 app.get('/api/admin/returns', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   try {
@@ -2857,6 +2881,7 @@ app.get('/api/admin/returns', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/returns/customer
 app.get('/api/returns/customer', authMiddleware, async (req, res) => {
   if (req.role !== 'customer') return res.status(403).json({ error: 'Customer only.' });
   try {
@@ -2871,6 +2896,7 @@ app.get('/api/returns/customer', authMiddleware, async (req, res) => {
   }
 });
 
+// POST /api/admin/orders/:id/remind
 app.post('/api/admin/orders/:id/remind', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const orderId = parseInt(req.params.id);
@@ -2903,6 +2929,7 @@ app.post('/api/admin/orders/:id/remind', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/admin/logs
 app.get('/api/admin/logs', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   try {
@@ -2916,6 +2943,7 @@ app.get('/api/admin/logs', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/admin/customers
 app.get('/api/admin/customers', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   try {
@@ -2933,6 +2961,7 @@ app.get('/api/admin/customers', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/admin/customers/:id
 app.get('/api/admin/customers/:id', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const id = parseInt(req.params.id);
@@ -2949,6 +2978,7 @@ app.get('/api/admin/customers/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// POST /api/admin/orders/bulk
 app.post('/api/admin/orders/bulk', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const { orderIds, action, status, tracking_number } = req.body;
@@ -2981,6 +3011,7 @@ app.post('/api/admin/orders/bulk', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/admin/orders/export
 app.get('/api/admin/orders/export', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   try {
@@ -3011,6 +3042,7 @@ app.get('/api/admin/orders/export', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/orders/:id/receipt
 app.get('/api/orders/:id/receipt', authMiddleware, async (req, res) => {
   const orderId = parseInt(req.params.id);
   try {
@@ -3077,6 +3109,7 @@ app.get('/api/orders/:id/receipt', authMiddleware, async (req, res) => {
   }
 });
 
+// POST /api/orders/:id/send-confirmation
 app.post('/api/orders/:id/send-confirmation', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
 
