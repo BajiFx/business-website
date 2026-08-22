@@ -4786,6 +4786,7 @@ server.listen(PORT, () => {
   console.log(`☁️ Cloudinary ready`);
   console.log(`📦 PostgreSQL connected`);
   console.log(`💰 M-Pesa integration ready`);
+<<<<<<< HEAD
   console.log(`📱 Airtel Money integration ready`);
   console.log(`💳 PayPal integration ready`);
   console.log(`📧 Email system ready`);
@@ -4793,3 +4794,6 @@ server.listen(PORT, () => {
   console.log(`⏰ Auto-cancel job scheduled`);
   console.log(`📊 Redis caching ${process.env.REDIS_URL ? 'enabled' : 'disabled (memory cache)'}`);
 });
+=======
+});
+>>>>>>> 301b2f599e98860a131516b8ee603fa8ac9441db
