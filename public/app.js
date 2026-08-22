@@ -415,6 +415,21 @@ async function handleAuthRegister() {
 window.handleAuthRegister = handleAuthRegister;
 
 // ============================================================
+//  CHANGE QUANTITY IN CART (Fix for error)
+// ============================================================
+function changeQty(productId, delta) {
+    const cart = getCart();
+    const item = cart.find(i => i.id === productId);
+    if (!item) return;
+    item.quantity = Math.max(1, item.quantity + delta);
+    saveCart(cart);
+    updateCartBadge();
+    renderGrid();
+    if (window.renderCartPage) window.renderCartPage();
+}
+window.changeQty = changeQty;
+
+// ============================================================
 //  ADD TO CART
 // ============================================================
 function addToCart(productId, quantity = 1) {
@@ -1130,6 +1145,106 @@ function getDistance(lat1, lng1, lat2, lng2) {
 }
 
 // ============================================================
+//  OPEN DETAILS MODAL (Fix for error)
+// ============================================================
+function openDetails(productId) {
+    currentModalProductId = productId;
+    const product = allProducts.find(p => p.id === productId);
+    if (!product) {
+        showToast('Product not found', 'error');
+        return;
+    }
+    
+    const modal = document.getElementById('detailModal');
+    const content = document.getElementById('detailContent');
+    
+    if (!modal || !content) return;
+    
+    const isInCart = getCart().some(item => item.id === productId);
+    const btnText = isInCart ? 'Add More' : 'Add to Cart';
+    
+    content.innerHTML = `
+        <div class="detail-modal-content">
+            <div class="detail-modal-image">
+                ${product.image ? `<img src="${product.image}" alt="${product.name}">` : '<div class="no-image">📦</div>'}
+            </div>
+            <div class="detail-modal-info">
+                <h2>${product.name}</h2>
+                <div class="price">${product.price}</div>
+                ${product.rating ? `<div class="rating">⭐ ${product.rating}</div>` : ''}
+                ${product.description ? `<p class="description">${product.description}</p>` : ''}
+                <div class="qty-selector">
+                    <button onclick="changeModalQty(-1)">−</button>
+                    <span id="modalQty">1</span>
+                    <button onclick="changeModalQty(1)">+</button>
+                </div>
+                <button class="btn-add-large ${isInCart ? 'in-cart' : ''}" onclick="addToCartFromModal()">
+                    🛒 ${btnText}
+                </button>
+            </div>
+        </div>
+    `;
+    
+    modal.classList.add('active');
+    modalQty = 1;
+    document.getElementById('modalQty').textContent = '1';
+}
+window.openDetails = openDetails;
+
+function closeDetails() {
+    const modal = document.getElementById('detailModal');
+    if (modal) modal.classList.remove('active');
+}
+window.closeDetails = closeDetails;
+
+function changeModalQty(delta) {
+    modalQty = Math.max(1, modalQty + delta);
+    const qtySpan = document.getElementById('modalQty');
+    if (qtySpan) qtySpan.textContent = modalQty;
+}
+window.changeModalQty = changeModalQty;
+
+function updateModalCartButton(productId) {
+    const modal = document.getElementById('detailModal');
+    if (!modal || !modal.classList.contains('active')) return;
+    
+    const btn = modal.querySelector('.btn-add-large');
+    if (btn) {
+        const isInCart = getCart().some(item => item.id === productId);
+        btn.textContent = isInCart ? '🛒 Add More' : '🛒 Add to Cart';
+        btn.classList.toggle('in-cart', isInCart);
+    }
+}
+window.updateModalCartButton = updateModalCartButton;
+
+// ============================================================
+//  GET AUTO SOCIAL LINKS
+// ============================================================
+function getAutoSocialLinks(product) {
+    const shop = JSON.parse(localStorage.getItem('shop') || '{}');
+    const productName = product?.name || 'this product';
+    const productPrice = product?.price ? ` (${product.price})` : '';
+    const message = `Hi, I'm interested in "${productName}"${productPrice}. Could I get more information about this product?`;
+    const encodedMessage = encodeURIComponent(message);
+    
+    const whatsappNumber = shop.whatsapp || '';
+    const instagramUser = shop.instagram || '';
+    const facebookUser = shop.facebook || '';
+    const tiktokUser = shop.tiktok || '';
+    const phone = shop.phone || '';
+    
+    const cleanedWhatsapp = whatsappNumber.replace(/[^0-9]/g, '');
+    return {
+        whatsapp: cleanedWhatsapp ? `https://wa.me/${cleanedWhatsapp}?text=${encodedMessage}` : '#',
+        instagram: instagramUser ? `https://www.instagram.com/${instagramUser.replace('@', '').trim()}/` : '#',
+        messenger: facebookUser ? `https://m.me/${facebookUser.replace('@', '').trim()}?text=${encodedMessage}` : '#',
+        tiktok: tiktokUser ? `https://www.tiktok.com/@${tiktokUser.replace('@', '').trim()}` : '#',
+        phone: phone ? `tel:${phone}` : '#'
+    };
+}
+window.getAutoSocialLinks = getAutoSocialLinks;
+
+// ============================================================
 //  HERO SLIDESHOW
 // ============================================================
 function startHeroSlideshow() {
@@ -1205,3 +1320,7 @@ window.getAutoSocialLinks = getAutoSocialLinks;
 window.toggleWishlist = toggleWishlist;
 window.syncCartToServer = syncCartToServer;
 window.loadCartFromServer = loadCartFromServer;
+window.changeModalQty = changeModalQty;
+window.updateModalCartButton = updateModalCartButton;
+window.startHeroSlideshow = startHeroSlideshow;
+window.addImageToSlideshow = addImageToSlideshow;

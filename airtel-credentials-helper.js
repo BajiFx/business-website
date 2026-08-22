@@ -10,6 +10,7 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
+const BASE_URL = process.env.BASE_URL || 'https://donator-eldercare-cacti.ngrok-free.dev';
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
@@ -31,7 +32,7 @@ async function setupAirtelCredentials() {
   console.log('  2. Create an account if you don\'t have one');
   console.log('  3. Go to "My Apps" and create a new app');
   console.log('  4. Copy your Client ID and Client Secret');
-  console.log('\n🔗 Your ngrok URL: https://donator-eldercare-cacti.ngrok-free.dev\n');
+  console.log(`\n🔗 Your callback URL: ${BASE_URL}/api/payments/airtel-callback\n`);
   
   const envPath = path.join(process.cwd(), '.env');
   let envContent = '';
@@ -56,7 +57,7 @@ async function setupAirtelCredentials() {
     'AIRTEL_CLIENT_ID': clientId,
     'AIRTEL_CLIENT_SECRET': clientSecret,
     'AIRTEL_ENVIRONMENT': environment,
-    'AIRTEL_CALLBACK_URL': 'https://donator-eldercare-cacti.ngrok-free.dev/api/payments/airtel-callback'
+    'AIRTEL_CALLBACK_URL': `${BASE_URL}/api/payments/airtel-callback`
   };
   
   let foundKeys = {};
@@ -88,7 +89,7 @@ async function setupAirtelCredentials() {
   console.log('📋 Your Airtel configuration:');
   console.log(`   Client ID: ${clientId ? clientId.substring(0, 8) + '...' : 'NOT SET'}`);
   console.log(`   Environment: ${environment}`);
-  console.log(`   Callback URL: https://donator-eldercare-cacti.ngrok-free.dev/api/payments/airtel-callback\n`);
+  console.log(`   Callback URL: ${BASE_URL}/api/payments/airtel-callback\n`);
   
   console.log('📝 Next steps:');
   console.log('  1. Start your server: npm start');

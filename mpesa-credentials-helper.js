@@ -10,6 +10,7 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
+const BASE_URL = process.env.BASE_URL || 'https://donator-eldercare-cacti.ngrok-free.dev';
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
@@ -33,7 +34,7 @@ async function setupCredentials() {
   console.log('  4. Copy your Consumer Key and Consumer Secret');
   console.log('  5. Go to "Sandbox" → "Credentials"');
   console.log('  6. Copy your Passkey');
-  console.log('\n🔗 Make sure ngrok is running: ngrok http 3000\n');
+  console.log(`\n🔗 Your callback URL will be: ${BASE_URL}/api/payments/mpesa-callback\n`);
   
   const envPath = path.join(process.cwd(), '.env');
   let envContent = '';
@@ -61,7 +62,7 @@ async function setupCredentials() {
     'MPESA_CONSUMER_SECRET': consumerSecret,
     'MPESA_PASSKEY': passkey,
     'MPESA_SHORTCODE': shortcode,
-    'MPESA_CALLBACK_URL': 'https://donator-eldercare-cacti.ngrok-free.dev/api/payments/mpesa-callback',
+    'MPESA_CALLBACK_URL': `${BASE_URL}/api/payments/mpesa-callback`,
     'MPESA_ENVIRONMENT': environment
   };
   
@@ -115,7 +116,7 @@ async function setupCredentials() {
   console.log('📋 Your configuration:');
   console.log(`   Environment: ${environment}`);
   console.log(`   Shortcode: ${shortcode}`);
-  console.log(`   Callback URL: https://donator-eldercare-cacti.ngrok-free.dev/api/payments/mpesa-callback`);
+  console.log(`   Callback URL: ${BASE_URL}/api/payments/mpesa-callback`);
   console.log(`   Email: georgebabji1220@gmail.com\n`);
   
   console.log('🧪 Testing connection to Safaricom...\n');
@@ -148,7 +149,7 @@ async function setupCredentials() {
   
   console.log('📝 Next steps:');
   console.log('  1. Make sure ngrok is running: ngrok http 3000');
-  console.log('  2. Start your server: npm start');
+  console.log(`  2. Start your server: npm start`);
   console.log('  3. Test M-Pesa from your frontend\n');
   
   rl.close();

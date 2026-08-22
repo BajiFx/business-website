@@ -7,16 +7,26 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "migrate": "node migrations/run.js",
+    "migrate:create": "node migrations/create.js",
+    "seed:locations": "node scripts/sync-locations.js",
+    "seed:pickup": "node scripts/seed-pickup-stations.js",
+    "seed:all": "npm run migrate && npm run seed:locations && npm run seed:pickup",
+    "backup": "node scripts/backup-database.js",
     "mpesa:check": "node mpesa-credentials-check.js",
     "mpesa:setup": "node mpesa-credentials-helper.js",
     "mpesa:test": "node test-mpesa.js",
-    "airtel:setup": "node airtel-credentials-helper.js"
+    "airtel:setup": "node airtel-credentials-helper.js",
+    "postinstall": "npm run migrate || echo 'Migration skipped'"
   },
   "dependencies": {
+    "@paypal/checkout-server-sdk": "^1.0.3",
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.10.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
+    "cron": "^2.4.3",
+    "csrf": "^3.1.0",
     "csurf": "^1.11.0",
     "dotenv": "^17.4.2",
     "express": "^4.19.2",
@@ -25,11 +35,17 @@
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "1.4.5-lts.1",
+    "node-cron": "^3.0.3",
     "nodemailer": "^9.0.5",
     "pdfkit": "^0.19.1",
     "pg": "^8.23.0",
+    "redis": "^4.6.10",
     "sharp": "^0.35.3",
     "socket.io": "^4.8.3",
-    "socket.io-client": "^4.8.3"
+    "socket.io-client": "^4.8.3",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
   }
 }

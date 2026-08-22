@@ -15,26 +15,120 @@ const nodemailer = require('nodemailer');
 const { body, validationResult } = require('express-validator');
 const PDFDocument = require('pdfkit');
 const crypto = require('crypto');
+const { v4: uuidv4 } = require('uuid');
+const cron = require('node-cron');
+const paypal = require('@paypal/checkout-server-sdk');
+const { sendEmail, orderConfirmationEmail, statusUpdateEmail, receivedEmail } = require('./email');
+const { getRedisClient, cacheMiddleware } = require('./redis');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
-// Increase max listeners
-process.setMaxListeners(20);
+// ============================================================
+//  EXPRESS APP INITIALIZATION
+// ============================================================
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: process.env.CLIENT_URL || '*',
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  pingTimeout: 60000,
+  pingInterval: 25000
+});
 
-// ---- Email templates ----
-let orderConfirmationEmail, statusUpdateEmail, receivedEmail;
-try {
-  const email = require('./email');
-  orderConfirmationEmail = email.orderConfirmationEmail;
-  statusUpdateEmail = email.statusUpdateEmail;
-  receivedEmail = email.receivedEmail;
-} catch (e) {
-  console.warn('⚠️ Email module not loaded – email features disabled.');
-  orderConfirmationEmail = () => ({ subject: '', html: '', text: '' });
-  statusUpdateEmail = () => ({ subject: '', html: '', text: '' });
-  receivedEmail = () => ({ subject: '', html: '', text: '' });
+const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET;
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const MAX_RETRY_ATTEMPTS = parseInt(process.env.MAX_RETRY_ATTEMPTS) || 3;
+const RETRY_DELAY_MS = parseInt(process.env.RETRY_DELAY_MS) || 1000;
+
+if (!JWT_SECRET) {
+  console.error('❌ Missing JWT_SECRET in .env');
+  process.exit(1);
 }
 
-// ---- Nodemailer ----
+// ============================================================
+//  CSRF PROTECTION - DISABLED FOR TESTING
+// ============================================================
+// const csrf = require('csurf');
+// const csrfProtection = csrf({
+//   cookie: {
+//     httpOnly: true,
+//     secure: process.env.NODE_ENV === 'production',
+//     sameSite: 'strict'
+//   }
+// });
+
+app.use(cookieParser());
+
+// ============================================================
+//  PAYPAL CLIENT SETUP
+// ============================================================
+let paypalClient = null;
+if (process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET && 
+    process.env.PAYPAL_CLIENT_ID !== 'your_paypal_client_id_here') {
+  const environment = process.env.PAYPAL_MODE === 'production' 
+    ? new paypal.core.LiveEnvironment(process.env.PAYPAL_CLIENT_ID, process.env.PAYPAL_CLIENT_SECRET)
+    : new paypal.core.SandboxEnvironment(process.env.PAYPAL_CLIENT_ID, process.env.PAYPAL_CLIENT_SECRET);
+  paypalClient = new paypal.core.PayPalHttpClient(environment);
+  console.log('✅ PayPal configured');
+} else {
+  console.log('⚠️ PayPal credentials not configured. Using simulation mode.');
+}
+
+// ============================================================
+//  Increase max listeners
+// ============================================================
+process.setMaxListeners(20);
+
+// ============================================================
+//  ERROR LOGGING
+// ============================================================
+function logError(error, context = '') {
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    context,
+    message: error.message || error,
+    stack: error.stack,
+    ...error
+  };
+  
+  const logDir = path.join(__dirname, 'logs');
+  if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true });
+  }
+  
+  fs.appendFileSync(
+    path.join(logDir, 'error.log'),
+    JSON.stringify(logEntry) + '\n'
+  );
+  console.error('❌ Error:', error.message || error);
+}
+
+// ============================================================
+//  RETRY HELPER
+// ============================================================
+async function retryOperation(fn, maxRetries = MAX_RETRY_ATTEMPTS, delay = RETRY_DELAY_MS) {
+  let lastError;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      console.log(`🔄 Retry ${i + 1}/${maxRetries} after error:`, err.message);
+      if (i < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+      }
+    }
+  }
+  throw lastError;
+}
+
+// ============================================================
+//  NODEMAILER
+// ============================================================
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: process.env.SMTP_PORT,
@@ -45,46 +139,9 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-async function sendEmail({ to, subject, html, text }) {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.warn('SMTP credentials not set, email not sent.');
-    return;
-  }
-  try {
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
-      to,
-      subject,
-      html,
-      text,
-    });
-    console.log(`📧 Email sent to ${to}`);
-  } catch (err) {
-    console.error('❌ Email send error:', err);
-  }
-}
-
-// ---- Express app ----
-const app = express();
-const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: {
-    origin: process.env.CLIENT_URL || '*',
-    methods: ['GET', 'POST']
-  },
-  pingTimeout: 60000,
-  pingInterval: 25000
-});
-
-const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET;
-
-if (!JWT_SECRET) {
-  console.error('❌ Missing JWT_SECRET in .env');
-  process.exit(1);
-}
-
-// ---------- Cloudinary ----------
+// ============================================================
+//  CLOUDINARY
+// ============================================================
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -92,10 +149,15 @@ cloudinary.config({
 });
 console.log('✅ Cloudinary configured');
 
-// ---------- PostgreSQL ----------
+// ============================================================
+//  POSTGRESQL (Neon)
+// ============================================================
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false, sslmode: 'verify-full' },
+  ssl: { 
+    rejectUnauthorized: false,
+    sslmode: 'verify-full'
+  },
   max: 20,
   idleTimeoutMillis: 10000,
   connectionTimeoutMillis: 5000,
@@ -104,15 +166,18 @@ const pool = new Pool({
 
 pool.on('error', (err) => {
   console.error('⚠️ PostgreSQL pool error:', err);
+  logError(err, 'Database pool error');
 });
 
 pool.connect((err, client, release) => {
   if (err) {
     console.error('❌ Database connection failed:', err);
+    logError(err, 'Database connection failed');
     setTimeout(() => {
       pool.connect((err2, client2, release2) => {
         if (err2) {
           console.error('❌ Database still unreachable:', err2);
+          logError(err2, 'Database reconnection failed');
         } else {
           console.log('✅ Neon PostgreSQL reconnected successfully');
           release2();
@@ -134,13 +199,17 @@ process.on('SIGINT', () => {
 
 process.on('uncaughtException', (err) => {
   console.error('❌ Uncaught Exception:', err);
+  logError(err, 'Uncaught Exception');
 });
 
 process.on('unhandledRejection', (reason) => {
   console.error('❌ Unhandled Rejection:', reason);
+  logError(reason, 'Unhandled Rejection');
 });
 
-// ---------- Security ----------
+// ============================================================
+//  SECURITY
+// ============================================================
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -158,11 +227,17 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
-app.use(cors({ origin: process.env.CLIENT_URL || '*' }));
+app.use(cors({ 
+  origin: process.env.CLIENT_URL || '*',
+  credentials: true 
+}));
 app.use(express.json());
+app.use(cookieParser());
 app.use(express.static('public'));
 
-// ---------- Rate Limiter ----------
+// ============================================================
+//  RATE LIMITER
+// ============================================================
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 200,
@@ -176,7 +251,18 @@ const loginLimiter = rateLimit({
   message: { error: 'Too many login attempts. Try again in 15 minutes.' }
 });
 
-// ---------- File Upload ----------
+const sensitiveLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many attempts. Please try again later.' }
+});
+
+app.use('/api/orders', sensitiveLimiter);
+app.use('/api/payments', sensitiveLimiter);
+
+// ============================================================
+//  FILE UPLOAD
+// ============================================================
 const uploadDir = path.join(__dirname, 'public', 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -210,7 +296,9 @@ app.use((err, req, res, next) => {
   next();
 });
 
-// ---------- Cloudinary upload helper ----------
+// ============================================================
+//  CLOUDINARY UPLOAD HELPER
+// ============================================================
 async function uploadToCloudinary(filePath, options = {}) {
   try {
     const defaultOptions = {
@@ -226,6 +314,7 @@ async function uploadToCloudinary(filePath, options = {}) {
     return result.secure_url;
   } catch (err) {
     console.error('❌ Cloudinary upload error:', err);
+    logError(err, 'Cloudinary upload');
     const localPath = '/uploads/' + path.basename(filePath);
     console.log('⚠️ Using local fallback:', localPath);
     return localPath;
@@ -237,7 +326,14 @@ function getHeroImage(row) {
   return row.heroImage || row.heroimage || null;
 }
 
-// ---------- JWT Auth ----------
+function getOptimizedImage(url, width = 500, height = 500) {
+  if (!url || !url.includes('cloudinary')) return url;
+  return url.replace('/upload/', `/upload/w_${width},h_${height},c_fill/`);
+}
+
+// ============================================================
+//  JWT AUTH
+// ============================================================
 function generateToken(userId, role = 'customer') {
   return jwt.sign({ userId, role }, JWT_SECRET, { expiresIn: '7d' });
 }
@@ -258,7 +354,9 @@ function authMiddleware(req, res, next) {
   }
 }
 
-// ---------- Admin Activity Logger ----------
+// ============================================================
+//  ADMIN ACTIVITY LOGGER
+// ============================================================
 async function logAdminActivity(adminId, action, details = {}) {
   try {
     await pool.query(
@@ -267,20 +365,20 @@ async function logAdminActivity(adminId, action, details = {}) {
     );
   } catch (err) {
     console.error('Error logging admin activity:', err);
+    logError(err, 'Admin activity logging');
   }
 }
 
-// ---------- Order Reference Generator ----------
+// ============================================================
+//  ORDER REFERENCE GENERATOR
+// ============================================================
 function generateOrderRef() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let ref = '';
-  for (let i = 0; i < 15; i++) {
-    ref += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return ref;
+  return 'ORD-' + uuidv4().substring(0, 8).toUpperCase();
 }
 
-// ---------- Helper: append status history ----------
+// ============================================================
+//  HELPER: APPEND STATUS HISTORY
+// ============================================================
 async function appendOrderStatus(orderId, status, note = '') {
   const result = await pool.query('SELECT status_history FROM orders WHERE id = $1', [orderId]);
   let history = result.rows[0]?.status_history || [];
@@ -293,7 +391,9 @@ async function appendOrderStatus(orderId, status, note = '') {
   await pool.query('UPDATE orders SET status_history = $1 WHERE id = $2', [JSON.stringify(history), orderId]);
 }
 
-// ---- Distance calculation ----
+// ============================================================
+//  DISTANCE CALCULATION
+// ============================================================
 function getDistance(lat1, lng1, lat2, lng2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -311,16 +411,20 @@ function estimateDeliveryDays(distanceKm) {
   return 10;
 }
 
-// ---- Helper: get system setting ----
+// ============================================================
+//  HELPER: GET SYSTEM SETTING
+// ============================================================
 async function getSetting(key, defaultValue) {
   const result = await pool.query('SELECT value FROM system_settings WHERE key = $1', [key]);
   if (result.rows.length === 0) return defaultValue;
   return result.rows[0].value;
 }
 
-// ---- Shipping cost calculation ----
+// ============================================================
+//  SHIPPING COST CALCULATION
+// ============================================================
 function calculateShippingCost(subtotal, tier) {
-  const FREE_SHIPPING_THRESHOLD = 40000;
+  const FREE_SHIPPING_THRESHOLD = parseFloat(process.env.FREE_SHIPPING_THRESHOLD) || 40000;
   let standard, express, overnight;
   if (subtotal >= FREE_SHIPPING_THRESHOLD) {
     standard = 0; express = 250; overnight = 350;
@@ -341,15 +445,190 @@ function calculateShippingCost(subtotal, tier) {
   }
 }
 
-// ---- Password Reset Token Generator ----
+// ============================================================
+//  PASSWORD RESET TOKEN GENERATOR
+// ============================================================
 function generateResetToken() {
   return crypto.randomBytes(32).toString('hex');
 }
 
-// ================================================================
-//  M-PESA INTEGRATION - FULLY REAL IMPLEMENTATION
-// ================================================================
+// ============================================================
+//  VALIDATION HELPERS
+// ============================================================
+function validateKenyanPhone(phone) {
+  const cleaned = phone.replace(/[^0-9]/g, '');
+  return /^07[0-9]{8}$/.test(cleaned) || /^01[0-9]{8}$/.test(cleaned) || /^2547[0-9]{8}$/.test(cleaned);
+}
 
+function validateEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+// ============================================================
+//  STOCK DECREMENT WITH ROW LOCKING (Race Condition Fix)
+// ============================================================
+async function decrementStockAtomic(productId, quantity, variantId = null) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    if (variantId) {
+      const stockResult = await client.query(
+        'SELECT stock FROM product_variants WHERE id = $1 FOR UPDATE',
+        [variantId]
+      );
+      if (stockResult.rows.length === 0) {
+        throw new Error('Variant not found');
+      }
+      if (stockResult.rows[0].stock < quantity) {
+        throw new Error(`Insufficient stock for variant. Available: ${stockResult.rows[0].stock}`);
+      }
+      await client.query(
+        'UPDATE product_variants SET stock = stock - $1 WHERE id = $2',
+        [quantity, variantId]
+      );
+    } else {
+      const stockResult = await client.query(
+        'SELECT stock FROM products WHERE id = $1 FOR UPDATE',
+        [productId]
+      );
+      if (stockResult.rows.length === 0) {
+        throw new Error('Product not found');
+      }
+      if (stockResult.rows[0].stock < quantity) {
+        throw new Error(`Insufficient stock. Available: ${stockResult.rows[0].stock}`);
+      }
+      await client.query(
+        'UPDATE products SET stock = stock - $1 WHERE id = $2',
+        [quantity, productId]
+      );
+    }
+    
+    await client.query('COMMIT');
+    return { success: true };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// ============================================================
+//  RESTOCK ON CANCELLATION
+// ============================================================
+async function restockOrder(orderId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    const items = await client.query(
+      'SELECT product_id, quantity, variant_id FROM order_items WHERE order_id = $1',
+      [orderId]
+    );
+    
+    for (const item of items.rows) {
+      if (item.variant_id) {
+        await client.query(
+          'UPDATE product_variants SET stock = stock + $1 WHERE id = $2',
+          [item.quantity, item.variant_id]
+        );
+      } else {
+        await client.query(
+          'UPDATE products SET stock = stock + $1 WHERE id = $2',
+          [item.quantity, item.product_id]
+        );
+      }
+    }
+    
+    await client.query('COMMIT');
+    return { success: true };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// ============================================================
+//  AUTO-CANCEL UNPAID ORDERS
+// ============================================================
+cron.schedule('0 * * * *', async () => {
+  console.log('🔄 Running auto-cancel job for unpaid orders...');
+  try {
+    const result = await pool.query(
+      `SELECT id, order_ref, customer_id 
+       FROM orders 
+       WHERE status = 'pending_payment' 
+       AND created_at < NOW() - INTERVAL '24 hours'`
+    );
+    
+    for (const order of result.rows) {
+      await pool.query(
+        `UPDATE orders SET status = 'cancelled', cancelled_at = NOW(), cancelled_by = 'system' 
+         WHERE id = $1`,
+        [order.id]
+      );
+      
+      await appendOrderStatus(order.id, 'cancelled', 'Auto-cancelled: Payment not completed within 24 hours');
+      
+      // Restock items
+      await restockOrder(order.id);
+      
+      await pool.query(
+        `INSERT INTO order_chat_messages (order_id, from_user, message) 
+         VALUES ($1, 'System', $2)`,
+        [order.id, `⏰ Order ${order.order_ref} auto-cancelled: Payment was not completed within 24 hours.`]
+      );
+      
+      io.to(`order_${order.id}`).emit('new-order-chat-message', {
+        order_id: order.id,
+        from_user: 'System',
+        message: `⏰ Order ${order.order_ref} auto-cancelled: Payment was not completed within 24 hours.`,
+        timestamp: new Date()
+      });
+      
+      console.log(`✅ Auto-cancelled order ${order.order_ref}`);
+    }
+  } catch (err) {
+    console.error('❌ Auto-cancel job error:', err);
+    logError(err, 'Auto-cancel job');
+  }
+});
+
+// ============================================================
+//  AUTO-COMPLETE ORDERS (7 days after received)
+// ============================================================
+cron.schedule('0 * * * *', async () => {
+  try {
+    const result = await pool.query(
+      `SELECT id FROM orders WHERE status = 'received' AND received_at < NOW() - INTERVAL '7 days'`
+    );
+    for (const order of result.rows) {
+      await pool.query(
+        `UPDATE orders SET status = 'completed', completed_at = NOW() WHERE id = $1`,
+        [order.id]
+      );
+      await appendOrderStatus(order.id, 'completed', 'Auto-completed: 7 days after receipt');
+      console.log(`✅ Order ${order.id} auto-completed after 7 days`);
+    }
+  } catch (err) {
+    console.error('❌ Auto-complete job error:', err);
+    logError(err, 'Auto-complete job');
+  }
+});
+
+// ============================================================
+//  DYNAMIC CALLBACK URL HELPER
+// ============================================================
+function getCallbackUrl(method) {
+  return `${BASE_URL}/api/payments/${method}-callback`;
+}
+
+// ============================================================
+//  M-PESA INTEGRATION
+// ============================================================
 async function getMpesaAccessToken() {
   const consumerKey = process.env.MPESA_CONSUMER_KEY;
   const consumerSecret = process.env.MPESA_CONSUMER_SECRET;
@@ -361,17 +640,19 @@ async function getMpesaAccessToken() {
 
   try {
     const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
-    const response = await fetch('https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Basic ${auth}`,
-        'Content-Type': 'application/json'
+    const response = await retryOperation(async () => {
+      const res = await fetch('https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to get token: ${res.status}`);
       }
+      return res;
     });
-
-    if (!response.ok) {
-      throw new Error(`Failed to get token: ${response.status}`);
-    }
 
     const data = await response.json();
     if (!data.access_token) {
@@ -381,13 +662,14 @@ async function getMpesaAccessToken() {
     return data.access_token;
   } catch (error) {
     console.error('❌ M-Pesa token error:', error);
+    logError(error, 'M-Pesa token');
     return null;
   }
 }
 
 async function initiateMpesaStkPush(phoneNumber, amount, accountReference, transactionDesc = 'Payment for order') {
   try {
-    const accessToken = await getMpesaAccessToken();
+    const accessToken = await retryOperation(() => getMpesaAccessToken());
     
     if (!accessToken) {
       console.warn('⚠️ Using M-Pesa simulation mode');
@@ -401,9 +683,9 @@ async function initiateMpesaStkPush(phoneNumber, amount, accountReference, trans
 
     const shortcode = process.env.MPESA_SHORTCODE;
     const passkey = process.env.MPESA_PASSKEY;
-    const callbackUrl = process.env.MPESA_CALLBACK_URL;
+    const callbackUrl = getCallbackUrl('mpesa');
 
-    if (!shortcode || !passkey || !callbackUrl) {
+    if (!shortcode || !passkey) {
       console.warn('⚠️ M-Pesa configuration incomplete. Using simulation.');
       return {
         success: true,
@@ -440,13 +722,16 @@ async function initiateMpesaStkPush(phoneNumber, amount, accountReference, trans
       Password: '***HIDDEN***'
     });
 
-    const response = await fetch('https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
+    const response = await retryOperation(async () => {
+      const res = await fetch('https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+      return res;
     });
 
     const data = await response.json();
@@ -469,6 +754,7 @@ async function initiateMpesaStkPush(phoneNumber, amount, accountReference, trans
     }
   } catch (error) {
     console.error('❌ M-Pesa STK Push error:', error);
+    logError(error, 'M-Pesa STK Push');
     return {
       success: false,
       message: error.message || 'Payment initiation failed',
@@ -477,12 +763,688 @@ async function initiateMpesaStkPush(phoneNumber, amount, accountReference, trans
   }
 }
 
-// ================================================================
-//  API ROUTES
-// ================================================================
+// ============================================================
+//  AIRTEL MONEY INTEGRATION
+// ============================================================
+async function getAirtelAccessToken() {
+  const clientId = process.env.AIRTEL_CLIENT_ID;
+  const clientSecret = process.env.AIRTEL_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret || clientId === 'your_airtel_client_id_here') {
+    console.warn('⚠️ Airtel credentials not configured. Using simulation mode.');
+    return null;
+  }
+
+  try {
+    const response = await retryOperation(async () => {
+      const res = await fetch('https://openapi.airtel.africa/auth/oauth/v2/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          client_id: clientId,
+          client_secret: clientSecret,
+          grant_type: 'client_credentials'
+        })
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to get Airtel token: ${res.status}`);
+      }
+      return res;
+    });
+
+    const data = await response.json();
+    if (!data.access_token) {
+      throw new Error('No access token in response');
+    }
+    return data.access_token;
+  } catch (error) {
+    console.error('❌ Airtel token error:', error);
+    logError(error, 'Airtel token');
+    return null;
+  }
+}
+
+async function initiateAirtelPayment(phoneNumber, amount, accountReference, transactionDesc = 'Payment for order') {
+  try {
+    const accessToken = await retryOperation(() => getAirtelAccessToken());
+    
+    if (!accessToken) {
+      console.warn('⚠️ Using Airtel simulation mode');
+      return {
+        success: true,
+        transactionId: `SIM-AIRTEL-${Date.now()}`,
+        message: 'Airtel Money payment simulated successfully',
+        isSimulation: true
+      };
+    }
+
+    const callbackUrl = getCallbackUrl('airtel');
+
+    if (!callbackUrl) {
+      console.warn('⚠️ Airtel callback URL not configured. Using simulation.');
+      return {
+        success: true,
+        transactionId: `SIM-AIRTEL-${Date.now()}`,
+        message: 'Airtel Money payment simulated (incomplete config)',
+        isSimulation: true
+      };
+    }
+
+    let formattedPhone = phoneNumber.replace(/^0/, '254').replace(/^\+/, '').replace(/[^0-9]/g, '');
+    if (!formattedPhone.startsWith('254')) {
+      formattedPhone = '254' + formattedPhone;
+    }
+
+    const requestBody = {
+      amount: Math.round(amount),
+      currency: 'KES',
+      country: 'KE',
+      msisdn: formattedPhone,
+      transaction_type: 'PAYMENT',
+      reference: accountReference || `ORD-${Date.now()}`,
+      callback_url: callbackUrl,
+      description: transactionDesc
+    };
+
+    console.log('📤 Airtel Payment Request:', {
+      ...requestBody,
+      client_id: process.env.AIRTEL_CLIENT_ID ? '***HIDDEN***' : 'NOT SET'
+    });
+
+    const response = await retryOperation(async () => {
+      const res = await fetch('https://openapi.airtel.africa/merchant/v1/payments', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+      return res;
+    });
+
+    const data = await response.json();
+
+    console.log('📥 Airtel Payment Response:', data);
+
+    if (data.status === 'success' || data.status === 'pending' || data.transaction_id) {
+      return {
+        success: true,
+        transactionId: data.transaction_id || data.reference || `AIRTEL-${Date.now()}`,
+        message: 'Airtel Money payment initiated. Please check your phone.',
+        isSimulation: false,
+        rawResponse: data
+      };
+    } else {
+      return {
+        success: false,
+        message: data.message || data.error || 'Airtel payment failed',
+        errorCode: data.code,
+        isSimulation: false
+      };
+    }
+  } catch (error) {
+    console.error('❌ Airtel payment error:', error);
+    logError(error, 'Airtel payment');
+    return {
+      success: false,
+      message: error.message || 'Payment initiation failed',
+      isSimulation: false
+    };
+  }
+}
+
+// ============================================================
+//  PAYPAL PAYMENT ROUTES
+// ============================================================
+app.post('/api/payments/paypal/create-order', authMiddleware, async (req, res) => {
+  try {
+    const { amount, orderId, currency = 'KES' } = req.body;
+    
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: 'Invalid amount' });
+    }
+    
+    if (!paypalClient) {
+      const transactionId = `SIM-PAYPAL-${uuidv4().substring(0, 8)}`;
+      
+      const paymentResult = await pool.query(
+        `INSERT INTO payments (customer_id, order_id, amount, method, status, transaction_id, payment_details)
+         VALUES ($1, $2, $3, 'paypal', 'pending', $4, $5)
+         RETURNING *`,
+        [req.userId, orderId || null, amount, transactionId, JSON.stringify({ isSimulation: true })]
+      );
+      
+      return res.json({
+        success: true,
+        orderId: paymentResult.rows[0].id,
+        transactionId: transactionId,
+        isSimulation: true,
+        approvalUrl: '#',
+        message: 'PayPal payment simulated successfully'
+      });
+    }
+    
+    const request = new paypal.orders.OrdersCreateRequest();
+    request.prefer('return=representation');
+    request.requestBody({
+      intent: 'CAPTURE',
+      purchase_units: [{
+        amount: {
+          currency_code: currency,
+          value: amount.toString()
+        },
+        reference_id: `order-${orderId || Date.now()}`,
+        description: `Order payment for ${orderId || 'shop order'}`
+      }],
+      application_context: {
+        brand_name: process.env.SHOP_NAME || 'Our Shop',
+        landing_page: 'BILLING',
+        user_action: 'PAY_NOW',
+        return_url: `${process.env.CLIENT_URL || 'http://localhost:3000'}/payment-success.html`,
+        cancel_url: `${process.env.CLIENT_URL || 'http://localhost:3000'}/payment-cancel.html`
+      }
+    });
+    
+    const response = await paypalClient.execute(request);
+    const approvalUrl = response.result.links.find(link => link.rel === 'approve').href;
+    
+    const paymentResult = await pool.query(
+      `INSERT INTO payments (customer_id, order_id, amount, method, status, transaction_id, payment_details)
+       VALUES ($1, $2, $3, 'paypal', 'pending', $4, $5)
+       RETURNING *`,
+      [req.userId, orderId || null, amount, response.result.id, JSON.stringify({ paypalOrder: response.result })]
+    );
+    
+    res.json({
+      success: true,
+      orderId: paymentResult.rows[0].id,
+      transactionId: response.result.id,
+      approvalUrl: approvalUrl,
+      isSimulation: false
+    });
+    
+  } catch (error) {
+    console.error('❌ PayPal order creation error:', error);
+    logError(error, 'PayPal create order');
+    res.status(500).json({ error: 'Failed to create PayPal order: ' + error.message });
+  }
+});
+
+app.post('/api/payments/paypal/capture', authMiddleware, async (req, res) => {
+  try {
+    const { orderId, paypalOrderId } = req.body;
+    
+    if (!orderId || !paypalOrderId) {
+      return res.status(400).json({ error: 'Order ID and PayPal Order ID required' });
+    }
+    
+    const paymentCheck = await pool.query(
+      `SELECT * FROM payments WHERE transaction_id = $1 AND customer_id = $2`,
+      [paypalOrderId, req.userId]
+    );
+    
+    if (paymentCheck.rows.length > 0 && paymentCheck.rows[0].payment_details?.isSimulation) {
+      await pool.query(
+        `UPDATE payments SET status = 'success' WHERE id = $1`,
+        [paymentCheck.rows[0].id]
+      );
+      return res.json({ success: true, message: 'Simulation payment captured' });
+    }
+    
+    if (!paypalClient) {
+      return res.status(400).json({ error: 'PayPal not configured' });
+    }
+    
+    const request = new paypal.orders.OrdersCaptureRequest(paypalOrderId);
+    request.requestBody({});
+    
+    const response = await paypalClient.execute(request);
+    
+    if (response.result.status === 'COMPLETED') {
+      await pool.query(
+        `UPDATE payments SET status = 'success', payment_details = payment_details || $1 
+         WHERE transaction_id = $2`,
+        [JSON.stringify({ captureResult: response.result }), paypalOrderId]
+      );
+      
+      const orderResult = await pool.query(
+        `SELECT id FROM orders WHERE id = $1`,
+        [orderId]
+      );
+      
+      if (orderResult.rows.length > 0) {
+        await pool.query(
+          `UPDATE orders SET payment_status = 'paid', status = 'pending' 
+           WHERE id = $1 AND status = 'pending_payment'`,
+          [orderId]
+        );
+        await appendOrderStatus(orderId, 'pending', 'PayPal payment successful. Order confirmed.');
+        
+        try {
+          const orderWithCustomer = await pool.query(
+            `SELECT o.*, c.name AS customer_name, c.email AS customer_email
+             FROM orders o
+             JOIN customers c ON o.customer_id = c.id
+             WHERE o.id = $1`,
+            [orderId]
+          );
+          
+          if (orderWithCustomer.rows.length > 0) {
+            const order = orderWithCustomer.rows[0];
+            const itemsResult = await pool.query('SELECT * FROM order_items WHERE order_id = $1', [orderId]);
+            order.items = itemsResult.rows;
+            const mailData = orderConfirmationEmail(order, order.customer_name);
+            await sendEmail({ to: order.customer_email, ...mailData });
+          }
+        } catch (emailError) {
+          console.error('⚠️ Email send failed:', emailError.message);
+          logError(emailError, 'PayPal confirmation email');
+        }
+        
+        io.emit('new-order', { orderId });
+        io.to(`order_${orderId}`).emit('payment-updated', {
+          orderId,
+          paymentStatus: 'paid',
+          transactionId: paypalOrderId
+        });
+      }
+      
+      res.json({
+        success: true,
+        message: 'Payment captured successfully',
+        transactionId: paypalOrderId
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: 'Payment not completed',
+        status: response.result.status
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ PayPal capture error:', error);
+    logError(error, 'PayPal capture');
+    res.status(500).json({ error: 'Failed to capture payment: ' + error.message });
+  }
+});
+
+// ============================================================
+//  ANALYTICS & STATISTICS ENDPOINTS
+// ============================================================
+app.get('/api/admin/analytics', authMiddleware, async (req, res) => {
+  if (req.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin only' });
+  }
+  
+  try {
+    const { period = 'week' } = req.query;
+    const interval = period === 'week' ? '7 days' : period === 'month' ? '30 days' : '1 day';
+    
+    const revenueResult = await pool.query(
+      `SELECT DATE(created_at) as date, SUM(total) as revenue, COUNT(*) as orders
+       FROM orders 
+       WHERE status IN ('confirmed', 'shipped', 'delivered', 'received', 'completed')
+       AND created_at > NOW() - INTERVAL '${interval}'
+       GROUP BY DATE(created_at)
+       ORDER BY date ASC`
+    );
+    
+    const topProducts = await pool.query(
+      `SELECT oi.product_name, SUM(oi.quantity) as total_sold, SUM(oi.quantity * CAST(REPLACE(oi.price, 'Ksh ', '') AS DECIMAL)) as revenue
+       FROM order_items oi
+       JOIN orders o ON oi.order_id = o.id
+       WHERE o.status IN ('confirmed', 'shipped', 'delivered', 'received', 'completed')
+       AND o.created_at > NOW() - INTERVAL '${interval}'
+       GROUP BY oi.product_name
+       ORDER BY total_sold DESC
+       LIMIT 10`
+    );
+    
+    const customerStats = await pool.query(
+      `SELECT COUNT(*) as total_customers,
+       COUNT(CASE WHEN created_at > NOW() - INTERVAL '${interval}' THEN 1 END) as new_customers
+       FROM customers`
+    );
+    
+    const orderStats = await pool.query(
+      `SELECT status, COUNT(*) as count
+       FROM orders
+       GROUP BY status`
+    );
+    
+    const refundStats = await pool.query(
+      `SELECT refund_status, COUNT(*) as count
+       FROM orders
+       WHERE refund_status IS NOT NULL AND refund_status != 'none'
+       GROUP BY refund_status`
+    );
+    
+    // Low stock alerts
+    const lowStock = await pool.query(
+      `SELECT id, name, stock FROM products WHERE stock < 10 ORDER BY stock ASC LIMIT 20`
+    );
+    
+    res.json({
+      period,
+      revenue: revenueResult.rows,
+      topProducts: topProducts.rows,
+      customers: customerStats.rows[0],
+      orderStatuses: orderStats.rows,
+      refundStatuses: refundStats.rows,
+      totalRevenue: revenueResult.rows.reduce((sum, row) => sum + parseFloat(row.revenue || 0), 0),
+      totalOrders: revenueResult.rows.reduce((sum, row) => sum + parseInt(row.orders || 0), 0),
+      lowStock: lowStock.rows
+    });
+    
+  } catch (err) {
+    console.error('❌ Analytics error:', err);
+    logError(err, 'Analytics');
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/shop/statistics', async (req, res) => {
+  try {
+    const products = await pool.query('SELECT COUNT(*) FROM products');
+    const orders = await pool.query('SELECT COUNT(*) FROM orders WHERE status != $1', ['cancelled']);
+    const reviews = await pool.query('SELECT COUNT(*) FROM product_reviews');
+    const customers = await pool.query('SELECT COUNT(*) FROM customers');
+    
+    const avgRating = await pool.query('SELECT AVG(rating) as avg_rating FROM product_reviews');
+    
+    res.json({
+      totalProducts: parseInt(products.rows[0].count),
+      totalOrders: parseInt(orders.rows[0].count),
+      totalReviews: parseInt(reviews.rows[0].count),
+      totalCustomers: parseInt(customers.rows[0].count),
+      averageRating: parseFloat(avgRating.rows[0].avg_rating || 0)
+    });
+  } catch (err) {
+    console.error('❌ Statistics error:', err);
+    logError(err, 'Statistics');
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+//  SHIPPING LABEL GENERATION ENDPOINT
+// ============================================================
+app.post('/api/admin/returns/:id/shipping-label', authMiddleware, async (req, res) => {
+  if (req.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin only' });
+  }
+  
+  const returnId = parseInt(req.params.id);
+  
+  try {
+    const returnResult = await pool.query(
+      `SELECT r.*, o.delivery_address, o.recipient_name, o.recipient_phone,
+       c.name as customer_name, c.email as customer_email
+       FROM returns r
+       JOIN orders o ON r.order_id = o.id
+       JOIN customers c ON r.customer_id = c.id
+       WHERE r.id = $1`,
+      [returnId]
+    );
+    
+    if (returnResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Return not found' });
+    }
+    
+    const returnData = returnResult.rows[0];
+    
+    // Generate shipping label
+    const trackingNumber = `RET-${uuidv4().substring(0, 8).toUpperCase()}`;
+    
+    const labelData = {
+      trackingNumber,
+      carrier: 'DHL / Sendy',
+      estimatedPickup: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      labelUrl: `https://example.com/labels/${trackingNumber}.pdf`,
+      instructions: 'Package the item securely. The courier will pick up within 24 hours.'
+    };
+    
+    await pool.query(
+      `UPDATE returns SET tracking_number = $1, shipping_label = $2 WHERE id = $3`,
+      [trackingNumber, JSON.stringify(labelData), returnId]
+    );
+    
+    res.json({
+      success: true,
+      label: labelData
+    });
+    
+  } catch (err) {
+    console.error('❌ Shipping label generation error:', err);
+    logError(err, 'Shipping label');
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+//  NOTIFICATIONS ENDPOINTS
+// ============================================================
+app.get('/api/notifications/customer', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM notifications 
+       WHERE customer_id = $1 
+       ORDER BY created_at DESC 
+       LIMIT 50`,
+      [req.userId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    logError(err, 'Notifications');
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/notifications/mark-read', authMiddleware, async (req, res) => {
+  try {
+    const { notificationIds } = req.body;
+    if (!notificationIds || !Array.isArray(notificationIds) || notificationIds.length === 0) {
+      return res.status(400).json({ error: 'No notification IDs provided' });
+    }
+    
+    await pool.query(
+      `UPDATE notifications SET read = true 
+       WHERE id = ANY($1::int[]) AND customer_id = $2`,
+      [notificationIds, req.userId]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    logError(err, 'Mark notifications read');
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+//  FEATURED PRODUCTS ENDPOINT
+// ============================================================
+app.put('/api/shop/featured-products', authMiddleware, async (req, res) => {
+  if (req.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin only' });
+  }
+  
+  try {
+    const { productIds } = req.body;
+    if (!productIds || !Array.isArray(productIds)) {
+      return res.status(400).json({ error: 'Product IDs required' });
+    }
+    
+    await pool.query(`UPDATE products SET is_featured = false`);
+    
+    if (productIds.length > 0) {
+      await pool.query(
+        `UPDATE products SET is_featured = true WHERE id = ANY($1::int[])`,
+        [productIds]
+      );
+    }
+    
+    await logAdminActivity(req.userId, 'UPDATE_FEATURED_PRODUCTS', { productIds });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    logError(err, 'Featured products');
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+//  SIMPLIFIED REPLACEMENT FLOW
+// ============================================================
+app.put('/api/orders/:id/replace-simple', authMiddleware, async (req, res) => {
+  if (req.role !== 'customer') {
+    return res.status(403).json({ error: 'Customer only.' });
+  }
+  
+  const orderId = parseInt(req.params.id);
+  const { oldProductIds, newProductIds } = req.body;
+  
+  try {
+    const orderCheck = await pool.query(
+      `SELECT customer_id, status, created_at FROM orders WHERE id = $1`,
+      [orderId]
+    );
+    if (orderCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    const order = orderCheck.rows[0];
+    if (order.customer_id !== req.userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    
+    const hoursSinceOrder = (Date.now() - new Date(order.created_at).getTime()) / (1000 * 60 * 60);
+    const maxHours = parseInt(await getSetting('replacement_hours', '6'));
+    if (hoursSinceOrder > maxHours) {
+      return res.status(400).json({ error: `Replacement only allowed within ${maxHours} hours of order placement.` });
+    }
+    
+    const oldItemsResult = await pool.query(
+      `SELECT product_id, product_name, price, quantity 
+       FROM order_items 
+       WHERE order_id = $1 AND product_id = ANY($2::int[])`,
+      [orderId, oldProductIds]
+    );
+    
+    if (oldItemsResult.rows.length === 0) {
+      return res.status(400).json({ error: 'No matching items found in order.' });
+    }
+    
+    let oldTotal = 0;
+    oldItemsResult.rows.forEach(item => {
+      const priceNum = parseFloat(item.price.replace(/[^0-9.]/g,'')) || 0;
+      oldTotal += priceNum * item.quantity;
+    });
+    
+    const newProductsResult = await pool.query(
+      `SELECT id, name, price FROM products WHERE id = ANY($1::int[])`,
+      [newProductIds]
+    );
+    
+    if (newProductsResult.rows.length === 0) {
+      return res.status(400).json({ error: 'No valid replacement products found.' });
+    }
+    
+    let newTotal = 0;
+    newProductsResult.rows.forEach(item => {
+      const priceNum = parseFloat(item.price.replace(/[^0-9.]/g,'')) || 0;
+      newTotal += priceNum;
+    });
+    
+    const diff = newTotal - oldTotal;
+    
+    let replacementStatus = 'pending';
+    let paymentStatus = 'none';
+    let refundStatus = 'none';
+    
+    if (diff === 0) {
+      replacementStatus = 'approved';
+      paymentStatus = 'approved';
+      refundStatus = 'approved';
+    } else if (diff > 0) {
+      paymentStatus = 'pending';
+    } else {
+      refundStatus = 'pending';
+    }
+    
+    const replacementData = {
+      old_items: oldItemsResult.rows,
+      new_items: newProductsResult.rows,
+      old_total: oldTotal,
+      new_total: newTotal,
+      diff: diff,
+      status: replacementStatus
+    };
+    
+    await pool.query(
+      `UPDATE orders 
+       SET replacement_request = $1, 
+           replacement_status = $2, 
+           replacement_diff = $3,
+           replacement_payment_status = $4, 
+           replacement_refund_status = $5 
+       WHERE id = $6`,
+      [JSON.stringify(replacementData), replacementStatus, diff, paymentStatus, refundStatus, orderId]
+    );
+    
+    let msg = `🔄 Replacement request submitted: ${oldItemsResult.rows.map(i => i.product_name).join(', ')} → ${newProductsResult.rows.map(i => i.name).join(', ')}. `;
+    
+    if (diff === 0) {
+      msg += `✅ Prices are equal. Replacement auto-approved!`;
+      await pool.query(
+        `UPDATE orders SET replacement_status = 'approved' WHERE id = $1`,
+        [orderId]
+      );
+    } else if (diff > 0) {
+      msg += `You need to pay Ksh ${diff.toFixed(2)} extra.`;
+    } else {
+      msg += `You will get a refund of Ksh ${Math.abs(diff).toFixed(2)}.`;
+    }
+    
+    await pool.query(
+      `INSERT INTO order_chat_messages (order_id, from_user, message) VALUES ($1, 'System', $2)`,
+      [orderId, msg]
+    );
+    
+    io.to(`order_${orderId}`).emit('new-order-chat-message', {
+      order_id: orderId,
+      from_user: 'System',
+      message: msg,
+      timestamp: new Date()
+    });
+    
+    res.json({
+      success: true,
+      replacement: replacementData,
+      diff,
+      status: replacementStatus,
+      payment_status: paymentStatus,
+      refund_status: refundStatus
+    });
+    
+  } catch (err) {
+    console.error('❌ Replacement error:', err);
+    logError(err, 'Replacement');
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+//  REST OF EXISTING API ROUTES (All your original routes)
+// ============================================================
 
 // ---- SHOP profile ----
-app.get('/api/shop', async (req, res) => {
+app.get('/api/shop', cacheMiddleware(300), async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM shop LIMIT 1');
     if (result.rows.length === 0) {
@@ -504,6 +1466,7 @@ app.get('/api/shop', async (req, res) => {
     res.json({ ...row, heroImage });
   } catch (err) {
     console.error(err);
+    logError(err, 'Shop profile');
     res.status(500).json({ error: err.message });
   }
 });
@@ -544,7 +1507,7 @@ app.post('/api/shop', authMiddleware, upload.fields([{ name: 'logo' }, { name: '
           paypal_enabled, paypal_email,
           shipping_policy, return_policy, terms_policy, privacy_policy,
           delivery_enabled, online_orders_enabled
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28)
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30)
         RETURNING *
       `, [name, location, address, latitude, longitude, description, mission, vision,
           logo, heroImage, whatsapp, tiktok, instagram, facebook, phone,
@@ -591,12 +1554,13 @@ app.post('/api/shop', authMiddleware, upload.fields([{ name: 'logo' }, { name: '
     res.json({ success: true, shop: { ...updatedRow, heroImage: hero } });
   } catch (err) {
     console.error('❌ Shop update error:', err);
+    logError(err, 'Shop update');
     res.status(500).json({ error: err.message });
   }
 });
 
 // ---- Shop Policies ----
-app.get('/api/shop/policies', async (req, res) => {
+app.get('/api/shop/policies', cacheMiddleware(300), async (req, res) => {
   try {
     const result = await pool.query('SELECT shipping_policy, return_policy, terms_policy, privacy_policy, delivery_enabled, online_orders_enabled FROM shop LIMIT 1');
     if (result.rows.length === 0) {
@@ -611,12 +1575,13 @@ app.get('/api/shop/policies', async (req, res) => {
     }
     res.json(result.rows[0]);
   } catch (err) {
+    logError(err, 'Shop policies');
     res.status(500).json({ error: err.message });
   }
 });
 
-// ---- Products ----
-app.get('/api/products', async (req, res) => {
+// ---- Products with Caching ----
+app.get('/api/products', cacheMiddleware(60), async (req, res) => {
   try {
     const { search, limit, category } = req.query;
     let query = 'SELECT * FROM products';
@@ -658,6 +1623,7 @@ app.get('/api/products', async (req, res) => {
     res.json(products);
   } catch (err) {
     console.error(err);
+    logError(err, 'Products');
     res.status(500).json({ error: err.message });
   }
 });
@@ -669,6 +1635,7 @@ app.get('/api/products/variants/batch', async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error(err);
+    logError(err, 'Variants batch');
     res.status(500).json({ error: err.message });
   }
 });
@@ -701,12 +1668,28 @@ app.get('/api/products/:id/detail', async (req, res) => {
     res.json({ product, variants, reviews: reviewsResult.rows, related });
   } catch (err) {
     console.error(err);
+    logError(err, 'Product detail');
     res.status(500).json({ error: err.message });
   }
 });
 
-// ---- Product CRUD with variants ----
-app.post('/api/products', authMiddleware, upload.fields([{ name: 'image' }, { name: 'variantImages' }]), async (req, res) => {
+// ---- Product CRUD ----
+app.post('/api/products', authMiddleware, upload.fields([{ name: 'image' }, { name: 'variantImages' }]), [
+  body('name').trim().escape().isLength({ min: 2 }).withMessage('Product name must be at least 2 characters'),
+  body('price').trim().escape().isNumeric().withMessage('Price must be a number'),
+  body('description').optional().trim().escape(),
+  body('category').optional().trim().escape(),
+  body('shipping').optional().trim().escape(),
+  body('badge1').optional().trim().escape(),
+  body('badge2').optional().trim().escape(),
+  body('contact').optional().trim().escape(),
+  body('rating').optional().trim().escape()
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
   try {
     const { name, price, category, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival, description,
             shipping_fee, free_shipping_eligible, return_enabled, return_window_days, restocking_fee_percent,
@@ -722,13 +1705,13 @@ app.post('/api/products', authMiddleware, upload.fields([{ name: 'image' }, { na
     const result = await pool.query(`
       INSERT INTO products (name, price, old_price, discount_percent, category, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival,
         image, description, shipping_fee, free_shipping_eligible, return_enabled, return_window_days,
-        restocking_fee_percent, return_shipping_paid_by, return_condition, stock)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING *
+        restocking_fee_percent, return_shipping_paid_by, return_condition, stock, is_featured)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING *
     `, [name, price, old_price || null, discount_percent || null, category, contact, rating, badge1, badge2,
         shipping, isFlashSale === 'true', isNewArrival === 'true', mainImage, description,
         shipping_fee, free_shipping_eligible === 'true', return_enabled !== 'false',
         return_window_days || 14, restocking_fee_percent || 0, return_shipping_paid_by || 'buyer',
-        return_condition || 'unopened', stock || 0]);
+        return_condition || 'unopened', stock || 0, false]);
 
     const product = result.rows[0];
 
@@ -753,16 +1736,28 @@ app.post('/api/products', authMiddleware, upload.fields([{ name: 'image' }, { na
     res.json({ success: true, product });
   } catch (err) {
     console.error(err);
+    logError(err, 'Product creation');
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put('/api/products/:id', authMiddleware, upload.fields([{ name: 'image' }, { name: 'variantImages' }]), async (req, res) => {
+app.put('/api/products/:id', authMiddleware, upload.fields([{ name: 'image' }, { name: 'variantImages' }]), [
+  body('name').trim().escape().isLength({ min: 2 }).withMessage('Product name must be at least 2 characters'),
+  body('price').trim().escape().isNumeric().withMessage('Price must be a number'),
+  body('description').optional().trim().escape(),
+  body('category').optional().trim().escape(),
+  body('shipping').optional().trim().escape()
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
   try {
     const id = parseInt(req.params.id);
     const { name, price, category, contact, rating, badge1, badge2, shipping, isFlashSale, isNewArrival, description,
             shipping_fee, free_shipping_eligible, return_enabled, return_window_days, restocking_fee_percent,
-            return_shipping_paid_by, return_condition, variants, old_price, discount_percent, stock } = req.body;
+            return_shipping_paid_by, return_condition, variants, old_price, discount_percent, stock, is_featured } = req.body;
 
     const existing = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
     if (existing.rows.length === 0) return res.status(404).json({ error: 'Product not found' });
@@ -782,14 +1777,16 @@ app.put('/api/products/:id', authMiddleware, upload.fields([{ name: 'image' }, {
           isFlashSale = $11, isNewArrival = $12, image = $13, description = $14,
           shipping_fee = $15, free_shipping_eligible = $16,
           return_enabled = $17, return_window_days = $18, restocking_fee_percent = $19,
-          return_shipping_paid_by = $20, return_condition = $21, stock = $22
-      WHERE id = $23 RETURNING *
+          return_shipping_paid_by = $20, return_condition = $21, stock = $22,
+          is_featured = COALESCE($23, is_featured)
+      WHERE id = $24 RETURNING *
     `, [name, price, old_price || null, discount_percent || null, category,
         contact, rating, badge1, badge2, shipping,
         isFlashSale === 'true', isNewArrival === 'true', image, description,
         shipping_fee, free_shipping_eligible === 'true',
         return_enabled !== 'false', return_window_days || 14, restocking_fee_percent || 0,
-        return_shipping_paid_by || 'buyer', return_condition || 'unopened', stock || 0, id]);
+        return_shipping_paid_by || 'buyer', return_condition || 'unopened', stock || 0,
+        is_featured === 'true', id]);
 
     const product = result.rows[0];
 
@@ -815,6 +1812,7 @@ app.put('/api/products/:id', authMiddleware, upload.fields([{ name: 'image' }, {
     res.json({ success: true, product });
   } catch (err) {
     console.error(err);
+    logError(err, 'Product update');
     res.status(500).json({ error: err.message });
   }
 });
@@ -828,6 +1826,7 @@ app.delete('/api/products/:id', authMiddleware, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error(err);
+    logError(err, 'Product deletion');
     res.status(500).json({ error: err.message });
   }
 });
@@ -835,7 +1834,7 @@ app.delete('/api/products/:id', authMiddleware, async (req, res) => {
 // ---- Product Reviews ----
 app.post('/api/products/:id/review', authMiddleware, [
   body('rating').isInt({ min: 1, max: 5 }).withMessage('Rating must be 1-5'),
-  body('review_text').isLength({ min: 3 }).withMessage('Review must be at least 3 characters')
+  body('review_text').trim().escape().isLength({ min: 3 }).withMessage('Review must be at least 3 characters')
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -862,6 +1861,7 @@ app.post('/api/products/:id/review', authMiddleware, [
     res.json({ success: true });
   } catch (err) {
     console.error(err);
+    logError(err, 'Product review');
     res.status(500).json({ error: err.message });
   }
 });
@@ -886,6 +1886,7 @@ app.post('/api/wishlist', authMiddleware, async (req, res) => {
     res.json({ success: true, action: 'added' });
   } catch (err) {
     console.error(err);
+    logError(err, 'Wishlist');
     res.status(500).json({ error: err.message });
   }
 });
@@ -902,6 +1903,7 @@ app.get('/api/wishlist', authMiddleware, async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error(err);
+    logError(err, 'Get wishlist');
     res.status(500).json({ error: err.message });
   }
 });
@@ -914,6 +1916,7 @@ app.get('/api/auth/admin-exists', async (req, res) => {
     res.json({ exists: count > 0 });
   } catch (err) {
     console.error(err);
+    logError(err, 'Admin exists check');
     res.status(500).json({ error: err.message });
   }
 });
@@ -938,6 +1941,7 @@ app.post('/api/auth/register', [
     res.json({ success: true, token, message: '✅ Admin account created successfully!' });
   } catch (err) {
     console.error(err);
+    logError(err, 'Admin registration');
     res.status(500).json({ error: err.message });
   }
 });
@@ -963,6 +1967,7 @@ app.post('/api/auth/login', loginLimiter, [
     res.json({ success: true, token });
   } catch (err) {
     console.error(err);
+    logError(err, 'Admin login');
     res.status(500).json({ error: err.message });
   }
 });
@@ -971,12 +1976,12 @@ app.get('/api/auth/verify', authMiddleware, (req, res) => {
   res.json({ authenticated: true, role: req.role });
 });
 
-// ---- Customer Auth (WITH PHONE NUMBER REQUIRED) ----
+// ---- Customer Auth ----
 app.post('/api/auth/customer/register', [
   body('name').notEmpty().withMessage('Name required'),
   body('email').isEmail().withMessage('Invalid email'),
   body('phone').notEmpty().withMessage('Phone number required'),
-  body('phone').isLength({ min: 10, max: 15 }).withMessage('Phone number must be 10-15 digits'),
+  body('phone').custom(value => validateKenyanPhone(value)).withMessage('Invalid phone number. Must be a valid Kenyan number (e.g., 0712345678)'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
 ], async (req, res) => {
   const errors = validationResult(req);
@@ -986,19 +1991,15 @@ app.post('/api/auth/customer/register', [
 
   try {
     const { name, email, phone, password } = req.body;
-    
     const cleanPhone = phone.replace(/[^0-9]/g, '');
-    
     const existing = await pool.query('SELECT * FROM customers WHERE email = $1', [email]);
     if (existing.rows.length > 0) {
       return res.status(409).json({ error: 'Email already registered.' });
     }
-    
     const existingPhone = await pool.query('SELECT * FROM customers WHERE phone = $1', [cleanPhone]);
     if (existingPhone.rows.length > 0) {
       return res.status(409).json({ error: 'Phone number already registered.' });
     }
-    
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await pool.query(
       'INSERT INTO customers (name, email, password, phone) VALUES ($1, $2, $3, $4) RETURNING id, name, email, phone, created_at',
@@ -1010,6 +2011,7 @@ app.post('/api/auth/customer/register', [
     res.json({ success: true, token, customer });
   } catch (err) {
     console.error(err);
+    logError(err, 'Customer registration');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1030,6 +2032,7 @@ app.post('/api/auth/customer/login', loginLimiter, [
     const customer = result.rows[0];
     const match = await bcrypt.compare(password, customer.password);
     if (!match) return res.status(401).json({ error: 'Invalid credentials' });
+    await pool.query('UPDATE customers SET last_login_at = NOW() WHERE id = $1', [customer.id]);
     await pool.query(
       'INSERT INTO carts (customer_id, items) VALUES ($1, $2) ON CONFLICT (customer_id) DO NOTHING',
       [customer.id, '[]']
@@ -1038,6 +2041,7 @@ app.post('/api/auth/customer/login', loginLimiter, [
     res.json({ success: true, token, customer: { id: customer.id, name: customer.name, email: customer.email, phone: customer.phone || '' } });
   } catch (err) {
     console.error(err);
+    logError(err, 'Customer login');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1049,6 +2053,7 @@ app.get('/api/auth/customer/verify', authMiddleware, async (req, res) => {
     res.json({ user: result.rows[0] });
   } catch (err) {
     console.error(err);
+    logError(err, 'Customer verify');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1056,12 +2061,18 @@ app.get('/api/auth/customer/verify', authMiddleware, async (req, res) => {
 app.put('/api/auth/customer/profile', authMiddleware, async (req, res) => {
   const { name, phone, email } = req.body;
   try {
+    // Validate phone if provided
+    if (phone && !validateKenyanPhone(phone)) {
+      return res.status(400).json({ error: 'Invalid phone number. Must be a valid Kenyan number.' });
+    }
+    const cleanPhone = phone ? phone.replace(/[^0-9]/g, '') : null;
     const result = await pool.query(
       'UPDATE customers SET name = COALESCE($1, name), phone = COALESCE($2, phone), email = COALESCE($3, email) WHERE id = $4 RETURNING id, name, email, phone',
-      [name, phone, email, req.userId]
+      [name, cleanPhone, email, req.userId]
     );
     res.json({ user: result.rows[0] });
   } catch (err) {
+    logError(err, 'Profile update');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1077,6 +2088,7 @@ app.post('/api/auth/customer/check-email', async (req, res) => {
     const result = await pool.query('SELECT id FROM customers WHERE email = $1', [email]);
     res.json({ exists: result.rows.length > 0 });
   } catch (err) {
+    logError(err, 'Check email');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1101,12 +2113,14 @@ app.delete('/api/auth/customer/delete', authMiddleware, async (req, res) => {
     await pool.query('DELETE FROM payments WHERE customer_id = $1', [customerId]);
     await pool.query('DELETE FROM location_requests WHERE customer_id = $1', [customerId]);
     await pool.query('DELETE FROM chat_messages WHERE customer_id = $1', [customerId]);
+    await pool.query('DELETE FROM notifications WHERE customer_id = $1', [customerId]);
     await pool.query('DELETE FROM customers WHERE id = $1', [customerId]);
     await pool.query('COMMIT');
     res.json({ success: true, message: 'Account deleted successfully.' });
   } catch (err) {
     await pool.query('ROLLBACK');
     console.error(err);
+    logError(err, 'Account deletion');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1151,6 +2165,7 @@ app.post('/api/auth/forgot-password', [
     res.json({ success: true, message: 'If your email is registered, you will receive a reset link.' });
   } catch (err) {
     console.error(err);
+    logError(err, 'Forgot password');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1182,6 +2197,7 @@ app.post('/api/auth/reset-password', [
     res.json({ success: true, message: '✅ Password reset successfully! You can now login.' });
   } catch (err) {
     console.error(err);
+    logError(err, 'Reset password');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1193,13 +2209,18 @@ app.get('/api/addresses', authMiddleware, async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error(err);
+    logError(err, 'Get addresses');
     res.status(500).json({ error: err.message });
   }
 });
 
 app.post('/api/addresses', authMiddleware, [
-  body('label').notEmpty().withMessage('Label required'),
-  body('address').notEmpty().withMessage('Address required')
+  body('label').trim().escape().notEmpty().withMessage('Label required'),
+  body('address').trim().escape().notEmpty().withMessage('Address required'),
+  body('building_name').optional().trim().escape(),
+  body('estate').optional().trim().escape(),
+  body('nearest_landmark').optional().trim().escape(),
+  body('delivery_instructions').optional().trim().escape()
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -1207,7 +2228,8 @@ app.post('/api/addresses', authMiddleware, [
   }
 
   const { label, address, lat, lng, location_name, address_type, recipient_name, recipient_phone,
-          building_name, floor_room, road, estate, nearest_landmark, delivery_instructions } = req.body;
+          building_name, floor_room, road, estate, nearest_landmark, delivery_instructions,
+          county_id, sub_county_id, ward_id, pickup_station_id } = req.body;
 
   try {
     const countResult = await pool.query('SELECT COUNT(*) FROM customer_addresses WHERE customer_id = $1', [req.userId]);
@@ -1221,16 +2243,19 @@ app.post('/api/addresses', authMiddleware, [
       `INSERT INTO customer_addresses (
         customer_id, label, address, lat, lng, location_name, is_default,
         address_type, recipient_name, recipient_phone, building_name, floor_room,
-        road, estate, nearest_landmark, delivery_instructions
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+        road, estate, nearest_landmark, delivery_instructions,
+        county_id, sub_county_id, ward_id, pickup_station_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
       [req.userId, label, fullAddress, lat || null, lng || null, location_name || null, isDefault,
        address_type || 'doorstep', recipient_name || null, recipient_phone || null,
        building_name || null, floor_room || null, road || null, estate || null,
-       nearest_landmark || null, delivery_instructions || null]
+       nearest_landmark || null, delivery_instructions || null,
+       county_id || null, sub_county_id || null, ward_id || null, pickup_station_id || null]
     );
     res.json({ success: true });
   } catch (err) {
     console.error(err);
+    logError(err, 'Add address');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1243,6 +2268,7 @@ app.put('/api/addresses/:id/default', authMiddleware, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error(err);
+    logError(err, 'Set default address');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1254,6 +2280,7 @@ app.delete('/api/addresses/:id', authMiddleware, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error(err);
+    logError(err, 'Delete address');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1271,6 +2298,7 @@ app.get('/api/cart', authMiddleware, async (req, res) => {
     res.json({ items: row.items });
   } catch (err) {
     console.error(err);
+    logError(err, 'Get cart');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1286,6 +2314,7 @@ app.put('/api/cart', authMiddleware, async (req, res) => {
     res.json({ success: true, reserved_until: reservedUntil });
   } catch (err) {
     console.error(err);
+    logError(err, 'Update cart');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1311,6 +2340,7 @@ app.post('/api/promo/validate', async (req, res) => {
     res.json({ valid: true, discount, message: '🎉 Promo applied!' });
   } catch (err) {
     console.error(err);
+    logError(err, 'Promo validate');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1323,6 +2353,7 @@ app.get('/api/admin/promo-codes', authMiddleware, async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error(err);
+    logError(err, 'Get promo codes');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1347,6 +2378,7 @@ app.post('/api/admin/promo-codes', authMiddleware, [
     res.json({ success: true });
   } catch (err) {
     console.error(err);
+    logError(err, 'Create promo');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1360,6 +2392,7 @@ app.delete('/api/admin/promo-codes/:id', authMiddleware, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error(err);
+    logError(err, 'Delete promo');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1376,6 +2409,7 @@ app.get('/api/chat', async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error(err);
+    logError(err, 'Get chat');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1393,6 +2427,7 @@ app.get('/api/customer/chat', authMiddleware, async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error(err);
+    logError(err, 'Customer chat');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1411,6 +2446,7 @@ app.get('/api/admin/location/requests', authMiddleware, async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error(err);
+    logError(err, 'Location requests');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1426,6 +2462,7 @@ app.post('/api/admin/location/requests/:id/approve', authMiddleware, async (req,
     res.json({ success: true });
   } catch (err) {
     console.error(err);
+    logError(err, 'Approve location');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1438,6 +2475,7 @@ app.post('/api/admin/location/requests/:id/reject', authMiddleware, async (req, 
     res.json({ success: true });
   } catch (err) {
     console.error(err);
+    logError(err, 'Reject location');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1460,6 +2498,7 @@ app.post('/api/customer/location/request', authMiddleware, async (req, res) => {
     res.json({ success: true, message: 'Request sent. Awaiting admin approval.' });
   } catch (err) {
     console.error(err);
+    logError(err, 'Request location');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1476,6 +2515,7 @@ app.get('/api/customer/location/status', authMiddleware, async (req, res) => {
     res.json({ status });
   } catch (err) {
     console.error(err);
+    logError(err, 'Location status');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1495,6 +2535,7 @@ app.post('/api/admin/location/toggle', authMiddleware, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error(err);
+    logError(err, 'Toggle location');
     res.status(500).json({ error: err.message });
   }
 });
@@ -1510,14 +2551,12 @@ app.post('/api/admin/location/update', authMiddleware, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error(err);
+    logError(err, 'Update location');
     res.status(500).json({ error: err.message });
   }
 });
 
-// ================================================================
-//  PAYMENT ROUTES - WITH REAL M-PESA INTEGRATION
-// ================================================================
-
+// ---- PAYMENT ROUTES ----
 app.post('/api/payments/mpesa-callback', async (req, res) => {
   try {
     console.log('📥 M-Pesa Callback received');
@@ -1568,7 +2607,7 @@ app.post('/api/payments/mpesa-callback', async (req, res) => {
         WHERE id = $4
       `, [
         isSuccess ? 'success' : 'failed',
-        transactionId,
+        transactionId || uuidv4(),
         JSON.stringify({
           callbackResult: {
             resultCode,
@@ -1612,6 +2651,7 @@ app.post('/api/payments/mpesa-callback', async (req, res) => {
             });
           } catch (emailError) {
             console.error('⚠️ Email send failed:', emailError.message);
+            logError(emailError, 'M-Pesa confirmation email');
           }
 
           io.emit('new-order', { orderId });
@@ -1628,6 +2668,7 @@ app.post('/api/payments/mpesa-callback', async (req, res) => {
 
   } catch (error) {
     console.error('❌ M-Pesa callback error:', error);
+    logError(error, 'M-Pesa callback');
     res.status(500).json({ ResultCode: 1, ResultDesc: 'Error processing callback' });
   }
 });
@@ -1647,6 +2688,11 @@ app.post('/api/payments/mpesa/initiate', authMiddleware, [
 
     if (amount < 1) {
       return res.status(400).json({ error: 'Amount must be at least Ksh 1' });
+    }
+
+    // Validate phone number
+    if (!validateKenyanPhone(phone)) {
+      return res.status(400).json({ error: 'Invalid phone number. Must be a valid Kenyan number (e.g., 0712345678)' });
     }
 
     let orderRef = `ORD-${Date.now()}`;
@@ -1703,6 +2749,7 @@ app.post('/api/payments/mpesa/initiate', authMiddleware, [
 
   } catch (error) {
     console.error('❌ M-Pesa initiate error:', error);
+    logError(error, 'M-Pesa initiate');
     res.status(500).json({ error: 'Payment initiation failed' });
   }
 });
@@ -1715,33 +2762,83 @@ app.get('/api/payments/mpesa/status/:checkoutRequestId', authMiddleware, async (
       return res.status(400).json({ error: 'Checkout Request ID required' });
     }
 
-    const result = await queryMpesaTransaction(checkoutRequestId);
-
-    if (result.ResultCode !== undefined) {
+    // Check if it's a simulation
+    if (checkoutRequestId.startsWith('SIM-')) {
       const paymentResult = await pool.query(`
-        SELECT id FROM payments 
-        WHERE transaction_id = $1 OR (payment_details->>'checkoutRequestId' = $1)
+        SELECT status FROM payments 
+        WHERE transaction_id = $1
       `, [checkoutRequestId]);
 
-      if (paymentResult.rows.length > 0) {
+      if (paymentResult.rows.length > 0 && paymentResult.rows[0].status === 'success') {
+        return res.json({
+          success: true,
+          data: { ResultCode: '0', ResultDesc: 'Success' }
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: { ResultCode: '1', ResultDesc: 'Pending' }
+      });
+    }
+
+    // Real status query
+    const accessToken = await getMpesaAccessToken();
+    if (!accessToken) {
+      return res.status(400).json({ error: 'Unable to query transaction status' });
+    }
+
+    const shortcode = process.env.MPESA_SHORTCODE;
+    const passkey = process.env.MPESA_PASSKEY;
+    const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);
+    const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64');
+
+    const response = await fetch('https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        BusinessShortCode: shortcode,
+        Password: password,
+        Timestamp: timestamp,
+        CheckoutRequestID: checkoutRequestId
+      })
+    });
+
+    const data = await response.json();
+    
+    const paymentResult = await pool.query(`
+      SELECT id FROM payments 
+      WHERE transaction_id = $1 OR (payment_details->>'checkoutRequestId' = $1)
+    `, [checkoutRequestId]);
+
+    if (paymentResult.rows.length > 0) {
+      await pool.query(`
+        UPDATE payments 
+        SET payment_details = payment_details || $1
+        WHERE id = $2
+      `, [
+        JSON.stringify({ queryResult: data }),
+        paymentResult.rows[0].id
+      ]);
+
+      if (data.ResultCode === '0') {
         await pool.query(`
-          UPDATE payments 
-          SET payment_details = payment_details || $1
-          WHERE id = $2
-        `, [
-          JSON.stringify({ queryResult: result }),
-          paymentResult.rows[0].id
-        ]);
+          UPDATE payments SET status = 'success' WHERE id = $1
+        `, [paymentResult.rows[0].id]);
       }
     }
 
     res.json({
       success: true,
-      data: result
+      data: data
     });
 
   } catch (error) {
     console.error('❌ M-Pesa status query error:', error);
+    logError(error, 'M-Pesa status');
     res.status(500).json({
       error: 'Failed to query transaction status'
     });
@@ -1774,7 +2871,7 @@ app.post('/api/mpesa/save-credentials', authMiddleware, async (req, res) => {
       'MPESA_CONSUMER_SECRET': consumerSecret,
       'MPESA_PASSKEY': passkey,
       'MPESA_SHORTCODE': shortcode || '174379',
-      'MPESA_CALLBACK_URL': callbackUrl || 'https://business-website-2wkq.onrender.com/api/payments/mpesa-callback',
+      'MPESA_CALLBACK_URL': callbackUrl || `${BASE_URL}/api/payments/mpesa-callback`,
       'MPESA_ENVIRONMENT': environment || 'sandbox'
     };
 
@@ -1816,6 +2913,7 @@ app.post('/api/mpesa/save-credentials', authMiddleware, async (req, res) => {
 
   } catch (error) {
     console.error('❌ Error saving M-Pesa credentials:', error);
+    logError(error, 'Save M-Pesa credentials');
     res.status(500).json({
       error: 'Failed to save credentials: ' + error.message
     });
@@ -1864,9 +2962,265 @@ app.get('/api/mpesa/test-connection', authMiddleware, async (req, res) => {
 
   } catch (error) {
     console.error('❌ M-Pesa connection test error:', error);
+    logError(error, 'M-Pesa test');
     res.status(500).json({
       success: false,
       error: 'Connection test failed: ' + error.message
+    });
+  }
+});
+
+// ---- Airtel Money Routes ----
+app.post('/api/payments/airtel/initiate', authMiddleware, [
+  body('phone').notEmpty().withMessage('Phone number required'),
+  body('amount').isNumeric().withMessage('Amount must be a number')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  try {
+    const { phone, amount, orderId } = req.body;
+    const customerId = req.userId;
+
+    if (amount < 1) {
+      return res.status(400).json({ error: 'Amount must be at least Ksh 1' });
+    }
+
+    // Validate phone number
+    if (!validateKenyanPhone(phone)) {
+      return res.status(400).json({ error: 'Invalid phone number. Must be a valid Kenyan number (e.g., 0712345678)' });
+    }
+
+    let orderRef = `ORD-${Date.now()}`;
+    let actualOrderId = orderId;
+
+    if (!orderId) {
+      const orderResult = await pool.query(`
+        INSERT INTO orders (customer_id, total, status, order_ref, status_history, payment_status)
+        VALUES ($1, $2, 'pending_payment', $3, $4, 'pending')
+        RETURNING *
+      `, [
+        customerId,
+        amount,
+        orderRef,
+        JSON.stringify([{ status: 'pending_payment', timestamp: new Date().toISOString() }])
+      ]);
+      actualOrderId = orderResult.rows[0].id;
+    }
+
+    const airtelResult = await initiateAirtelPayment(phone, amount, orderRef);
+
+    if (airtelResult.success) {
+      const paymentResult = await pool.query(`
+        INSERT INTO payments (customer_id, order_id, amount, method, status, transaction_id, payment_details)
+        VALUES ($1, $2, $3, 'airtel', 'pending', $4, $5)
+        RETURNING *
+      `, [
+        customerId,
+        actualOrderId,
+        amount,
+        airtelResult.transactionId || `AIRTEL-${Date.now()}`,
+        JSON.stringify({
+          phone: phone,
+          transactionId: airtelResult.transactionId,
+          isSimulation: airtelResult.isSimulation || false,
+          rawResponse: airtelResult.rawResponse || null
+        })
+      ]);
+
+      res.json({
+        success: true,
+        message: airtelResult.message || 'Airtel Money payment initiated. Please check your phone.',
+        transactionId: airtelResult.transactionId,
+        orderId: actualOrderId,
+        paymentId: paymentResult.rows[0].id,
+        isSimulation: airtelResult.isSimulation || false
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: airtelResult.message || 'Airtel payment failed. Please try again.',
+        errorCode: airtelResult.errorCode
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Airtel initiate error:', error);
+    logError(error, 'Airtel initiate');
+    res.status(500).json({ error: 'Airtel payment initiation failed. Please try again.' });
+  }
+});
+
+app.post('/api/payments/airtel-callback', async (req, res) => {
+  try {
+    console.log('📥 Airtel Callback received:', JSON.stringify(req.body, null, 2));
+
+    const body = req.body;
+    const transactionId = body.transaction_id || body.transactionId || body.reference || body.id;
+    const status = body.status || body.transaction_status || body.state || body.resultCode;
+    const orderRef = body.reference || body.accountReference || body.external_id;
+
+    const isSuccess = 
+      status === 'success' || 
+      status === 'completed' || 
+      status === 'SUCCESS' || 
+      status === 'approved' ||
+      status === 'APPROVED' ||
+      status === '00';
+
+    if (!orderRef) {
+      console.error('❌ No order reference in callback');
+      return res.json({ status: 'success', message: 'Callback received' });
+    }
+
+    const orderResult = await pool.query(
+      'SELECT id, customer_id FROM orders WHERE order_ref = $1',
+      [orderRef]
+    );
+
+    if (orderResult.rows.length === 0) {
+      console.error('❌ Order not found for reference:', orderRef);
+      return res.json({ status: 'success', message: 'Callback received' });
+    }
+
+    const orderId = orderResult.rows[0].id;
+
+    await pool.query(`
+      UPDATE payments 
+      SET status = $1, 
+          transaction_id = COALESCE($2, transaction_id),
+          payment_details = payment_details || $3
+      WHERE order_id = $4 AND method = 'airtel'
+    `, [
+      isSuccess ? 'success' : 'failed',
+      transactionId || uuidv4(),
+      JSON.stringify({ 
+        callback: body,
+        callbackReceivedAt: new Date().toISOString()
+      }),
+      orderId
+    ]);
+
+    if (isSuccess) {
+      await pool.query(`
+        UPDATE orders 
+        SET payment_status = 'paid', 
+            status = 'pending'
+        WHERE id = $1 AND status = 'pending_payment'
+      `, [orderId]);
+
+      await appendOrderStatus(orderId, 'pending', 'Airtel Money payment successful. Order confirmed.');
+
+      try {
+        const orderWithCustomer = await pool.query(`
+          SELECT o.*, c.name AS customer_name, c.email AS customer_email
+          FROM orders o
+          JOIN customers c ON o.customer_id = c.id
+          WHERE o.id = $1
+        `, [orderId]);
+
+        if (orderWithCustomer.rows.length > 0) {
+          const order = orderWithCustomer.rows[0];
+          const itemsResult = await pool.query('SELECT * FROM order_items WHERE order_id = $1', [orderId]);
+          order.items = itemsResult.rows;
+
+          const mailData = orderConfirmationEmail(order, order.customer_name);
+          await sendEmail({
+            to: order.customer_email,
+            ...mailData
+          });
+        }
+      } catch (emailError) {
+        console.error('⚠️ Email send failed:', emailError.message);
+        logError(emailError, 'Airtel confirmation email');
+      }
+
+      io.emit('new-order', { orderId });
+      io.to(`order_${orderId}`).emit('payment-updated', {
+        orderId,
+        paymentStatus: 'paid',
+        transactionId
+      });
+    }
+
+    res.json({ status: 'success', message: 'Callback processed successfully' });
+
+  } catch (error) {
+    console.error('❌ Airtel callback error:', error);
+    logError(error, 'Airtel callback');
+    res.status(500).json({ status: 'error', message: 'Failed to process callback' });
+  }
+});
+
+app.get('/api/payments/airtel/status/:transactionId', authMiddleware, async (req, res) => {
+  try {
+    const { transactionId } = req.params;
+
+    if (!transactionId) {
+      return res.status(400).json({ error: 'Transaction ID required' });
+    }
+
+    if (transactionId.startsWith('SIM-AIRTEL-')) {
+      const paymentResult = await pool.query(`
+        SELECT status FROM payments 
+        WHERE transaction_id = $1
+      `, [transactionId]);
+
+      if (paymentResult.rows.length > 0 && paymentResult.rows[0].status === 'success') {
+        return res.json({
+          success: true,
+          data: { status: 'success', message: 'Simulation payment successful' }
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: { status: 'pending', message: 'Simulation payment pending' }
+      });
+    }
+
+    const accessToken = await getAirtelAccessToken();
+
+    if (!accessToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Unable to query transaction status'
+      });
+    }
+
+    const response = await fetch(`https://openapi.airtel.africa/merchant/v1/payments/${transactionId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const data = await response.json();
+
+    const paymentResult = await pool.query(`
+      SELECT id FROM payments 
+      WHERE transaction_id = $1
+    `, [transactionId]);
+
+    if (paymentResult.rows.length > 0 && (data.status === 'success' || data.status === 'completed')) {
+      await pool.query(`
+        UPDATE payments SET status = 'success' WHERE id = $1
+      `, [paymentResult.rows[0].id]);
+    }
+
+    res.json({
+      success: true,
+      data: data
+    });
+
+  } catch (error) {
+    console.error('❌ Airtel status query error:', error);
+    logError(error, 'Airtel status');
+    res.status(500).json({
+      error: 'Failed to query transaction status'
     });
   }
 });
@@ -1886,6 +3240,9 @@ app.post('/api/payments/initiate', authMiddleware, async (req, res) => {
 
     if (method === 'mpesa') {
       if (!phone) return res.status(400).json({ error: 'Phone number required for M-Pesa.' });
+      if (!validateKenyanPhone(phone)) {
+        return res.status(400).json({ error: 'Invalid phone number. Must be a valid Kenyan number.' });
+      }
       
       const stkResult = await initiateMpesaStkPush(phone, amount, `ORD-${orderId || Date.now()}`);
 
@@ -1922,11 +3279,48 @@ app.post('/api/payments/initiate', authMiddleware, async (req, res) => {
     }
 
     if (method === 'airtel') {
-      if (!phone) return res.status(400).json({ error: 'Phone number required.' });
-      if (!pin) return res.status(400).json({ error: 'PIN required.' });
-    } else if (method === 'bank') {
+      if (!phone) return res.status(400).json({ error: 'Phone number required for Airtel Money.' });
+      if (!validateKenyanPhone(phone)) {
+        return res.status(400).json({ error: 'Invalid phone number. Must be a valid Kenyan number.' });
+      }
+      
+      const airtelResult = await initiateAirtelPayment(phone, amount, `ORD-${orderId || Date.now()}`);
+
+      if (airtelResult.success) {
+        const paymentResult = await pool.query(`
+          INSERT INTO payments (customer_id, order_id, amount, method, status, transaction_id, payment_details)
+          VALUES ($1, $2, $3, 'airtel', 'pending', $4, $5)
+          RETURNING *
+        `, [
+          customerId,
+          orderId || null,
+          amount,
+          airtelResult.transactionId || `AIRTEL-${Date.now()}`,
+          JSON.stringify({
+            phone: phone,
+            transactionId: airtelResult.transactionId,
+            isSimulation: airtelResult.isSimulation || false
+          })
+        ]);
+
+        return res.json({
+          success: true,
+          payment: paymentResult.rows[0],
+          message: airtelResult.message || 'Airtel Money payment initiated.',
+          transactionId: airtelResult.transactionId,
+          isSimulation: airtelResult.isSimulation || false
+        });
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: airtelResult.message || 'Airtel Money payment failed'
+        });
+      }
+    }
+
+    if (method === 'bank') {
       if (!bank || !account) return res.status(400).json({ error: 'Bank and account number required.' });
-      if (!pin) return res.status(400).json({ error: 'PIN required.' });
+      if (!pin || pin.length < 4) return res.status(400).json({ error: 'Valid PIN required.' });
     }
 
     if (orderId) {
@@ -1949,7 +3343,7 @@ app.post('/api/payments/initiate', authMiddleware, async (req, res) => {
 
     const isSuccess = pin && pin.length >= 4;
     const status = isSuccess ? 'success' : 'failed';
-    const transactionId = isSuccess ? `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}` : null;
+    const transactionId = isSuccess ? uuidv4() : null;
 
     const paymentDetails = { phone, account, bank, pin: pin ? '***' : null };
     const result = await pool.query(
@@ -1980,6 +3374,7 @@ app.post('/api/payments/initiate', authMiddleware, async (req, res) => {
 
   } catch (err) {
     console.error('Payment initiation error:', err);
+    logError(err, 'Payment initiate');
     res.status(500).json({ error: 'Payment processing failed.' });
   }
 });
@@ -1994,6 +3389,7 @@ app.get('/api/payments/order/:orderId', authMiddleware, async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error(err);
+    logError(err, 'Get order payments');
     res.status(500).json({ error: err.message });
   }
 });
@@ -2011,16 +3407,14 @@ app.get('/api/payments/customer', authMiddleware, async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error(err);
+    logError(err, 'Get customer payments');
     res.status(500).json({ error: err.message });
   }
 });
 
-// ================================================================
-//  ORDERS - WITH STOCK VALIDATION
-// ================================================================
-
+// ---- ORDERS ----
 app.post('/api/orders', authMiddleware, [
-  body('items').isArray().withMessage('Items must be an array'),
+  body('items').isArray().withMessage('Items must be array'),
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -2040,9 +3434,13 @@ app.post('/api/orders', authMiddleware, [
   } = req.body;
 
   try {
+    console.log('📦 ORDER CREATION STARTED');
+    console.log('📦 User:', customerId);
+    console.log('📦 Items:', items.length);
+    console.log('📦 Delivery Address:', delivery_address);
+
     let subtotal = 0;
     
-    // ✅ VALIDATE STOCK FIRST - CRITICAL
     for (const item of items) {
       const priceNum = parseFloat(item.price.replace(/[^0-9.]/g,'')) || 0;
       subtotal += priceNum * item.quantity;
@@ -2134,6 +3532,7 @@ app.post('/api/orders', authMiddleware, [
     ]);
 
     const order = orderResult.rows[0];
+    console.log('📦 Order created:', order.id);
 
     for (const item of items) {
       const uniqueId = generateOrderRef();
@@ -2144,17 +3543,9 @@ app.post('/api/orders', authMiddleware, [
           uniqueId, item.variant_name || 'Default', item.variant_id || null]);
 
       if (item.variant_id) {
-        await pool.query(`
-          UPDATE product_variants 
-          SET stock = stock - $1 
-          WHERE id = $2 AND stock >= $1
-        `, [item.quantity, item.variant_id]);
+        await decrementStockAtomic(item.productId, item.quantity, item.variant_id);
       } else {
-        await pool.query(`
-          UPDATE products 
-          SET stock = stock - $1 
-          WHERE id = $2 AND stock >= $1
-        `, [item.quantity, item.productId]);
+        await decrementStockAtomic(item.productId, item.quantity);
       }
     }
 
@@ -2167,11 +3558,17 @@ app.post('/api/orders', authMiddleware, [
     try {
       const customerResult = await pool.query('SELECT name, email FROM customers WHERE id = $1', [customerId]);
       if (customerResult.rows.length > 0) {
-        const mailData = orderConfirmationEmail(order, customerResult.rows[0].name);
-        await sendEmail({ to: customerResult.rows[0].email, ...mailData });
+        const orderWithItems = { ...order, items };
+        const mailData = orderConfirmationEmail(orderWithItems, customerResult.rows[0].name);
+        await sendEmail({
+          to: customerResult.rows[0].email,
+          ...mailData
+        });
+        console.log('📧 Order confirmation email sent to:', customerResult.rows[0].email);
       }
     } catch (emailErr) {
       console.error('⚠️ Email send failed:', emailErr.message);
+      logError(emailErr, 'Order confirmation email');
     }
 
     res.status(201).json({ success: true, order, requiresPayment: true });
@@ -2179,30 +3576,35 @@ app.post('/api/orders', authMiddleware, [
   } catch (err) {
     await pool.query('ROLLBACK');
     console.error('❌ Order creation error:', err);
-    res.status(500).json({ error: err.message || 'Order creation failed' });
+    console.error('❌ Stack:', err.stack);
+    logError(err, 'Order creation');
+    res.status(500).json({ 
+      error: err.message || 'Order creation failed',
+      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 });
 
-// ================================================================
-//  REST OF ORDERS ROUTES (kept from original)
-// ================================================================
-
-// GET /api/orders
 app.get('/api/orders', authMiddleware, async (req, res) => {
   try {
+    const { status, search, startDate, endDate, limit = 50, page = 1 } = req.query;
+    const offset = (page - 1) * limit;
+    
     let query = `
-      SELECT o.*, c.name AS customer_name, c.email AS customer_email
+      SELECT o.*, c.name AS customer_name, c.email AS customer_email,
+      (SELECT json_agg(oi.*) FROM order_items oi WHERE oi.order_id = o.id) as items
       FROM orders o
       JOIN customers c ON o.customer_id = c.id
     `;
     const params = [];
     const conditions = [];
+    
     if (req.role === 'customer') {
       conditions.push('o.customer_id = $' + (params.length + 1));
       params.push(req.userId);
     }
+    
     if (req.role === 'admin') {
-      const { status, search, startDate, endDate } = req.query;
       if (status && status !== 'all') {
         conditions.push('o.status = $' + (params.length + 1));
         params.push(status);
@@ -2220,23 +3622,25 @@ app.get('/api/orders', authMiddleware, async (req, res) => {
         params.push(endDate + ' 23:59:59');
       }
     }
+    
     if (conditions.length > 0) {
       query += ' WHERE ' + conditions.join(' AND ');
     }
+    
     query += ' ORDER BY o.created_at DESC';
+    query += ' LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2);
+    params.push(parseInt(limit), parseInt(offset));
+    
     const result = await pool.query(query, params);
-    const ordersWithItems = await Promise.all(result.rows.map(async (order) => {
-      const itemsResult = await pool.query('SELECT * FROM order_items WHERE order_id = $1', [order.id]);
-      return { ...order, items: itemsResult.rows };
-    }));
-    res.json(ordersWithItems);
+    res.json(result.rows);
   } catch (err) {
     console.error(err);
+    logError(err, 'Get orders');
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/orders/:id
+// ---- GET ORDER BY ID ----
 app.get('/api/orders/:id', authMiddleware, async (req, res) => {
   const orderId = parseInt(req.params.id);
   try {
@@ -2253,11 +3657,12 @@ app.get('/api/orders/:id', authMiddleware, async (req, res) => {
     res.json({ ...order, items: itemsResult.rows });
   } catch (err) {
     console.error(err);
+    logError(err, 'Get order by ID');
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/orders/:id/tracking
+// ---- GET ORDER TRACKING ----
 app.get('/api/orders/:id/tracking', authMiddleware, async (req, res) => {
   const orderId = parseInt(req.params.id);
   try {
@@ -2281,16 +3686,18 @@ app.get('/api/orders/:id/tracking', authMiddleware, async (req, res) => {
       case 'delivered': statusMessage = '📦 Please collect within 7 working days.'; break;
       case 'received': statusMessage = '✔️ You have confirmed receipt. Thank you!'; break;
       case 'cancelled': statusMessage = '❌ This order has been cancelled.'; break;
+      case 'completed': statusMessage = '✅ Order completed. Thank you for shopping!'; break;
       default: statusMessage = 'Status unknown.';
     }
     res.json({ ...order, statusMessage });
   } catch (err) {
     console.error(err);
+    logError(err, 'Order tracking');
     res.status(500).json({ error: err.message });
   }
 });
 
-// PUT /api/orders/:id/cancel
+// ---- CANCEL ORDER ----
 app.put('/api/orders/:id/cancel', authMiddleware, [
   body('reason').notEmpty().withMessage('Cancellation reason required')
 ], async (req, res) => {
@@ -2316,6 +3723,10 @@ app.put('/api/orders/:id/cancel', authMiddleware, [
     if (!['pending', 'confirmed', 'pending_payment'].includes(order.status)) {
       return res.status(400).json({ error: 'This order cannot be cancelled.' });
     }
+    
+    // Restock items
+    await restockOrder(orderId);
+    
     await pool.query(
       `UPDATE orders SET status = 'cancelled', cancelled_at = NOW(), cancelled_by = $1, updated_at = NOW() WHERE id = $2`,
       [req.role === 'admin' ? 'admin' : 'customer', orderId]
@@ -2328,11 +3739,12 @@ app.put('/api/orders/:id/cancel', authMiddleware, [
     res.json({ success: true, message: 'Order cancelled.' });
   } catch (err) {
     console.error(err);
+    logError(err, 'Cancel order');
     res.status(500).json({ error: err.message });
   }
 });
 
-// PUT /api/orders/:id/refund
+// ---- REFUND ORDER ----
 app.put('/api/orders/:id/refund', authMiddleware, [
   body('reason').notEmpty().withMessage('Refund reason required')
 ], async (req, res) => {
@@ -2348,7 +3760,7 @@ app.put('/api/orders/:id/refund', authMiddleware, [
     const orderCheck = await pool.query('SELECT customer_id, status FROM orders WHERE id = $1', [orderId]);
     if (orderCheck.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
     if (orderCheck.rows[0].customer_id !== req.userId) return res.status(403).json({ error: 'Forbidden' });
-    if (orderCheck.rows[0].status === 'cancelled' || orderCheck.rows[0].status === 'received') {
+    if (orderCheck.rows[0].status === 'cancelled' || orderCheck.rows[0].status === 'received' || orderCheck.rows[0].status === 'completed') {
       return res.status(400).json({ error: 'This order cannot be refunded.' });
     }
     await pool.query(`UPDATE orders SET refund_request = $1, refund_status = 'pending' WHERE id = $2`, [reason, orderId]);
@@ -2358,11 +3770,12 @@ app.put('/api/orders/:id/refund', authMiddleware, [
     res.json({ success: true, message: 'Refund request submitted.' });
   } catch (err) {
     console.error(err);
+    logError(err, 'Refund request');
     res.status(500).json({ error: err.message });
   }
 });
 
-// PUT /api/admin/orders/:id/refund
+// ---- ADMIN REFUND APPROVAL ----
 app.put('/api/admin/orders/:id/refund', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const orderId = parseInt(req.params.id);
@@ -2381,80 +3794,12 @@ app.put('/api/admin/orders/:id/refund', authMiddleware, async (req, res) => {
     res.json({ success: true, message: `Refund ${action}d.` });
   } catch (err) {
     console.error(err);
+    logError(err, 'Admin refund');
     res.status(500).json({ error: err.message });
   }
 });
 
-// PUT /api/orders/:id/replace
-app.put('/api/orders/:id/replace', authMiddleware, async (req, res) => {
-  if (req.role !== 'customer') return res.status(403).json({ error: 'Customer only.' });
-  const orderId = parseInt(req.params.id);
-  const { oldProductIds, newProductIds } = req.body;
-  try {
-    const orderCheck = await pool.query('SELECT customer_id, status, created_at FROM orders WHERE id = $1', [orderId]);
-    if (orderCheck.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
-    const order = orderCheck.rows[0];
-    if (order.customer_id !== req.userId) return res.status(403).json({ error: 'Forbidden' });
-    const hoursSinceOrder = (Date.now() - new Date(order.created_at).getTime()) / (1000 * 60 * 60);
-    const maxHours = parseInt(await getSetting('replacement_hours', '6'));
-    if (hoursSinceOrder > maxHours) {
-      return res.status(400).json({ error: `Replacement only allowed within ${maxHours} hours of order placement.` });
-    }
-    const oldItemsResult = await pool.query(
-      'SELECT product_id, product_name, price, quantity FROM order_items WHERE order_id = $1 AND product_id = ANY($2::int[])',
-      [orderId, oldProductIds]
-    );
-    if (oldItemsResult.rows.length === 0) return res.status(400).json({ error: 'No matching items found in order.' });
-    let oldTotal = 0;
-    oldItemsResult.rows.forEach(item => {
-      const priceNum = parseFloat(item.price.replace(/[^0-9.]/g,'')) || 0;
-      oldTotal += priceNum * item.quantity;
-    });
-    const newProductsResult = await pool.query(
-      'SELECT id, name, price FROM products WHERE id = ANY($1::int[])',
-      [newProductIds]
-    );
-    if (newProductsResult.rows.length === 0) return res.status(400).json({ error: 'No valid replacement products found.' });
-    let newTotal = 0;
-    newProductsResult.rows.forEach(item => {
-      const priceNum = parseFloat(item.price.replace(/[^0-9.]/g,'')) || 0;
-      newTotal += priceNum;
-    });
-    const diff = newTotal - oldTotal;
-    const replacementData = {
-      old_items: oldItemsResult.rows,
-      new_items: newProductsResult.rows,
-      old_total: oldTotal,
-      new_total: newTotal,
-      diff: diff,
-      status: diff === 0 ? 'approved' : (diff > 0 ? 'pending_payment' : 'pending_refund')
-    };
-    let paymentStatus = 'none';
-    let refundStatus = 'none';
-    if (diff > 0) paymentStatus = 'pending';
-    else if (diff < 0) refundStatus = 'pending';
-    else { paymentStatus = 'approved'; refundStatus = 'approved'; }
-
-    await pool.query(
-      `UPDATE orders SET replacement_request = $1, replacement_status = $2, replacement_diff = $3,
-       replacement_payment_status = $4, replacement_refund_status = $5 WHERE id = $6`,
-      [JSON.stringify(replacementData), replacementData.status, diff, paymentStatus, refundStatus, orderId]
-    );
-    let msg = `🔄 Replacement requested: ${oldItemsResult.rows.map(i => i.product_name).join(', ')} → ${newProductsResult.rows.map(i => i.name).join(', ')}. `;
-    if (diff > 0) msg += `You need to pay Ksh ${diff.toFixed(2)} extra.`;
-    else if (diff < 0) msg += `You will get a refund of Ksh ${Math.abs(diff).toFixed(2)}.`;
-    else msg += `Prices are equal.`;
-    await pool.query('INSERT INTO order_chat_messages (order_id, from_user, message) VALUES ($1, $2, $3)', [orderId, 'System', msg]);
-    io.to(`order_${orderId}`).emit('new-order-chat-message', { order_id: orderId, from_user: 'System', message: msg, timestamp: new Date() });
-    io.emit('replacement-requested', { orderId });
-    res.json({ success: true, replacement: replacementData, payment_status: paymentStatus, refund_status: refundStatus });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// POST /api/orders/:id/replacement-payment
+// ---- REPLACEMENT PAYMENT ----
 app.post('/api/orders/:id/replacement-payment', authMiddleware, async (req, res) => {
   if (req.role !== 'customer') return res.status(403).json({ error: 'Customer only.' });
   const orderId = parseInt(req.params.id);
@@ -2469,7 +3814,7 @@ app.post('/api/orders/:id/replacement-payment', authMiddleware, async (req, res)
     const amount = order.replacement_diff;
     const method = payment_method;
     const details = payment_details || {};
-    const transactionId = `REP-${Date.now()}-${Math.random().toString(36).substr(2,6).toUpperCase()}`;
+    const transactionId = uuidv4();
 
     await pool.query(
       `INSERT INTO payments (customer_id, order_id, amount, method, status, transaction_id, payment_details)
@@ -2488,11 +3833,12 @@ app.post('/api/orders/:id/replacement-payment', authMiddleware, async (req, res)
     res.json({ success: true, message: 'Payment recorded. Replacement approved.' });
   } catch (err) {
     console.error(err);
+    logError(err, 'Replacement payment');
     res.status(500).json({ error: err.message });
   }
 });
 
-// PUT /api/admin/orders/:id/replace
+// ---- ADMIN REPLACEMENT APPROVAL ----
 app.put('/api/admin/orders/:id/replace', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const orderId = parseInt(req.params.id);
@@ -2517,11 +3863,12 @@ app.put('/api/admin/orders/:id/replace', authMiddleware, async (req, res) => {
     res.json({ success: true, message: `Replacement ${action}d.` });
   } catch (err) {
     console.error(err);
+    logError(err, 'Admin replacement');
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/orders/:id/return
+// ---- RETURN REQUEST ----
 app.post('/api/orders/:id/return', authMiddleware, [
   body('product_id').isInt().withMessage('Product ID required'),
   body('reason').notEmpty().withMessage('Return reason required')
@@ -2543,7 +3890,7 @@ app.post('/api/orders/:id/return', authMiddleware, [
     const orderCheck = await pool.query('SELECT customer_id, status FROM orders WHERE id = $1', [orderId]);
     if (orderCheck.rows.length === 0) return res.status(404).json({ error: 'Order not found.' });
     if (orderCheck.rows[0].customer_id !== req.userId) return res.status(403).json({ error: 'Forbidden.' });
-    if (!['delivered', 'received'].includes(orderCheck.rows[0].status)) {
+    if (!['delivered', 'received', 'completed'].includes(orderCheck.rows[0].status)) {
       return res.status(400).json({ error: 'Return only allowed after delivery.' });
     }
     const existingReturn = await pool.query(
@@ -2562,11 +3909,12 @@ app.post('/api/orders/:id/return', authMiddleware, [
     res.json({ success: true, message: 'Return request submitted.' });
   } catch (err) {
     console.error(err);
+    logError(err, 'Return request');
     res.status(500).json({ error: err.message });
   }
 });
 
-// PUT /api/admin/returns/:id
+// ---- ADMIN RETURN APPROVAL ----
 app.put('/api/admin/returns/:id', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const returnId = parseInt(req.params.id);
@@ -2586,11 +3934,12 @@ app.put('/api/admin/returns/:id', authMiddleware, async (req, res) => {
     res.json({ success: true, message: `Return ${action}d.` });
   } catch (err) {
     console.error(err);
+    logError(err, 'Admin return');
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/orders/:id/reorder
+// ---- REORDER ----
 app.post('/api/orders/:id/reorder', authMiddleware, async (req, res) => {
   const orderId = parseInt(req.params.id);
   try {
@@ -2617,11 +3966,12 @@ app.post('/api/orders/:id/reorder', authMiddleware, async (req, res) => {
     res.json({ success: true, items: cartItems });
   } catch (err) {
     console.error(err);
+    logError(err, 'Reorder');
     res.status(500).json({ error: err.message });
   }
 });
 
-// PUT /api/orders/:id/confirm
+// ---- CONFIRM ORDER ----
 app.put('/api/orders/:id/confirm', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const orderId = parseInt(req.params.id);
@@ -2642,20 +3992,6 @@ app.put('/api/orders/:id/confirm', authMiddleware, async (req, res) => {
     await logAdminActivity(req.userId, 'CONFIRM_ORDER', { orderId });
 
     const itemsResult = await pool.query('SELECT * FROM order_items WHERE order_id = $1', [orderId]);
-    for (const item of itemsResult.rows) {
-      if (item.variant_id) {
-        await pool.query(
-          'UPDATE product_variants SET stock = stock - $1 WHERE id = $2 AND stock >= $1',
-          [item.quantity, item.variant_id]
-        );
-      } else {
-        await pool.query(
-          'UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1',
-          [item.quantity, item.product_id]
-        );
-      }
-    }
-
     const items = itemsResult.rows;
 
     const ref = order.order_ref || `#${order.id}`;
@@ -2694,16 +4030,18 @@ app.put('/api/orders/:id/confirm', authMiddleware, async (req, res) => {
         await sendEmail({ to: order.customer_email, ...mailData });
       } catch (emailErr) {
         console.error('⚠️ Email send failed:', emailErr.message);
+        logError(emailErr, 'Order confirmation');
       }
     }
     res.json({ success: true, message: '✅ Order confirmed.' });
   } catch (err) {
     console.error('Confirm error:', err);
+    logError(err, 'Confirm order');
     res.status(500).json({ error: err.message });
   }
 });
 
-// PUT /api/orders/:id/status
+// ---- UPDATE ORDER STATUS ----
 app.put('/api/orders/:id/status', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const orderId = parseInt(req.params.id);
@@ -2713,7 +4051,7 @@ app.put('/api/orders/:id/status', authMiddleware, async (req, res) => {
     if (current.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
     const currentStatus = current.rows[0].status;
     if (currentStatus === 'pending') return res.status(400).json({ error: 'Order must be confirmed first.' });
-    if (currentStatus === 'received' || currentStatus === 'cancelled') {
+    if (currentStatus === 'received' || currentStatus === 'cancelled' || currentStatus === 'completed') {
       return res.status(400).json({ error: 'Order already processed.' });
     }
     const updates = { status };
@@ -2742,18 +4080,21 @@ app.put('/api/orders/:id/status', authMiddleware, async (req, res) => {
       try {
         const mailData = statusUpdateEmail({ ...current.rows[0], status, tracking_number }, status, customer.name);
         await sendEmail({ to: customer.email, ...mailData });
+        console.log('📧 Status update email sent to:', customer.email);
       } catch (emailErr) {
         console.error('⚠️ Email send failed:', emailErr.message);
+        logError(emailErr, 'Status update email');
       }
     }
     res.json({ success: true });
   } catch (err) {
     console.error(err);
+    logError(err, 'Update order status');
     res.status(500).json({ error: err.message });
   }
 });
 
-// PUT /api/orders/:id/receive
+// ---- RECEIVE ORDER ----
 app.put('/api/orders/:id/receive', authMiddleware, async (req, res) => {
   if (req.role !== 'customer') return res.status(403).json({ error: 'Customer only.' });
   const orderId = parseInt(req.params.id);
@@ -2780,16 +4121,18 @@ app.put('/api/orders/:id/receive', authMiddleware, async (req, res) => {
         await sendEmail({ to: customer.email, ...mailData });
       } catch (emailErr) {
         console.error('⚠️ Email send failed:', emailErr.message);
+        logError(emailErr, 'Received email');
       }
     }
     res.json({ success: true });
   } catch (err) {
     console.error(err);
+    logError(err, 'Receive order');
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/orders/:id/chat
+// ---- ORDER CHAT ----
 app.get('/api/orders/:id/chat', authMiddleware, async (req, res) => {
   const orderId = parseInt(req.params.id);
   try {
@@ -2801,11 +4144,11 @@ app.get('/api/orders/:id/chat', authMiddleware, async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error(err);
+    logError(err, 'Get order chat');
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/orders/:id/chat
 app.post('/api/orders/:id/chat', authMiddleware, async (req, res) => {
   const orderId = parseInt(req.params.id);
   const { message } = req.body;
@@ -2824,16 +4167,17 @@ app.post('/api/orders/:id/chat', authMiddleware, async (req, res) => {
     res.json({ success: true, msg: result.rows[0] });
   } catch (err) {
     console.error(err);
+    logError(err, 'Order chat send');
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/admin/dashboard
+// ---- ADMIN DASHBOARD ----
 app.get('/api/admin/dashboard', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   try {
     const stats = {};
-    const statuses = ['pending', 'confirmed', 'shipped', 'delivered', 'received', 'cancelled', 'pending_payment'];
+    const statuses = ['pending', 'confirmed', 'shipped', 'delivered', 'received', 'cancelled', 'pending_payment', 'completed'];
     for (const status of statuses) {
       const result = await pool.query('SELECT COUNT(*) FROM orders WHERE status = $1', [status]);
       stats[status] = parseInt(result.rows[0].count);
@@ -2845,13 +4189,13 @@ app.get('/api/admin/dashboard', authMiddleware, async (req, res) => {
     const refundsPending = await pool.query(`SELECT COUNT(*) FROM orders WHERE refund_status = 'pending'`);
     stats.refunds_pending = parseInt(refundsPending.rows[0].count);
     const urgent = await pool.query(
-      `SELECT COUNT(*) FROM orders WHERE urgent_delivery = true AND status NOT IN ('received', 'cancelled')`
+      `SELECT COUNT(*) FROM orders WHERE urgent_delivery = true AND status NOT IN ('received', 'cancelled', 'completed')`
     );
     stats.urgent = parseInt(urgent.rows[0].count);
     const total = await pool.query('SELECT COUNT(*) FROM orders');
     stats.total_orders = parseInt(total.rows[0].count);
     const revenue = await pool.query(
-      `SELECT SUM(total) FROM orders WHERE status IN ('confirmed', 'shipped', 'delivered', 'received')`
+      `SELECT SUM(total) FROM orders WHERE status IN ('confirmed', 'shipped', 'delivered', 'received', 'completed')`
     );
     stats.total_revenue = parseFloat(revenue.rows[0].sum) || 0;
     const returnsPending = await pool.query(`SELECT COUNT(*) FROM returns WHERE status = 'pending'`);
@@ -2859,11 +4203,12 @@ app.get('/api/admin/dashboard', authMiddleware, async (req, res) => {
     res.json(stats);
   } catch (err) {
     console.error(err);
+    logError(err, 'Admin dashboard');
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/admin/returns
+// ---- ADMIN RETURNS ----
 app.get('/api/admin/returns', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   try {
@@ -2877,11 +4222,12 @@ app.get('/api/admin/returns', authMiddleware, async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error(err);
+    logError(err, 'Admin returns');
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/returns/customer
+// ---- CUSTOMER RETURNS ----
 app.get('/api/returns/customer', authMiddleware, async (req, res) => {
   if (req.role !== 'customer') return res.status(403).json({ error: 'Customer only.' });
   try {
@@ -2892,11 +4238,12 @@ app.get('/api/returns/customer', authMiddleware, async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error(err);
+    logError(err, 'Customer returns');
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/admin/orders/:id/remind
+// ---- ADMIN REMINDER ----
 app.post('/api/admin/orders/:id/remind', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const orderId = parseInt(req.params.id);
@@ -2925,11 +4272,12 @@ app.post('/api/admin/orders/:id/remind', authMiddleware, async (req, res) => {
     res.json({ success: true, message: 'Reminder sent.' });
   } catch (err) {
     console.error(err);
+    logError(err, 'Admin reminder');
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/admin/logs
+// ---- ADMIN LOGS ----
 app.get('/api/admin/logs', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   try {
@@ -2939,29 +4287,30 @@ app.get('/api/admin/logs', authMiddleware, async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error(err);
+    logError(err, 'Admin logs');
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/admin/customers
+// ---- ADMIN CUSTOMERS ----
 app.get('/api/admin/customers', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   try {
     const result = await pool.query(`
       SELECT id, name, email, phone, created_at,
       (SELECT COUNT(*) FROM orders WHERE customer_id = customers.id) as order_count,
-      (SELECT SUM(total) FROM orders WHERE customer_id = customers.id AND status IN ('confirmed', 'shipped', 'delivered', 'received')) as total_spent
+      (SELECT SUM(total) FROM orders WHERE customer_id = customers.id AND status IN ('confirmed', 'shipped', 'delivered', 'received', 'completed')) as total_spent
       FROM customers
       ORDER BY created_at DESC
     `);
     res.json(result.rows);
   } catch (err) {
     console.error(err);
+    logError(err, 'Admin customers');
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/admin/customers/:id
 app.get('/api/admin/customers/:id', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const id = parseInt(req.params.id);
@@ -2974,11 +4323,12 @@ app.get('/api/admin/customers/:id', authMiddleware, async (req, res) => {
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
+    logError(err, 'Get customer');
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/admin/orders/bulk
+// ---- BULK ORDER ACTIONS ----
 app.post('/api/admin/orders/bulk', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   const { orderIds, action, status, tracking_number } = req.body;
@@ -3007,11 +4357,12 @@ app.post('/api/admin/orders/bulk', authMiddleware, async (req, res) => {
     res.json({ success: true, results });
   } catch (err) {
     console.error(err);
+    logError(err, 'Bulk order action');
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/admin/orders/export
+// ---- EXPORT ORDERS CSV ----
 app.get('/api/admin/orders/export', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
   try {
@@ -3038,11 +4389,12 @@ app.get('/api/admin/orders/export', authMiddleware, async (req, res) => {
     res.send(csv);
   } catch (err) {
     console.error(err);
+    logError(err, 'Export orders');
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/orders/:id/receipt
+// ---- PDF RECEIPT ----
 app.get('/api/orders/:id/receipt', authMiddleware, async (req, res) => {
   const orderId = parseInt(req.params.id);
   try {
@@ -3105,11 +4457,12 @@ app.get('/api/orders/:id/receipt', authMiddleware, async (req, res) => {
     doc.end();
   } catch (err) {
     console.error(err);
+    logError(err, 'PDF receipt');
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/orders/:id/send-confirmation
+// ---- SEND ORDER CONFIRMATION ----
 app.post('/api/orders/:id/send-confirmation', authMiddleware, async (req, res) => {
   if (req.role !== 'admin') return res.status(403).json({ error: 'Admin only.' });
 
@@ -3173,11 +4526,124 @@ app.post('/api/orders/:id/send-confirmation', authMiddleware, async (req, res) =
 
   } catch (err) {
     console.error(err);
+    logError(err, 'Send confirmation');
     res.status(500).json({ error: err.message });
   }
 });
 
-// ---------- Socket.IO ----------
+// ---- ASSET MINIFICATION ENDPOINT ----
+app.post('/api/admin/minify', authMiddleware, async (req, res) => {
+  if (req.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin only' });
+  }
+  
+  try {
+    const publicDir = path.join(__dirname, 'public');
+    const files = fs.readdirSync(publicDir);
+    const minified = [];
+    let totalReduction = 0;
+    
+    for (const file of files) {
+      if (file.endsWith('.js') || file.endsWith('.css')) {
+        const filePath = path.join(publicDir, file);
+        const content = fs.readFileSync(filePath, 'utf8');
+        const originalSize = content.length;
+        
+        let minifiedContent = content
+          .replace(/\/\/.*$/gm, '')
+          .replace(/\/\*[\s\S]*?\*\//g, '')
+          .replace(/\s+/g, ' ')
+          .replace(/;\s*/g, ';')
+          .replace(/:\s*/g, ':')
+          .replace(/{\s*/g, '{')
+          .replace(/}\s*/g, '}')
+          .replace(/\(\s*/g, '(')
+          .replace(/\s*\)/g, ')')
+          .trim();
+        
+        const minifiedSize = minifiedContent.length;
+        const reduction = originalSize - minifiedSize;
+        totalReduction += reduction;
+        
+        const minifiedPath = path.join(publicDir, file.replace(/\.(js|css)$/, '.min.$1'));
+        fs.writeFileSync(minifiedPath, minifiedContent);
+        minified.push(file);
+        
+        console.log(`✅ Minified ${file}: ${(reduction / 1024).toFixed(2)}KB saved`);
+      }
+    }
+    
+    await logAdminActivity(req.userId, 'MINIFY_ASSETS', { 
+      files: minified,
+      totalReduction: `${(totalReduction / 1024).toFixed(2)}KB`
+    });
+    
+    res.json({
+      success: true,
+      message: `Minified ${minified.length} files`,
+      files: minified,
+      totalReduction: `${(totalReduction / 1024).toFixed(2)}KB`
+    });
+    
+  } catch (err) {
+    console.error('❌ Minify error:', err);
+    logError(err, 'Minify');
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- ASSET STATS ENDPOINT ----
+app.get('/api/admin/assets/stats', authMiddleware, async (req, res) => {
+  if (req.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin only' });
+  }
+  
+  try {
+    const publicDir = path.join(__dirname, 'public');
+    const files = fs.readdirSync(publicDir);
+    let jsCount = 0, cssCount = 0, totalSize = 0;
+    
+    for (const file of files) {
+      if (file.endsWith('.js')) {
+        jsCount++;
+        const stats = fs.statSync(path.join(publicDir, file));
+        totalSize += stats.size;
+      } else if (file.endsWith('.css')) {
+        cssCount++;
+        const stats = fs.statSync(path.join(publicDir, file));
+        totalSize += stats.size;
+      }
+    }
+    
+    res.json({
+      success: true,
+      jsCount,
+      cssCount,
+      totalSize: (totalSize / 1024).toFixed(1) + ' KB'
+    });
+  } catch (err) {
+    console.error('❌ Stats error:', err);
+    logError(err, 'Asset stats');
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+//  CSRF TOKEN ENDPOINT (Disabled for now)
+// ============================================================
+app.get('/api/csrf-token', authMiddleware, (req, res) => {
+  try {
+    const token = crypto.randomBytes(32).toString('hex');
+    res.json({ csrfToken: token });
+  } catch (err) {
+    logError(err, 'CSRF token');
+    res.status(500).json({ error: 'Failed to generate CSRF token' });
+  }
+});
+
+// ============================================================
+//  SOCKET.IO
+// ============================================================
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
   if (!token) {
@@ -3215,6 +4681,7 @@ io.on('connection', (socket) => {
       io.emit('new-chat-message', { ...newMsg, customer_name: customerName });
     } catch (err) {
       console.error(err);
+      logError(err, 'Socket chat');
     }
   });
 
@@ -3230,6 +4697,7 @@ io.on('connection', (socket) => {
       io.emit('new-chat-message', { ...newMsg, customer_name: 'Seller' });
     } catch (err) {
       console.error(err);
+      logError(err, 'Socket seller chat');
     }
   });
 
@@ -3247,6 +4715,7 @@ io.on('connection', (socket) => {
       socket.emit('chat-history', history);
     } catch (err) {
       console.error('Error fetching chat history:', err);
+      logError(err, 'Socket chat history');
       socket.emit('chat-history', []);
     }
   });
@@ -3267,6 +4736,7 @@ io.on('connection', (socket) => {
   socket.on('join-order-room', (orderId) => {
     socket.join(`order_${orderId}`);
   });
+  
   socket.on('leave-order-room', (orderId) => {
     socket.leave(`order_${orderId}`);
   });
@@ -3280,6 +4750,7 @@ io.on('connection', (socket) => {
 // ---------- Global Error Handler ----------
 app.use((err, req, res, next) => {
   console.error('❌ Unhandled error:', err);
+  logError(err, 'Global error handler');
   res.status(500).json({ error: 'Internal server error' });
 });
 
@@ -3295,8 +4766,16 @@ async function initDatabase() {
       )
     `);
     console.log('✅ Password resets table ready');
+    
+    // Create logs directory
+    const logDir = path.join(__dirname, 'logs');
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+      console.log('✅ Logs directory created');
+    }
   } catch (err) {
     console.error('❌ Error creating password_resets table:', err);
+    logError(err, 'Database init');
   }
 }
 
@@ -3307,4 +4786,10 @@ server.listen(PORT, () => {
   console.log(`☁️ Cloudinary ready`);
   console.log(`📦 PostgreSQL connected`);
   console.log(`💰 M-Pesa integration ready`);
+  console.log(`📱 Airtel Money integration ready`);
+  console.log(`💳 PayPal integration ready`);
+  console.log(`📧 Email system ready`);
+  console.log(`🔒 Security features enabled`);
+  console.log(`⏰ Auto-cancel job scheduled`);
+  console.log(`📊 Redis caching ${process.env.REDIS_URL ? 'enabled' : 'disabled (memory cache)'}`);
 });

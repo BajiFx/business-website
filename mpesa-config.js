@@ -4,6 +4,8 @@
 
 require('dotenv').config();
 
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+
 const MPESA_CONFIG = {
   environment: process.env.MPESA_ENVIRONMENT || 'sandbox',
   
@@ -11,8 +13,11 @@ const MPESA_CONFIG = {
   consumerSecret: process.env.MPESA_CONSUMER_SECRET,
   passkey: process.env.MPESA_PASSKEY,
   shortcode: process.env.MPESA_SHORTCODE || '174379',
-  callbackUrl: process.env.MPESA_CALLBACK_URL,
   email: process.env.SMTP_USER || 'georgebabji1220@gmail.com',
+  
+  get callbackUrl() {
+    return process.env.MPESA_CALLBACK_URL || `${BASE_URL}/api/payments/mpesa-callback`;
+  },
   
   get apiUrls() {
     const baseUrl = this.environment === 'production' 
@@ -42,7 +47,7 @@ const MPESA_CONFIG = {
       errors.push('❌ MPESA_PASSKEY is not set');
     }
     
-    if (!this.callbackUrl || this.callbackUrl === 'https://your-ngrok-url.ngrok.io/api/payments/mpesa-callback') {
+    if (!this.callbackUrl || this.callbackUrl.includes('your-ngrok-url')) {
       warnings.push('⚠️ Callback URL needs to be updated');
     }
     
