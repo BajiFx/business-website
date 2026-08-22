@@ -1424,7 +1424,7 @@
   }
 
   // ================================================================
-  //  PLACE ORDER - COMPLETE FIXED VERSION
+  //  PLACE ORDER - FULLY FIXED
   // ================================================================
 
   function placeOrder() {
@@ -1514,7 +1514,7 @@
       return;
     }
 
-    console.log('📤 Sending order...');
+    console.log('📤 Sending order to server...');
 
     // Show loading state
     const btn = document.getElementById('placeOrderBtn');
@@ -1523,7 +1523,10 @@
       btn.innerHTML = '⏳ Processing...';
     }
 
-    // Send order
+    // Send order with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     fetch('/api/orders', {
       method: 'POST',
       headers: {
@@ -1542,12 +1545,16 @@
         customer_lat: customerLat,
         customer_lng: customerLng,
         location_accuracy: locationAccuracy
-      })
+      }),
+      signal: controller.signal
     })
     .then(response => {
+      clearTimeout(timeoutId);
       console.log('📥 Response status:', response.status);
+      
       if (!response.ok) {
         return response.json().then(data => {
+          console.error('❌ Server error response:', data);
           throw new Error(data.error || 'Order creation failed');
         });
       }
@@ -1556,6 +1563,7 @@
     .then(data => {
       console.log('📥 Response data:', data);
       
+      // Re-enable button
       if (btn) {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-check-circle"></i> Place Order';
@@ -1580,23 +1588,39 @@
         if (typeof clearCart === 'function') {
           clearCart();
         } else {
-          // Manual clear
-          const key = getCartStorageKey ? getCartStorageKey() : 'guest_cart';
-          localStorage.removeItem(key);
-          renderCartPage();
-          updateCartBadge();
+          try {
+            const key = getCartStorageKey ? getCartStorageKey() : 'guest_cart';
+            localStorage.removeItem(key);
+            renderCartPage();
+            updateCartBadge();
+          } catch(e) {
+            console.error('Error clearing cart:', e);
+          }
         }
       } else {
         showToast('❌ Failed to create order: ' + (data.error || 'Unknown error'), 'error');
       }
     })
     .catch(error => {
+      clearTimeout(timeoutId);
       console.error('❌ Order error:', error);
+      
+      // Re-enable button
       if (btn) {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-check-circle"></i> Place Order';
       }
-      showToast('❌ ' + (error.message || 'Network error. Please try again.'), 'error');
+      
+      // Show specific error message
+      let errorMsg = 'Network error. Please try again.';
+      if (error.message) {
+        errorMsg = error.message;
+      }
+      if (error.name === 'AbortError') {
+        errorMsg = 'Request timed out. Please check your connection and try again.';
+      }
+      
+      showToast('❌ ' + errorMsg, 'error');
     });
   }
 
