@@ -52,15 +52,6 @@ if (!JWT_SECRET) {
 // ============================================================
 //  CSRF PROTECTION - DISABLED FOR TESTING
 // ============================================================
-// const csrf = require('csurf');
-// const csrfProtection = csrf({
-//   cookie: {
-//     httpOnly: true,
-//     secure: process.env.NODE_ENV === 'production',
-//     sameSite: 'strict'
-//   }
-// });
-
 app.use(cookieParser());
 
 // ============================================================
@@ -573,7 +564,6 @@ cron.schedule('0 * * * *', async () => {
       
       await appendOrderStatus(order.id, 'cancelled', 'Auto-cancelled: Payment not completed within 24 hours');
       
-      // Restock items
       await restockOrder(order.id);
       
       await pool.query(
@@ -1124,7 +1114,6 @@ app.get('/api/admin/analytics', authMiddleware, async (req, res) => {
        GROUP BY refund_status`
     );
     
-    // Low stock alerts
     const lowStock = await pool.query(
       `SELECT id, name, stock FROM products WHERE stock < 10 ORDER BY stock ASC LIMIT 20`
     );
@@ -1198,7 +1187,6 @@ app.post('/api/admin/returns/:id/shipping-label', authMiddleware, async (req, re
     
     const returnData = returnResult.rows[0];
     
-    // Generate shipping label
     const trackingNumber = `RET-${uuidv4().substring(0, 8).toUpperCase()}`;
     
     const labelData = {
@@ -1440,10 +1428,8 @@ app.put('/api/orders/:id/replace-simple', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
-//  REST OF EXISTING API ROUTES (All your original routes)
+//  SHOP PROFILE ROUTE
 // ============================================================
-
-// ---- SHOP profile ----
 app.get('/api/shop', cacheMiddleware(300), async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM shop LIMIT 1');
@@ -2061,7 +2047,6 @@ app.get('/api/auth/customer/verify', authMiddleware, async (req, res) => {
 app.put('/api/auth/customer/profile', authMiddleware, async (req, res) => {
   const { name, phone, email } = req.body;
   try {
-    // Validate phone if provided
     if (phone && !validateKenyanPhone(phone)) {
       return res.status(400).json({ error: 'Invalid phone number. Must be a valid Kenyan number.' });
     }
@@ -2690,7 +2675,6 @@ app.post('/api/payments/mpesa/initiate', authMiddleware, [
       return res.status(400).json({ error: 'Amount must be at least Ksh 1' });
     }
 
-    // Validate phone number
     if (!validateKenyanPhone(phone)) {
       return res.status(400).json({ error: 'Invalid phone number. Must be a valid Kenyan number (e.g., 0712345678)' });
     }
@@ -2762,7 +2746,6 @@ app.get('/api/payments/mpesa/status/:checkoutRequestId', authMiddleware, async (
       return res.status(400).json({ error: 'Checkout Request ID required' });
     }
 
-    // Check if it's a simulation
     if (checkoutRequestId.startsWith('SIM-')) {
       const paymentResult = await pool.query(`
         SELECT status FROM payments 
@@ -2782,7 +2765,6 @@ app.get('/api/payments/mpesa/status/:checkoutRequestId', authMiddleware, async (
       });
     }
 
-    // Real status query
     const accessToken = await getMpesaAccessToken();
     if (!accessToken) {
       return res.status(400).json({ error: 'Unable to query transaction status' });
@@ -2988,7 +2970,6 @@ app.post('/api/payments/airtel/initiate', authMiddleware, [
       return res.status(400).json({ error: 'Amount must be at least Ksh 1' });
     }
 
-    // Validate phone number
     if (!validateKenyanPhone(phone)) {
       return res.status(400).json({ error: 'Invalid phone number. Must be a valid Kenyan number (e.g., 0712345678)' });
     }
@@ -3437,7 +3418,6 @@ app.post('/api/orders', authMiddleware, [
     console.log('📦 ORDER CREATION STARTED');
     console.log('📦 User:', customerId);
     console.log('📦 Items:', items.length);
-    console.log('📦 Delivery Address:', delivery_address);
 
     let subtotal = 0;
     
@@ -3724,7 +3704,6 @@ app.put('/api/orders/:id/cancel', authMiddleware, [
       return res.status(400).json({ error: 'This order cannot be cancelled.' });
     }
     
-    // Restock items
     await restockOrder(orderId);
     
     await pool.query(
@@ -4767,7 +4746,6 @@ async function initDatabase() {
     `);
     console.log('✅ Password resets table ready');
     
-    // Create logs directory
     const logDir = path.join(__dirname, 'logs');
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true });
@@ -4786,7 +4764,6 @@ server.listen(PORT, () => {
   console.log(`☁️ Cloudinary ready`);
   console.log(`📦 PostgreSQL connected`);
   console.log(`💰 M-Pesa integration ready`);
-<<<<<<< HEAD
   console.log(`📱 Airtel Money integration ready`);
   console.log(`💳 PayPal integration ready`);
   console.log(`📧 Email system ready`);
@@ -4794,6 +4771,3 @@ server.listen(PORT, () => {
   console.log(`⏰ Auto-cancel job scheduled`);
   console.log(`📊 Redis caching ${process.env.REDIS_URL ? 'enabled' : 'disabled (memory cache)'}`);
 });
-=======
-});
->>>>>>> 301b2f599e98860a131516b8ee603fa8ac9441db
