@@ -591,7 +591,7 @@ function initSocket() {
 }
 
 // ============================================================
-//  DASHBOARD - COMPACT STATS RENDERING
+//  DASHBOARD - BEAUTIFUL STAT LINKS
 // ============================================================
 
 function loadDashboardStats() {
@@ -615,7 +615,7 @@ function loadDashboardStats() {
         })
         .then(function(stats) {
             console.log('📊 Stats received:', stats);
-            renderCompactStats(stats);
+            renderStats(stats);
             loadRecentOrders();
             updateOrderBadge(stats);
         })
@@ -625,29 +625,32 @@ function loadDashboardStats() {
         });
 }
 
-// NEW: Render stats as compact, beautiful links
-function renderCompactStats(stats) {
+// ============================================================
+//  RENDER STATS - BEAUTIFUL LINK STYLES (NO CARDS)
+// ============================================================
+
+function renderStats(stats) {
     var grid = document.getElementById('statsGrid');
     if (!grid) return;
 
-    // Define stat items: [key, label, icon, color]
+    // Define stat items: [key, label, icon, cssClass]
     var items = [
-        { key: 'pending', label: 'Pending', icon: 'fa-clock', color: '#f59e0b' },
-        { key: 'pending_payment', label: 'Awaiting Payment', icon: 'fa-hourglass-half', color: '#f97316' },
-        { key: 'confirmed', label: 'Confirmed', icon: 'fa-check-circle', color: '#22c55e' },
-        { key: 'shipped', label: 'Shipped', icon: 'fa-truck', color: '#3b82f6' },
-        { key: 'delivered', label: 'Awaiting Pickup', icon: 'fa-box-open', color: '#8b5cf6' },
-        { key: 'received', label: 'Received', icon: 'fa-check-double', color: '#14b8a6' },
-        { key: 'cancelled', label: 'Cancelled', icon: 'fa-times-circle', color: '#ef4444' },
-        { key: 'replacements_pending', label: 'Replacements', icon: 'fa-exchange-alt', color: '#f97316' },
-        { key: 'refunds_pending', label: 'Refunds', icon: 'fa-hand-holding-usd', color: '#ec4899' },
-        { key: 'urgent', label: 'Urgent', icon: 'fa-exclamation-triangle', color: '#ef4444' },
-        { key: 'returns_pending', label: 'Returns', icon: 'fa-undo', color: '#06b6d4' },
-        { key: 'total_orders', label: 'Total Orders', icon: 'fa-shopping-bag', color: '#64748b' },
-        { key: 'total_revenue', label: 'Revenue (Ksh)', icon: 'fa-money-bill-wave', color: '#2563eb' }
+        { key: 'pending', label: 'Pending', icon: 'fa-clock', css: 'pending' },
+        { key: 'pending_payment', label: 'Awaiting Payment', icon: 'fa-hourglass-half', css: 'pending_payment' },
+        { key: 'confirmed', label: 'Confirmed', icon: 'fa-check-circle', css: 'confirmed' },
+        { key: 'shipped', label: 'Shipped', icon: 'fa-truck', css: 'shipped' },
+        { key: 'delivered', label: 'Awaiting Pickup', icon: 'fa-box-open', css: 'delivered' },
+        { key: 'received', label: 'Received', icon: 'fa-check-double', css: 'received' },
+        { key: 'cancelled', label: 'Cancelled', icon: 'fa-times-circle', css: 'cancelled' },
+        { key: 'replacements_pending', label: 'Replacements', icon: 'fa-exchange-alt', css: 'replacements' },
+        { key: 'refunds_pending', label: 'Refunds', icon: 'fa-hand-holding-usd', css: 'refunds' },
+        { key: 'urgent', label: 'Urgent', icon: 'fa-exclamation-triangle', css: 'urgent' },
+        { key: 'returns_pending', label: 'Returns', icon: 'fa-undo', css: 'returns' },
+        { key: 'total_orders', label: 'Total Orders', icon: 'fa-shopping-bag', css: 'total' },
+        { key: 'total_revenue', label: 'Revenue (Ksh)', icon: 'fa-money-bill-wave', css: 'revenue' }
     ];
 
-    var html = '<div class="compact-stats-grid">';
+    var html = '<div class="stats-grid">';
     items.forEach(function(item) {
         var value = stats[item.key] || 0;
         // Format revenue
@@ -656,15 +659,17 @@ function renderCompactStats(stats) {
         }
         var isClickable = item.key !== 'total_revenue';
         var onclick = isClickable ? 'onclick="navigateTo(\'orders\')"' : '';
-        var style = isClickable ? 'cursor:pointer;' : 'cursor:default;';
+        var style = isClickable ? '' : 'cursor:default;';
         // Determine if blinking dot needed
-        var blink = (value > 0 && ['pending','pending_payment','delivered','replacements_pending','refunds_pending','urgent','returns_pending'].includes(item.key)) ? '<span class="blink-dot"></span>' : '';
-        html += '<div class="compact-stat-item" style="' + style + '" ' + onclick + '>';
-        html += '<div class="compact-stat-icon" style="color:' + item.color + ';"><i class="fas ' + item.icon + '"></i></div>';
-        html += '<div class="compact-stat-content">';
-        html += '<span class="compact-stat-value">' + value + '</span>';
-        html += '<span class="compact-stat-label">' + item.label + ' ' + blink + '</span>';
-        html += '</div>';
+        var isPending = ['pending','pending_payment','delivered','replacements_pending','refunds_pending','urgent','returns_pending'].includes(item.key);
+        var blink = (value > 0 && isPending) ? '<span class="stat-blink"></span>' : '<span class="stat-blink hidden"></span>';
+        
+        html += '<div class="stat-link ' + item.css + '" ' + onclick + ' style="' + style + '">';
+        html += '<span class="stat-icon"><i class="fas ' + item.icon + '"></i></span>';
+        html += '<span class="stat-content">';
+        html += '<span class="stat-value">' + value + '</span>';
+        html += '<span class="stat-label">' + item.label + ' ' + blink + '</span>';
+        html += '</span>';
         html += '</div>';
     });
     html += '</div>';
@@ -718,7 +723,7 @@ function loadRecentOrders() {
 }
 
 // ============================================================
-//  ORDERS (unchanged, kept for brevity - but full code provided)
+//  ORDERS
 // ============================================================
 
 function loadOrders() {
@@ -1568,4 +1573,4 @@ window.handleRegister = handleRegister;
 window.showDashboard = showDashboard;
 window.showLogin = showLogin;
 
-console.log('✅ Admin panel loaded successfully - COMPACT STATS');
+console.log('✅ Admin panel loaded successfully - BEAUTIFUL STAT LINKS');

@@ -1,5 +1,5 @@
 // ============================================================
-//  ACCOUNT PAGE JAVASCRIPT - COMPACT STATS
+//  ACCOUNT PAGE JAVASCRIPT - COMPLETE FIXED VERSION
 //  Location: D:\my-business-website\public\js\account.js
 // ============================================================
 
@@ -139,8 +139,9 @@ function loadCustomerDashboard() {
 }
 
 // ============================================================
-//  RENDER CUSTOMER STATS - COMPACT VERSION
+//  RENDER CUSTOMER STATS - BEAUTIFUL LINK STYLES (NO CARDS)
 // ============================================================
+
 function renderCustomerStats(orders) {
     const grid = document.getElementById('customerStatsGrid');
     
@@ -157,28 +158,31 @@ function renderCustomerStats(orders) {
         if (counts[o.status] !== undefined) counts[o.status]++;
     });
 
-    const items = [
-        { key: 'pending_payment', label: 'Awaiting Payment', icon: 'fa-clock', color: '#f97316' },
-        { key: 'pending', label: 'Pending', icon: 'fa-clock', color: '#f59e0b' },
-        { key: 'confirmed', label: 'Confirmed', icon: 'fa-check-circle', color: '#22c55e' },
-        { key: 'shipped', label: 'Shipped', icon: 'fa-truck', color: '#3b82f6' },
-        { key: 'delivered', label: 'Awaiting Pickup', icon: 'fa-box-open', color: '#8b5cf6' },
-        { key: 'received', label: 'Received', icon: 'fa-check-double', color: '#14b8a6' },
-        { key: 'cancelled', label: 'Cancelled', icon: 'fa-times-circle', color: '#ef4444' }
+    // Define stat items
+    var items = [
+        { key: 'pending_payment', label: 'Awaiting Payment', icon: 'fa-clock', css: 'pending_payment' },
+        { key: 'pending', label: 'Pending', icon: 'fa-clock', css: 'pending' },
+        { key: 'confirmed', label: 'Confirmed', icon: 'fa-check-circle', css: 'confirmed' },
+        { key: 'shipped', label: 'Shipped', icon: 'fa-truck', css: 'shipped' },
+        { key: 'delivered', label: 'Awaiting Pickup', icon: 'fa-box-open', css: 'delivered' },
+        { key: 'received', label: 'Received', icon: 'fa-check-double', css: 'received' },
+        { key: 'cancelled', label: 'Cancelled', icon: 'fa-times-circle', css: 'cancelled' }
     ];
 
-    let html = '<div class="compact-stats-grid">';
-    items.forEach(item => {
-        const count = counts[item.key] || 0;
-        const isPending = ['pending_payment', 'pending', 'delivered'].includes(item.key);
-        const blink = (count > 0 && isPending) ? '<span class="blink-dot"></span>' : '';
-        const active = (currentFilterStatus === item.key) ? 'active' : '';
-        html += `<div class="compact-stat-item ${active}" data-status="${item.key}" onclick="filterOrdersByStatus('${item.key}')">`;
-        html += `<div class="compact-stat-icon" style="color:${item.color};"><i class="fas ${item.icon}"></i></div>`;
-        html += `<div class="compact-stat-content">`;
-        html += `<span class="compact-stat-value">${count}</span>`;
-        html += `<span class="compact-stat-label">${item.label} ${blink}</span>`;
-        html += `</div></div>`;
+    var html = '<div class="stats-grid">';
+    items.forEach(function(item) {
+        var count = counts[item.key] || 0;
+        var isPending = ['pending_payment', 'pending', 'delivered'].includes(item.key);
+        var blink = (count > 0 && isPending) ? '<span class="stat-blink"></span>' : '<span class="stat-blink hidden"></span>';
+        var active = (currentFilterStatus === item.key) ? 'active' : '';
+        
+        html += '<div class="stat-link ' + item.css + ' ' + active + '" data-status="' + item.key + '" onclick="filterOrdersByStatus(\'' + item.key + '\')">';
+        html += '<span class="stat-icon"><i class="fas ' + item.icon + '"></i></span>';
+        html += '<span class="stat-content">';
+        html += '<span class="stat-value">' + count + '</span>';
+        html += '<span class="stat-label">' + item.label + ' ' + blink + '</span>';
+        html += '</span>';
+        html += '</div>';
     });
     html += '</div>';
 
@@ -221,7 +225,7 @@ function updateCartBadges() {
 
 function filterOrdersByStatus(status) {
     currentFilterStatus = status;
-    document.querySelectorAll('#customerStatsGrid .compact-stat-item').forEach(card => {
+    document.querySelectorAll('#customerStatsGrid .stat-link').forEach(card => {
         card.classList.toggle('active', card.dataset.status === status);
     });
     if (currentSection === 'dashboard') {
@@ -232,7 +236,7 @@ function filterOrdersByStatus(status) {
 }
 
 // ============================================================
-//  ORDERS TABLE (unchanged, kept for brevity)
+//  ORDERS TABLE
 // ============================================================
 
 function loadOrdersTable() {
@@ -551,7 +555,7 @@ function sendOrderChat(orderId, inputId, chatId) {
 }
 
 // ============================================================
-//  ORDER ACTIONS (unchanged)
+//  ORDER ACTIONS
 // ============================================================
 
 async function cancelOrder(id) {
@@ -642,7 +646,7 @@ async function requestReturn(id) {
 window.requestReturn = requestReturn;
 
 // ============================================================
-//  PROFILE (unchanged)
+//  PROFILE
 // ============================================================
 
 function loadProfile() {
@@ -689,7 +693,7 @@ function updateProfile() {
 }
 
 // ============================================================
-//  ADDRESSES (unchanged)
+//  ADDRESSES
 // ============================================================
 
 function loadAddresses() {
@@ -808,7 +812,7 @@ function deleteAddress(id) {
 }
 
 // ============================================================
-//  PAYMENT HISTORY (unchanged)
+//  PAYMENT HISTORY
 // ============================================================
 
 function loadPaymentHistory() {
