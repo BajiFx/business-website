@@ -1,5 +1,5 @@
 /* ============================================================
-   PRODUCT DETAIL PAGE STYLES
+   PRODUCT DETAIL PAGE STYLES - 3 RELATED PER ROW ON MOBILE
    ============================================================ */
 
 .product-detail-page {
@@ -770,6 +770,10 @@
   text-decoration: underline;
 }
 
+/* ============================================================
+   RELATED PRODUCTS - 3 PER ROW ON MOBILE
+   ============================================================ */
+
 .related-products {
   margin-top: 14px;
   background: white;
@@ -786,18 +790,17 @@
   color: #0f172a;
 }
 
+/* Related Grid - 3 columns on mobile, 4 on larger */
 .related-grid {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
   padding: 4px 0 8px;
-  -webkit-overflow-scrolling: touch;
 }
 
 .related-item {
-  flex: 0 0 110px;
   background: #f8fafc;
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
@@ -806,33 +809,33 @@
 }
 
 .related-item:hover {
-  transform: translateY(-4px);
+  transform: translateY(-3px);
   box-shadow: 0 8px 24px rgba(0,0,0,0.08);
 }
 
 .related-item img {
   width: 100%;
-  height: 90px;
+  height: 70px;
   object-fit: cover;
   background: #e2e8f0;
 }
 
 .related-item .no-image {
-  height: 90px;
+  height: 70px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
+  font-size: 1.5rem;
   background: #e2e8f0;
 }
 
 .related-item .related-info {
-  padding: 6px 8px;
+  padding: 4px 6px 6px;
 }
 
 .related-item .related-name {
   font-weight: 600;
-  font-size: 0.65rem;
+  font-size: 0.55rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -840,11 +843,66 @@
 
 .related-item .related-price {
   font-weight: 700;
-  font-size: 0.7rem;
+  font-size: 0.6rem;
   color: #2563eb;
 }
 
-/* Header */
+/* Responsive - increase to 4 columns on tablets+ */
+@media (min-width: 480px) {
+  .related-grid {
+    gap: 10px;
+  }
+  .related-item img {
+    height: 80px;
+  }
+  .related-item .no-image {
+    height: 80px;
+  }
+}
+
+@media (min-width: 600px) {
+  .related-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .related-item img {
+    height: 90px;
+  }
+  .related-item .no-image {
+    height: 90px;
+  }
+}
+
+@media (min-width: 768px) {
+  .related-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .related-item img {
+    height: 100px;
+  }
+  .related-item .no-image {
+    height: 100px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .related-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  .related-item img {
+    height: 120px;
+  }
+  .related-item .no-image {
+    height: 120px;
+  }
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+
 .product-detail-header {
   background: #ffffff;
   color: #1e293b;

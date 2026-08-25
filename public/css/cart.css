@@ -1,5 +1,5 @@
 /* ============================================================
-   CART PAGE STYLES
+   CART PAGE STYLES - 3 RECOMMENDED PER ROW ON MOBILE
    ============================================================ */
 
 .cart-page {
@@ -427,26 +427,36 @@
   font-size: 0.85rem;
 }
 
+/* ============================================================
+   RECOMMENDED PRODUCTS - 3 PER ROW ON MOBILE
+   ============================================================ */
+
 .related-grid {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  overflow-x: auto;
   padding: 4px 0 8px;
-  -webkit-overflow-scrolling: touch;
 }
 
 .related-item {
-  flex: 0 0 90px;
   background: #f8fafc;
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
+  border: 1px solid #f0f4f8;
+  transition: all 0.25s ease;
+}
+
+.related-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
 .related-item img {
   width: 100%;
   height: 70px;
   object-fit: cover;
+  background: #e2e8f0;
 }
 
 .related-item .no-image {
@@ -454,17 +464,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   background: #e2e8f0;
 }
 
 .related-item .related-info {
-  padding: 3px 6px;
+  padding: 4px 6px 6px;
 }
 
 .related-item .related-name {
   font-weight: 600;
-  font-size: 0.6rem;
+  font-size: 0.55rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -472,11 +482,66 @@
 
 .related-item .related-price {
   font-weight: 700;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   color: #2563eb;
 }
 
-/* Cart Header */
+/* Responsive - increase to 4 columns on tablets+ */
+@media (min-width: 480px) {
+  .related-grid {
+    gap: 10px;
+  }
+  .related-item img {
+    height: 80px;
+  }
+  .related-item .no-image {
+    height: 80px;
+  }
+}
+
+@media (min-width: 600px) {
+  .related-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .related-item img {
+    height: 90px;
+  }
+  .related-item .no-image {
+    height: 90px;
+  }
+}
+
+@media (min-width: 768px) {
+  .related-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .related-item img {
+    height: 100px;
+  }
+  .related-item .no-image {
+    height: 100px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .related-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  .related-item img {
+    height: 120px;
+  }
+  .related-item .no-image {
+    height: 120px;
+  }
+}
+
+/* ============================================================
+   CART HEADER
+   ============================================================ */
+
 .cart-header {
   background: #ffffff;
   color: #1e293b;
@@ -516,7 +581,10 @@
   gap: 8px;
 }
 
-/* Payment Modal */
+/* ============================================================
+   PAYMENT MODAL
+   ============================================================ */
+
 .payment-methods {
   display: flex;
   flex-direction: column;

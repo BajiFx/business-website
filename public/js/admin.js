@@ -89,11 +89,32 @@ function initAdmin() {
         });
     }
 
-    // FIXED: Check if admin exists - show/hide register tab accordingly
-    checkAdminExists();
+    // FIXED: ALWAYS SHOW BOTH TABS - Register tab always visible
+    // Show both tabs by default
+    var registerTab = document.getElementById('registerTab');
+    var registerForm = document.getElementById('registerForm');
+    var loginForm = document.getElementById('loginForm');
+    var loginTab = document.getElementById('loginTab');
+
+    // Make sure both tabs are visible
+    if (registerTab) {
+        registerTab.style.display = 'block';
+        registerTab.classList.add('active');
+    }
+    if (registerForm) {
+        registerForm.classList.add('active');
+    }
+    if (loginForm) {
+        loginForm.classList.add('active');
+    }
+    if (loginTab) {
+        loginTab.classList.add('active');
+    }
+    
+    // Show login as active by default
+    showTab('login');
     
     // Clear any existing token on page load - SECURE
-    // This ensures user must login each time
     localStorage.removeItem('token');
     token = null;
 }
@@ -191,6 +212,10 @@ function showTab(tab) {
     var loginTab = document.getElementById('loginTab');
     var registerTab = document.getElementById('registerTab');
 
+    // Always show both tabs
+    if (loginTab) loginTab.style.display = 'block';
+    if (registerTab) registerTab.style.display = 'block';
+
     if (loginForm) loginForm.classList.toggle('active', tab === 'login');
     if (registerForm) registerForm.classList.toggle('active', tab === 'register');
     if (loginTab) loginTab.classList.toggle('active', tab === 'login');
@@ -207,53 +232,6 @@ function togglePassword(inputId, btn) {
     } else {
         input.type = 'password';
         if (icon) icon.className = 'fas fa-eye';
-    }
-}
-
-// FIXED: Check if admin exists - show/hide register tab
-async function checkAdminExists() {
-    try {
-        var res = await fetch('/api/auth/admin-exists');
-        var data = await res.json();
-        var registerTab = document.getElementById('registerTab');
-        var registerForm = document.getElementById('registerForm');
-        var loginForm = document.getElementById('loginForm');
-        var loginTab = document.getElementById('loginTab');
-
-        if (data.exists) {
-            // Admin exists - hide register tab and show login
-            if (registerTab) {
-                registerTab.style.display = 'none';
-                registerTab.classList.remove('active');
-            }
-            if (registerForm) {
-                registerForm.classList.remove('active');
-            }
-            if (loginForm) {
-                loginForm.classList.add('active');
-            }
-            if (loginTab) {
-                loginTab.classList.add('active');
-            }
-            console.log('✅ Admin exists - register tab hidden');
-        } else {
-            // No admin exists - show both tabs
-            if (registerTab) {
-                registerTab.style.display = 'block';
-                registerTab.classList.add('active');
-            }
-            if (registerForm) {
-                registerForm.classList.add('active');
-            }
-            console.log('📝 No admin exists - register tab visible');
-        }
-    } catch (err) {
-        console.error('❌ Check admin exists error:', err);
-        // On error, show both tabs by default
-        var registerTab = document.getElementById('registerTab');
-        if (registerTab) {
-            registerTab.style.display = 'block';
-        }
     }
 }
 
@@ -1596,4 +1574,4 @@ window.handleRegister = handleRegister;
 window.showDashboard = showDashboard;
 window.showLogin = showLogin;
 
-console.log('✅ Admin panel loaded successfully - SECURE MODE');
+console.log('✅ Admin panel loaded successfully - BOTH TABS VISIBLE');

@@ -1,5 +1,5 @@
 /* ============================================================
-   CATEGORY PAGE STYLES - SMALLER FRAMES
+   CATEGORY PAGE STYLES - 3 PRODUCTS PER ROW ON MOBILE
    ============================================================ */
 
 .category-page {
@@ -40,6 +40,12 @@
   }
 }
 
+@media (min-width: 1024px) {
+  .category-grid {
+    grid-template-columns: repeat(8, 1fr);
+  }
+}
+
 .category-card {
   background: white;
   border-radius: 10px;
@@ -72,7 +78,10 @@
   color: #94a3b8;
 }
 
-/* ===== PRODUCT GRID - 3 COLUMNS ===== */
+/* ============================================================
+   PRODUCT GRID - 3 PRODUCTS PER ROW ON MOBILE
+   ============================================================ */
+
 .product-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -81,28 +90,10 @@
   padding: 0 2px;
 }
 
-@media (min-width: 480px) {
-  .product-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-  }
-}
+/* ============================================================
+   PRODUCT CARD - COMPACT FOR 3 PER ROW
+   ============================================================ */
 
-@media (min-width: 768px) {
-  .product-grid {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-  }
-}
-
-@media (min-width: 1024px) {
-  .product-grid {
-    grid-template-columns: repeat(5, 1fr);
-    gap: 12px;
-  }
-}
-
-/* ===== PRODUCT CARD - SMALLER ===== */
 .product-card {
   background: white;
   border-radius: 8px;
@@ -119,7 +110,7 @@
 
 .product-card .media-wrap {
   width: 100%;
-  height: 90px;
+  height: 100px;
   background: #f8fafc;
   overflow: hidden;
   position: relative;
@@ -200,13 +191,13 @@
 
 .product-card .name {
   font-weight: 600;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   line-height: 1.2;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  min-height: 28px;
+  min-height: 26px;
   color: #0f172a;
 }
 
@@ -217,17 +208,17 @@
 
 .product-card .price {
   font-weight: 700;
-  font-size: 0.7rem;
-  color: #2563eb;
-  margin: 2px 0;
+  font-size: 0.65rem;
+  color: #0f172a;
+  margin: 1px 0;
 }
 
 .product-card .rating {
-  font-size: 0.55rem;
+  font-size: 0.5rem;
   color: #64748b;
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
 }
 
 .product-card .rating span {
@@ -236,7 +227,7 @@
 
 .product-card .variant-swatches {
   display: flex;
-  gap: 3px;
+  gap: 2px;
   flex-wrap: wrap;
   margin-top: 2px;
 }
@@ -255,8 +246,8 @@
 .product-card .actions {
   display: flex;
   align-items: center;
-  gap: 3px;
-  margin-top: 4px;
+  gap: 2px;
+  margin-top: 3px;
   flex-wrap: wrap;
 }
 
@@ -270,8 +261,8 @@
 }
 
 .product-card .actions .qty-control button {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   border: none;
   background: white;
@@ -288,7 +279,7 @@
 
 .product-card .actions .qty-control span {
   font-weight: 700;
-  font-size: 0.6rem;
+  font-size: 0.55rem;
   min-width: 14px;
   text-align: center;
 }
@@ -298,13 +289,13 @@
   color: white;
   border: none;
   border-radius: 4px;
-  padding: 2px 6px;
+  padding: 2px 5px;
   font-size: 0.5rem;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
   flex: 1;
-  min-width: 40px;
+  min-width: 35px;
   transition: background 0.2s;
 }
 
@@ -322,6 +313,52 @@
 
 .product-card .hover-preview {
   display: none;
+}
+
+/* ============================================================
+   RESPONSIVE - ADAPT COLUMN COUNT
+   ============================================================ */
+
+/* Small phones - 3 columns already set */
+
+@media (min-width: 480px) {
+  .product-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .product-card .media-wrap {
+    height: 110px;
+  }
+}
+
+@media (min-width: 600px) {
+  .product-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .product-card .media-wrap {
+    height: 120px;
+  }
+}
+
+@media (min-width: 768px) {
+  .product-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .product-card .media-wrap {
+    height: 140px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .product-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .product-card .media-wrap {
+    height: 160px;
+  }
 }
 
 /* ===== FILTER BAR ===== */

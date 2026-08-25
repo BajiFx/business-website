@@ -2,62 +2,29 @@
    ADMIN PAGE STYLES - COMPLETE FIXED VERSION
    Location: D:\my-business-website\public\css\admin.css
    ============================================================ */
+
 /* ============================================================
-   SECURE ADMIN LAYOUT - LOGIN FIRST
+   ADMIN STYLES - ISOLATED FROM SHOP
    ============================================================ */
 
-/* Auth Container - Full screen, always on top */
-#authContainer {
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: #f1f5f9;
-    z-index: 99999;
-    padding: 20px;
-}
-
-#authContainer.hidden {
-    display: none !important;
-}
-
-#authContainer .auth-box {
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.06);
-    width: 100%;
-    max-width: 400px;
-    overflow: hidden;
-}
-
-/* Admin Panel - Hidden by default */
-#adminPanel {
-    display: none !important;
-}
-
-#adminPanel.visible {
-    display: block !important;
-}
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
+/* Ensure admin styles don't leak to shop */
 .admin-body {
     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
     background: #f1f5f9;
     color: #1e293b;
     overflow-x: hidden;
     min-height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+
+/* Reset any shop styles that might affect admin */
+.admin-body * {
+    box-sizing: border-box;
 }
 
 /* ============================================================
-   AUTH CONTAINER - FULL SCREEN OVERLAY
+   AUTH CONTAINER - Full screen, always on top
    ============================================================ */
 
 #authContainer {
@@ -72,14 +39,10 @@
     background: #f1f5f9;
     z-index: 99999;
     padding: 20px;
-    transition: opacity 0.5s ease, visibility 0.5s ease;
 }
 
 #authContainer.hidden {
     display: none !important;
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
 }
 
 #authContainer .auth-box {
@@ -90,6 +53,10 @@
     max-width: 400px;
     overflow: hidden;
 }
+
+/* ============================================================
+   AUTH TABS
+   ============================================================ */
 
 #authContainer .auth-tabs {
     display: flex;
@@ -112,6 +79,14 @@
     color: #2563eb;
     border-bottom: 3px solid #2563eb;
 }
+
+#authContainer .auth-tabs button:hover {
+    background: #f1f5f9;
+}
+
+/* ============================================================
+   AUTH FORMS
+   ============================================================ */
 
 #authContainer .auth-form {
     padding: 24px;
@@ -210,8 +185,17 @@
     background: #f0fdf4;
 }
 
+/* Register tab visibility */
+#registerTab {
+    display: block;
+}
+
+#registerTab.hidden {
+    display: none !important;
+}
+
 /* ============================================================
-   ADMIN PANEL - HIDDEN UNTIL LOGIN
+   ADMIN PANEL - Hidden by default
    ============================================================ */
 
 #adminPanel {
@@ -1000,89 +984,3 @@
 .gap-8 { gap: 8px; }
 .gap-12 { gap: 12px; }
 .flex-wrap { flex-wrap: wrap; }
-/* ============================================================
-   SECURE ADMIN LAYOUT - LOGIN FIRST
-   ============================================================ */
-
-/* Auth Container - Full screen, always on top */
-#authContainer {
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: #f1f5f9;
-    z-index: 99999;
-    padding: 20px;
-}
-
-#authContainer.hidden {
-    display: none !important;
-}
-
-#authContainer .auth-box {
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.06);
-    width: 100%;
-    max-width: 400px;
-    overflow: hidden;
-}
-
-/* Auth Tabs */
-#authContainer .auth-tabs {
-    display: flex;
-    border-bottom: 1px solid #e2e8f0;
-}
-
-#authContainer .auth-tabs button {
-    flex: 1;
-    padding: 14px;
-    border: none;
-    background: #f8fafc;
-    font-weight: 600;
-    cursor: pointer;
-    font-size: 0.9rem;
-    transition: all 0.3s;
-}
-
-#authContainer .auth-tabs button.active {
-    background: white;
-    color: #2563eb;
-    border-bottom: 3px solid #2563eb;
-}
-
-#authContainer .auth-tabs button:hover {
-    background: #f1f5f9;
-}
-
-/* Auth Forms */
-#authContainer .auth-form {
-    padding: 24px;
-    display: none;
-}
-
-#authContainer .auth-form.active {
-    display: block;
-}
-
-/* Admin Panel - Hidden by default */
-#adminPanel {
-    display: none !important;
-}
-
-#adminPanel.visible {
-    display: block !important;
-}
-
-/* Fix for register tab visibility */
-#registerTab {
-    display: block;
-}
-
-#registerTab.hidden {
-    display: none !important;
-}
