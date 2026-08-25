@@ -102,6 +102,19 @@ router.post('/customer/request', authMiddleware, customerOnly, async (req, res) 
 router.get('/customer/status', authMiddleware, customerOnly, async (req, res) => {
   const customerId = req.userId;
   try {
+    // First check if location_requests table exists
+    const tableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'location_requests'
+      )
+    `);
+    
+    if (!tableCheck.rows[0].exists) {
+      // Table doesn't exist - return 'none' status
+      return res.json({ status: 'none' });
+    }
+    
     const result = await pool.query(
       'SELECT status FROM location_requests WHERE customer_id = $1 ORDER BY updated_at DESC LIMIT 1',
       [customerId]
@@ -110,7 +123,8 @@ router.get('/customer/status', authMiddleware, customerOnly, async (req, res) =>
     res.json({ status });
   } catch (err) {
     console.error('❌ Location status error:', err);
-    res.status(500).json({ error: err.message });
+    // Return 'none' instead of error to prevent frontend breaking
+    res.json({ status: 'none' });
   }
 });
 

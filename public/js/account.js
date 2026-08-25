@@ -952,7 +952,38 @@ function loadPaymentHistory() {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#ef4444;">Error loading payment history. Please try again.</td></tr>';
     });
 }
+// ============================================================
+//  OPEN CHAT TAB - FIX FOR MESSAGES BOTTOM NAV
+// ============================================================
 
+function openChatTab() {
+    // Navigate to the chat section or open chat widget
+    const chatBox = document.getElementById('chatBox');
+    if (chatBox) {
+        // If chat box exists, toggle it open
+        if (typeof toggleChat === 'function') {
+            toggleChat();
+        } else {
+            // If on account page, scroll to chat section
+            const chatSection = document.querySelector('.chat-section');
+            if (chatSection) {
+                chatSection.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                // Otherwise go to home page and open chat
+                window.location.href = '/';
+                setTimeout(() => {
+                    if (typeof toggleChat === 'function') {
+                        toggleChat();
+                    }
+                }, 1000);
+            }
+        }
+    } else {
+        // If no chat box, go to home page
+        window.location.href = '/';
+    }
+}
+window.openChatTab = openChatTab;
 // ============================================================
 //  LOGOUT & DELETE ACCOUNT
 // ============================================================

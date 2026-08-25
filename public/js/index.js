@@ -44,6 +44,22 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// ============================================================
+//  HANDLE CHAT TAB NAVIGATION FROM OTHER PAGES
+// ============================================================
+
+// Check if we should open chat automatically (from URL param)
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('openChat') === 'true') {
+        setTimeout(() => {
+            if (typeof toggleChat === 'function') {
+                toggleChat();
+            }
+        }, 500);
+    }
+});
+
 // Re-export functions from app.js for global use
 window.changeSlide = changeSlide;
 window.openAuthModal = openAuthModal;

@@ -1,5 +1,6 @@
 // ============================================================
-//  CATEGORY PAGE JAVASCRIPT
+//  CATEGORY PAGE JAVASCRIPT - COMPLETE FIXED VERSION
+//  Location: D:\my-business-website\public\js\category.js
 // ============================================================
 
 // ============================================================
@@ -35,7 +36,7 @@ function showToast(message, type) {
 }
 
 // ============================================================
-//  RENDER PRODUCTS - FIXED
+//  RENDER PRODUCTS
 // ============================================================
 function renderProducts(products) {
     const container = document.getElementById('productGrid');
@@ -54,7 +55,6 @@ function renderProducts(products) {
         const btnClass = inCart ? 'in-cart' : '';
         const qtyId = `cat-qty-${p.id}`;
 
-        // Image rendering with cover
         let imageHtml = '';
         if (p.image) {
             imageHtml = `<img src="${p.image}" alt="${p.name}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;background:#e2e8f0;font-size:2rem;\\'>📦</div>'">`;
@@ -62,7 +62,6 @@ function renderProducts(products) {
             imageHtml = `<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#e2e8f0;font-size:2rem;">📦</div>`;
         }
 
-        // Badges
         let badgesHtml = '';
         if (p.isFlashSale) {
             badgesHtml += `<div class="flash-badge">🔥</div>`;
@@ -71,10 +70,8 @@ function renderProducts(products) {
             badgesHtml += `<div class="new-badge">🆕</div>`;
         }
 
-        // FIXED: ratingHtml properly defined here
         const ratingHtml = p.rating ? `<div class="rating"><span>⭐</span>(${p.rating})</div>` : '';
 
-        // Variant swatches
         let swatchesHtml = '';
         if (p.variants && p.variants.length > 0) {
             swatchesHtml = '<div class="variant-swatches">';
@@ -120,7 +117,6 @@ function renderProducts(products) {
             </div>
         `;
     }).join('');
-    if (typeof updateCartBadge === 'function') updateCartBadge();
 }
 
 // ============================================================
@@ -278,6 +274,7 @@ async function initCategoryPage() {
     console.log('🔄 Initializing category page...');
     
     try {
+        // Try to use existing products from app.js first
         if (window.allProducts && window.allProducts.length > 0) {
             console.log('📦 Using existing products:', window.allProducts.length);
             const products = window.allProducts;
@@ -289,8 +286,12 @@ async function initCategoryPage() {
             return;
         }
         
+        // Fetch products from API
+        console.log('📦 Fetching products from API...');
         const res = await fetch('/api/products');
-        if (!res.ok) throw new Error('Failed to fetch products');
+        if (!res.ok) {
+            throw new Error(`Failed to fetch products: ${res.status}`);
+        }
         const products = await res.json();
         
         console.log('📦 Products loaded:', products.length);
@@ -315,6 +316,7 @@ async function initCategoryPage() {
         if (productGrid) {
             productGrid.innerHTML = `<p style="text-align:center;padding:40px;color:#ef4444;">Error loading products: ${err.message}</p>`;
         }
+        showToast('Failed to load products. Please refresh the page.', 'error');
     }
 }
 
@@ -324,6 +326,7 @@ async function initCategoryPage() {
 async function loadShopName() {
     try {
         const res = await fetch('/api/shop');
+        if (!res.ok) throw new Error('Failed to load shop');
         const shop = await res.json();
         const nameHeader = document.getElementById('shopNameHeader');
         if (nameHeader) nameHeader.textContent = shop.name || 'Our Business';
@@ -333,17 +336,39 @@ async function loadShopName() {
 }
 
 // ============================================================
-//  INIT
+//  UPDATE CART BADGE
 // ============================================================
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('📄 Category page loaded');
-    loadShopName();
-    initCategoryPage();
-    if (typeof updateCartBadge === 'function') updateCartBadge();
-    if (typeof updateNavCartBadge === 'function') updateNavCartBadge();
-});
+function updateCartBadge() {
+    const cart = typeof getCart === 'function' ? getCart() : [];
+    const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+    const badge = document.getElementById('cartBadge');
+    if (badge) {
+        if (count > 0) {
+            badge.textContent = count;
+            badge.style.display = 'inline';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+}
 
-// Export functions globally
+function updateNavCartBadge() {
+    const cart = typeof getCart === 'function' ? getCart() : [];
+    const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+    const badge = document.getElementById('navCartBadge');
+    if (badge) {
+        if (count > 0) {
+            badge.textContent = count;
+            badge.classList.add('show');
+        } else {
+            badge.classList.remove('show');
+        }
+    }
+}
+
+// ============================================================
+//  EXPOSE FUNCTIONS GLOBALLY
+// ============================================================
 window.filterByCategory = filterByCategory;
 window.renderProducts = renderProducts;
 window.changeCardQty = changeCardQty;
@@ -353,3 +378,18 @@ window.showToast = showToast;
 window.initCategoryPage = initCategoryPage;
 window.handleSearch = handleSearch;
 window.handleSearchWithFeedback = handleSearchWithFeedback;
+window.updateCartBadge = updateCartBadge;
+window.updateNavCartBadge = updateNavCartBadge;
+
+// ============================================================
+//  INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📄 Category page loaded');
+    loadShopName();
+    initCategoryPage();
+    updateCartBadge();
+    updateNavCartBadge();
+});
+
+console.log('✅ Category page JS loaded successfully');

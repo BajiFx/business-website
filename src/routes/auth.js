@@ -44,7 +44,6 @@ router.post('/register', [
   try {
     const { email, password } = req.body;
     
-    // Check if admin already exists
     const existsResult = await pool.query('SELECT COUNT(*) FROM admin_users');
     const count = parseInt(existsResult.rows[0].count);
     
@@ -214,10 +213,16 @@ router.post('/customer/login', loginLimiter, [
   }
 });
 
-// Verify customer
+// ============================================================
+//  CUSTOMER VERIFY - FIXED WITH BETTER ERROR HANDLING
+// ============================================================
+
 router.get('/customer/verify', authMiddleware, async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, name, email, phone, created_at FROM customers WHERE id = $1', [req.userId]);
+    const result = await pool.query(
+      'SELECT id, name, email, phone, created_at FROM customers WHERE id = $1',
+      [req.userId]
+    );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }

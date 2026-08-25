@@ -125,14 +125,22 @@ app.use((req, res, next) => {
 });
 
 // ============================================================
-//  SERVE STATIC FILES
+//  SERVE STATIC FILES - FIXED ORDER
 // ============================================================
 
+// 1. Serve HTML files from public/html (so /category.html works)
+app.use(express.static(path.join(__dirname, 'public/html')));
+
+// 2. Serve CSS files
+app.use('/css', express.static(path.join(__dirname, 'public/css')));
+
+// 3. Serve JS files
+app.use('/js', express.static(path.join(__dirname, 'public/js')));
+
+// 4. Serve root static files (style.css, etc.)
 app.use(express.static('public'));
 
-app.use('/css', express.static(path.join(__dirname, 'public/css')));
-app.use('/js', express.static(path.join(__dirname, 'public/js')));
-app.use(express.static(path.join(__dirname, 'public/html')));
+// 5. Uploads
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
 // ============================================================
@@ -380,30 +388,6 @@ async function initDatabase() {
     await pool.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT false`);
     console.log('✅ Products table verified with is_featured');
     
-    // Ensure shop has all required columns
-    await pool.query(`
-      ALTER TABLE shop ADD COLUMN IF NOT EXISTS location_sharing_enabled BOOLEAN DEFAULT FALSE;
-      ALTER TABLE shop ADD COLUMN IF NOT EXISTS admin_lat VARCHAR(50);
-      ALTER TABLE shop ADD COLUMN IF NOT EXISTS admin_lng VARCHAR(50);
-      ALTER TABLE shop ADD COLUMN IF NOT EXISTS mpesa_enabled BOOLEAN DEFAULT FALSE;
-      ALTER TABLE shop ADD COLUMN IF NOT EXISTS mpesa_number VARCHAR(50);
-      ALTER TABLE shop ADD COLUMN IF NOT EXISTS airtel_enabled BOOLEAN DEFAULT FALSE;
-      ALTER TABLE shop ADD COLUMN IF NOT EXISTS airtel_number VARCHAR(50);
-      ALTER TABLE shop ADD COLUMN IF NOT EXISTS bank_enabled BOOLEAN DEFAULT FALSE;
-      ALTER TABLE shop ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100);
-      ALTER TABLE shop ADD COLUMN IF NOT EXISTS bank_account VARCHAR(100);
-      ALTER TABLE shop ADD COLUMN IF NOT EXISTS bank_account_name VARCHAR(100);
-      ALTER TABLE shop ADD COLUMN IF NOT EXISTS paypal_enabled BOOLEAN DEFAULT FALSE;
-      ALTER TABLE shop ADD COLUMN IF NOT EXISTS paypal_email VARCHAR(100);
-      ALTER TABLE shop ADD COLUMN IF NOT EXISTS shipping_policy TEXT;
-      ALTER TABLE shop ADD COLUMN IF NOT EXISTS return_policy TEXT;
-      ALTER TABLE shop ADD COLUMN IF NOT EXISTS terms_policy TEXT;
-      ALTER TABLE shop ADD COLUMN IF NOT EXISTS privacy_policy TEXT;
-      ALTER TABLE shop ADD COLUMN IF NOT EXISTS delivery_enabled BOOLEAN DEFAULT TRUE;
-      ALTER TABLE shop ADD COLUMN IF NOT EXISTS online_orders_enabled BOOLEAN DEFAULT TRUE;
-    `);
-    console.log('✅ Shop table fully verified');
-    
     console.log('✅ Database initialization complete');
   } catch (err) {
     console.error('❌ Database initialization error:', err);
@@ -440,6 +424,7 @@ function validateEnv() {
   
   console.log('========================================\n');
   
+  // Check payment configs
   if (!process.env.MPESA_CONSUMER_KEY || process.env.MPESA_CONSUMER_KEY === 'YOUR_CONSUMER_KEY_HERE') {
     console.log('⚠️  M-Pesa: Not configured - STK Push will use simulation mode');
   } else {

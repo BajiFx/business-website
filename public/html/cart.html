@@ -216,7 +216,8 @@
 <div class="bottom-nav">
   <a href="/"><i class="fas fa-home"></i><span>Home</span></a>
   <a href="/category.html"><i class="fas fa-th-large"></i><span>Category</span></a>
-  <a href="/account.html"><i class="fas fa-envelope"></i><span>Messages</span></a>
+  <!-- FIXED: Messages tab now opens chat -->
+  <a href="#" onclick="openChatTab(); return false;"><i class="fas fa-envelope"></i><span>Messages</span></a>
   <a href="/cart.html" class="active" style="position:relative;">
     <i class="fas fa-shopping-cart"></i>
     <span class="nav-badge" id="navCartBadge">0</span>

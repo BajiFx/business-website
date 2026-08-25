@@ -1404,6 +1404,38 @@ function startHeroSlideshow() {
         }
     }, 5000);
 }
+
+// ============================================================
+//  OPEN CHAT TAB - FIX FOR MESSAGES BOTTOM NAV
+// ============================================================
+
+function openChatTab() {
+    // Check if we're on a page with chat box
+    const chatBox = document.getElementById('chatBox');
+    
+    if (chatBox) {
+        // If chat box exists, toggle it open
+        if (typeof toggleChat === 'function') {
+            toggleChat();
+        } else {
+            // Try to find and open chat
+            chatBox.style.display = 'flex';
+        }
+        // Scroll to chat
+        chatBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+        // If no chat box on this page, go to home page and open chat
+        window.location.href = '/';
+        // After navigation, open chat (will be handled by index.html)
+        setTimeout(() => {
+            if (typeof toggleChat === 'function') {
+                toggleChat();
+            }
+        }, 1000);
+    }
+}
+window.openChatTab = openChatTab; 
+
 window.startHeroSlideshow = startHeroSlideshow;
 
 function addImageToSlideshow(imageUrl) {

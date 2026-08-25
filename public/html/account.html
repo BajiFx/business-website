@@ -20,7 +20,7 @@
 <body>
 
 <!-- ===== HEADER ===== -->
-<div class="account-header">
+<div class="header">
   <div class="header-left">
     <button class="hamburger" onclick="toggleSidebar()">☰</button>
     <h1>🛍️ <span id="shopNameHeader">Our Business</span></h1>
@@ -112,7 +112,7 @@
 
     <div class="account-card">
       <h3 style="font-size:1rem; font-weight:700; margin:0 0 8px 0;">📊 Your Order Dashboard</h3>
-      <div id="customerStatsGrid"></div>
+      <div class="stats-grid" id="customerStatsGrid"></div>
     </div>
 
     <div class="account-card">
@@ -121,18 +121,11 @@
     </div>
   </div>
 
-  <!-- Orders Section with GO BACK button -->
+  <!-- Orders Section -->
   <div class="section" id="section-orders">
     <div class="section-header">
       <h2>📦 My Orders</h2>
-      <div>
-        <!-- FIXED: Go Back button navigates to dashboard -->
-        <button class="btn btn-secondary btn-sm" onclick="clearFilter(); navigateTo('dashboard');">
-          <i class="fas fa-arrow-left"></i> Go Back
-        </button>
-        <button class="btn btn-secondary btn-sm" onclick="clearFilter()"><i class="fas fa-times"></i> Show All</button>
-        <button class="btn btn-primary btn-sm" onclick="loadOrdersTable()"><i class="fas fa-sync-alt"></i> Refresh</button>
-      </div>
+      <button class="btn btn-primary btn-sm" onclick="loadOrdersTable()"><i class="fas fa-sync-alt"></i> Refresh</button>
     </div>
     <div class="account-card">
       <div id="ordersContainer"><p class="empty-msg">Loading orders...</p></div>
@@ -208,9 +201,7 @@
     <div class="form-group">
       <label>Label</label>
       <select id="addressLabel">
-        <option>Home</option>
-        <option>Office</option>
-        <option>Other</option>
+        <option>Home</option><option>Office</option><option>Other</option>
       </select>
     </div>
     <div class="form-group">
@@ -237,16 +228,17 @@
 </div>
 
 <!-- ===== BOTTOM NAV - FIXED ===== -->
-<div class="account-bottom-nav">
+<div class="bottom-nav">
   <a href="/"><i class="fas fa-home"></i><span>Home</span></a>
   <a href="/category.html"><i class="fas fa-th-large"></i><span>Category</span></a>
-  <a href="/account.html" class="active"><i class="fas fa-envelope"></i><span>Messages</span></a>
+  <!-- FIXED: Messages tab now opens chat -->
+  <a href="#" onclick="openChatTab(); return false;"><i class="fas fa-envelope"></i><span>Messages</span></a>
   <a href="/cart.html" style="position:relative;">
     <i class="fas fa-shopping-cart"></i>
     <span class="nav-badge" id="navCartBadge">0</span>
     <span>Cart</span>
   </a>
-  <a href="/account.html"><i class="fas fa-user"></i><span>Account</span></a>
+  <a href="/account.html" class="active"><i class="fas fa-user"></i><span>Account</span></a>
 </div>
 
 <!-- ===== SCRIPTS ===== -->
