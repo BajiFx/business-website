@@ -89,14 +89,12 @@ function initAdmin() {
         });
     }
 
-    // FIXED: ALWAYS SHOW BOTH TABS - Register tab always visible
-    // Show both tabs by default
+    // ALWAYS SHOW BOTH TABS
     var registerTab = document.getElementById('registerTab');
     var registerForm = document.getElementById('registerForm');
     var loginForm = document.getElementById('loginForm');
     var loginTab = document.getElementById('loginTab');
 
-    // Make sure both tabs are visible
     if (registerTab) {
         registerTab.style.display = 'block';
         registerTab.classList.add('active');
@@ -111,7 +109,6 @@ function initAdmin() {
         loginTab.classList.add('active');
     }
     
-    // Show login as active by default
     showTab('login');
     
     // Clear any existing token on page load - SECURE
@@ -129,7 +126,6 @@ function showLogin() {
     var authContainer = document.getElementById('authContainer');
     var adminPanel = document.getElementById('adminPanel');
 
-    // Show auth container
     if (authContainer) {
         authContainer.style.display = 'flex';
         authContainer.style.position = 'fixed';
@@ -142,7 +138,6 @@ function showLogin() {
         authContainer.classList.remove('hidden');
     }
     
-    // Hide admin panel
     if (adminPanel) {
         adminPanel.style.display = 'none';
         adminPanel.classList.remove('visible');
@@ -150,7 +145,6 @@ function showLogin() {
 
     isLoggedIn = false;
 
-    // Clear status
     var status = document.getElementById('loginStatus');
     if (status) {
         status.textContent = '';
@@ -158,14 +152,12 @@ function showLogin() {
         status.style.color = '';
     }
     
-    // Enable login button
     var loginBtn = document.getElementById('loginBtn');
     if (loginBtn) {
         loginBtn.disabled = false;
         loginBtn.textContent = 'Login';
     }
     
-    // Show login tab by default
     showTab('login');
 }
 
@@ -175,13 +167,11 @@ function showDashboard() {
     var authContainer = document.getElementById('authContainer');
     var adminPanel = document.getElementById('adminPanel');
 
-    // HIDE AUTH CONTAINER
     if (authContainer) {
         authContainer.style.display = 'none';
         authContainer.classList.add('hidden');
     }
 
-    // SHOW ADMIN PANEL
     if (adminPanel) {
         adminPanel.style.display = 'block';
         adminPanel.classList.add('visible');
@@ -190,11 +180,9 @@ function showDashboard() {
 
     isLoggedIn = true;
 
-    // Initialize socket
     initSocket();
     navigateTo('dashboard');
     
-    // Auto-refresh stats every 30 seconds
     if (statsInterval) {
         clearInterval(statsInterval);
     }
@@ -212,7 +200,6 @@ function showTab(tab) {
     var loginTab = document.getElementById('loginTab');
     var registerTab = document.getElementById('registerTab');
 
-    // Always show both tabs
     if (loginTab) loginTab.style.display = 'block';
     if (registerTab) registerTab.style.display = 'block';
 
@@ -259,7 +246,6 @@ async function handleLogin() {
     status.textContent = '';
     status.style.color = '';
 
-    // Validation
     if (!email || !password) {
         status.textContent = '❌ Email and password are required.';
         status.className = 'auth-status error';
@@ -304,7 +290,6 @@ async function handleLogin() {
 
             console.log('✅ Token stored successfully');
 
-            // Show dashboard after a brief delay
             setTimeout(function() {
                 showDashboard();
             }, 500);
@@ -449,7 +434,6 @@ async function handleRegister() {
 function logout() {
     console.log('🔐 Logging out...');
     
-    // Clear everything
     localStorage.removeItem('token');
     token = null;
     isLoggedIn = false;
@@ -464,10 +448,8 @@ function logout() {
         socket = null;
     }
     
-    // Show login
     showLogin();
     
-    // Clear form fields
     var loginEmail = document.getElementById('loginEmail');
     var loginPassword = document.getElementById('loginPassword');
     if (loginEmail) loginEmail.value = '';
@@ -609,7 +591,7 @@ function initSocket() {
 }
 
 // ============================================================
-//  DASHBOARD
+//  DASHBOARD - COMPACT STATS RENDERING
 // ============================================================
 
 function loadDashboardStats() {
@@ -633,7 +615,7 @@ function loadDashboardStats() {
         })
         .then(function(stats) {
             console.log('📊 Stats received:', stats);
-            renderStats(stats);
+            renderCompactStats(stats);
             loadRecentOrders();
             updateOrderBadge(stats);
         })
@@ -643,38 +625,50 @@ function loadDashboardStats() {
         });
 }
 
-function renderStats(stats) {
+// NEW: Render stats as compact, beautiful links
+function renderCompactStats(stats) {
     var grid = document.getElementById('statsGrid');
     if (!grid) return;
 
-    var configs = [
-        { key: 'pending', label: 'Pending', icon: 'fa-clock', css: 'pending' },
-        { key: 'pending_payment', label: 'Awaiting Payment', icon: 'fa-hourglass-half', css: 'pending_payment' },
-        { key: 'confirmed', label: 'Confirmed', icon: 'fa-check-circle', css: 'confirmed' },
-        { key: 'shipped', label: 'Shipped', icon: 'fa-truck', css: 'shipped' },
-        { key: 'delivered', label: 'Awaiting Pickup', icon: 'fa-box-open', css: 'delivered' },
-        { key: 'received', label: 'Received', icon: 'fa-check-double', css: 'received' },
-        { key: 'cancelled', label: 'Cancelled', icon: 'fa-times-circle', css: 'cancelled' },
-        { key: 'replacements_pending', label: 'Replacements', icon: 'fa-exchange-alt', css: 'replacements' },
-        { key: 'refunds_pending', label: 'Refunds', icon: 'fa-hand-holding-usd', css: 'refunds' },
-        { key: 'urgent', label: 'Urgent', icon: 'fa-exclamation-triangle', css: 'urgent' },
-        { key: 'returns_pending', label: 'Returns', icon: 'fa-undo', css: 'returns' },
-        { key: 'total_orders', label: 'Total Orders', icon: 'fa-shopping-bag', css: 'total' },
-        { key: 'total_revenue', label: 'Revenue (Ksh)', icon: 'fa-money-bill-wave', css: 'total' }
+    // Define stat items: [key, label, icon, color]
+    var items = [
+        { key: 'pending', label: 'Pending', icon: 'fa-clock', color: '#f59e0b' },
+        { key: 'pending_payment', label: 'Awaiting Payment', icon: 'fa-hourglass-half', color: '#f97316' },
+        { key: 'confirmed', label: 'Confirmed', icon: 'fa-check-circle', color: '#22c55e' },
+        { key: 'shipped', label: 'Shipped', icon: 'fa-truck', color: '#3b82f6' },
+        { key: 'delivered', label: 'Awaiting Pickup', icon: 'fa-box-open', color: '#8b5cf6' },
+        { key: 'received', label: 'Received', icon: 'fa-check-double', color: '#14b8a6' },
+        { key: 'cancelled', label: 'Cancelled', icon: 'fa-times-circle', color: '#ef4444' },
+        { key: 'replacements_pending', label: 'Replacements', icon: 'fa-exchange-alt', color: '#f97316' },
+        { key: 'refunds_pending', label: 'Refunds', icon: 'fa-hand-holding-usd', color: '#ec4899' },
+        { key: 'urgent', label: 'Urgent', icon: 'fa-exclamation-triangle', color: '#ef4444' },
+        { key: 'returns_pending', label: 'Returns', icon: 'fa-undo', color: '#06b6d4' },
+        { key: 'total_orders', label: 'Total Orders', icon: 'fa-shopping-bag', color: '#64748b' },
+        { key: 'total_revenue', label: 'Revenue (Ksh)', icon: 'fa-money-bill-wave', color: '#2563eb' }
     ];
 
-    var html = '';
-    configs.forEach(function(cfg) {
-        var count = stats[cfg.key] || 0;
-        var isPending = ['replacements_pending', 'refunds_pending', 'urgent', 'pending', 'delivered', 'returns_pending', 'pending_payment'].indexOf(cfg.key) !== -1;
-        var blink = (count > 0 && isPending) ? '' : 'hidden';
-        var displayValue = cfg.key === 'total_revenue' ? 'Ksh ' + parseFloat(count).toFixed(2) : count;
-        html += '<div class="stat-card ' + cfg.css + '" ' + (cfg.key !== 'total_revenue' ? 'onclick="navigateTo(\'orders\')"' : '') + ' style="' + (cfg.key === 'total_revenue' ? 'cursor:default;' : '') + '">';
-        html += '<div class="icon"><i class="fas ' + cfg.icon + '"></i></div>';
-        html += '<div class="number">' + displayValue + '</div>';
-        html += '<div class="label">' + cfg.label + ' <span class="blink-dot ' + blink + '"></span></div>';
+    var html = '<div class="compact-stats-grid">';
+    items.forEach(function(item) {
+        var value = stats[item.key] || 0;
+        // Format revenue
+        if (item.key === 'total_revenue') {
+            value = 'Ksh ' + parseFloat(value).toFixed(2);
+        }
+        var isClickable = item.key !== 'total_revenue';
+        var onclick = isClickable ? 'onclick="navigateTo(\'orders\')"' : '';
+        var style = isClickable ? 'cursor:pointer;' : 'cursor:default;';
+        // Determine if blinking dot needed
+        var blink = (value > 0 && ['pending','pending_payment','delivered','replacements_pending','refunds_pending','urgent','returns_pending'].includes(item.key)) ? '<span class="blink-dot"></span>' : '';
+        html += '<div class="compact-stat-item" style="' + style + '" ' + onclick + '>';
+        html += '<div class="compact-stat-icon" style="color:' + item.color + ';"><i class="fas ' + item.icon + '"></i></div>';
+        html += '<div class="compact-stat-content">';
+        html += '<span class="compact-stat-value">' + value + '</span>';
+        html += '<span class="compact-stat-label">' + item.label + ' ' + blink + '</span>';
+        html += '</div>';
         html += '</div>';
     });
+    html += '</div>';
+
     grid.innerHTML = html;
 }
 
@@ -724,7 +718,7 @@ function loadRecentOrders() {
 }
 
 // ============================================================
-//  ORDERS
+//  ORDERS (unchanged, kept for brevity - but full code provided)
 // ============================================================
 
 function loadOrders() {
@@ -1574,4 +1568,4 @@ window.handleRegister = handleRegister;
 window.showDashboard = showDashboard;
 window.showLogin = showLogin;
 
-console.log('✅ Admin panel loaded successfully - BOTH TABS VISIBLE');
+console.log('✅ Admin panel loaded successfully - COMPACT STATS');

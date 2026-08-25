@@ -1,5 +1,6 @@
 /* ============================================================
-   ACCOUNT PAGE STYLES
+   ACCOUNT PAGE STYLES - COMPLETE FIXED VERSION
+   Location: D:\my-business-website\public\css\account.css
    ============================================================ */
 
 /* Header */
@@ -323,72 +324,93 @@
 .btn-warning { background: #f59e0b; color: white; }
 .btn-warning:hover { background: #d97706; }
 
-/* Stats Grid */
-.stats-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 10px 0;
+/* ============================================================
+   COMPACT STATS FOR CUSTOMER DASHBOARD
+   ============================================================ */
+
+.compact-stats-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    margin: 8px 0 12px;
+    padding: 4px 0;
 }
 
-.stat-card {
-  flex: 0 0 110px;
-  border-radius: 10px;
-  padding: 10px 8px;
-  color: #1e293b;
-  cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.2s;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  border: 2px solid transparent;
-  min-height: 48px;
-  justify-content: center;
+.compact-stat-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #f8fafc;
+    padding: 4px 12px 4px 8px;
+    border-radius: 20px;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    font-size: 0.75rem;
+    line-height: 1.4;
 }
 
-.stat-card:hover {
-  transform: translateY(-2px) scale(1.03);
-  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+.compact-stat-item:hover {
+    background: #eef2f6;
+    border-color: #94a3b8;
+    transform: translateY(-1px);
 }
 
-.stat-card.active {
-  border-color: #1e293b;
-  box-shadow: 0 0 0 2px #2563eb;
+.compact-stat-item.active {
+    border-color: #2563eb;
+    background: #eff6ff;
 }
 
-.stat-card .icon { font-size: 1rem; opacity: 0.8; margin-bottom: 2px; }
-.stat-card .number { font-size: 1.3rem; font-weight: 800; line-height: 1.2; }
-.stat-card .label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
-
-.stat-card .blink-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #facc15;
-  margin-left: 4px;
-  animation: pulse-blink 1.2s infinite;
+.compact-stat-icon {
+    font-size: 0.75rem;
+    width: 20px;
+    text-align: center;
+    flex-shrink: 0;
 }
 
-.stat-card .blink-dot.hidden { display: none; }
+.compact-stat-content {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.compact-stat-value {
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #0f172a;
+}
+
+.compact-stat-label {
+    font-size: 0.65rem;
+    color: #475569;
+    font-weight: 500;
+}
+
+.compact-stat-label .blink-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #facc15;
+    margin-left: 2px;
+    animation: pulse-blink 1.2s infinite;
+}
 
 @keyframes pulse-blink {
-  0% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.2; transform: scale(0.7); }
-  100% { opacity: 1; transform: scale(1); }
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.2; transform: scale(0.7); }
+    100% { opacity: 1; transform: scale(1); }
 }
 
-.stat-card.pending { background: linear-gradient(145deg, #fde68a, #fcd34d); }
-.stat-card.confirmed { background: linear-gradient(145deg, #86efac, #4ade80); }
-.stat-card.shipped { background: linear-gradient(145deg, #93c5fd, #60a5fa); }
-.stat-card.delivered { background: linear-gradient(145deg, #c4b5fd, #a78bfa); }
-.stat-card.received { background: linear-gradient(145deg, #5eead4, #2dd4bf); }
-.stat-card.cancelled { background: linear-gradient(145deg, #fca5a5, #f87171); }
-.stat-card.pending_payment { background: linear-gradient(145deg, #fde68a, #fcd34d); }
+/* Hide old stat cards */
+.stats-grid {
+    display: none !important;
+}
 
-/* Address Items */
+/* ============================================================
+   ADDRESS ITEMS
+   ============================================================ */
+
 .address-item {
   display: flex;
   align-items: center;
@@ -413,7 +435,10 @@
 .address-item .address-text { font-size: 0.85rem; color: #475569; }
 .address-item .actions { display: flex; gap: 4px; }
 
-/* Order Table */
+/* ============================================================
+   ORDER TABLE
+   ============================================================ */
+
 .order-table-wrapper {
   overflow-x: auto;
   margin-top: 10px;
@@ -520,7 +545,10 @@
   background: #1d4ed8;
 }
 
-/* Order Detail Row */
+/* ============================================================
+   ORDER DETAIL ROW
+   ============================================================ */
+
 .order-detail-row {
   display: none;
   background: #f8fafc;
@@ -630,7 +658,10 @@
   opacity: 0.7;
 }
 
-/* Chat Container */
+/* ============================================================
+   CHAT CONTAINER
+   ============================================================ */
+
 .order-detail-content .chat-container {
   margin-top: 8px;
   border-radius: 10px;
@@ -766,7 +797,10 @@
   margin-top: 8px;
 }
 
-/* Empty Message */
+/* ============================================================
+   EMPTY MESSAGE
+   ============================================================ */
+
 .empty-msg {
   color: #94a3b8;
   padding: 20px 0;
@@ -774,7 +808,10 @@
   font-size: 0.95rem;
 }
 
-/* Modal */
+/* ============================================================
+   MODAL
+   ============================================================ */
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -853,7 +890,10 @@
   background: #e2e8f0;
 }
 
-/* Form Group */
+/* ============================================================
+   FORM GROUP
+   ============================================================ */
+
 .form-group {
   margin-bottom: 14px;
 }
@@ -881,7 +921,10 @@
   box-shadow: 0 0 0 3px rgba(37,99,235,0.08);
 }
 
-/* Payment Table */
+/* ============================================================
+   PAYMENT TABLE
+   ============================================================ */
+
 .payment-table {
   width: 100%;
   border-collapse: collapse;
@@ -994,7 +1037,10 @@
   }
 }
 
-/* Bottom Nav */
+/* ============================================================
+   BOTTOM NAV
+   ============================================================ */
+
 .account-bottom-nav {
   position: fixed;
   bottom: 0;
@@ -1048,4 +1094,74 @@
 
 .account-bottom-nav a .nav-badge.show {
   display: block;
+}
+
+/* ============================================================
+   RESPONSIVE - MOBILE
+   ============================================================ */
+
+@media (max-width: 600px) {
+  .account-header {
+    padding: 10px 12px;
+  }
+  .account-header h1 {
+    font-size: 1rem;
+  }
+  .account-header a {
+    font-size: 0.75rem;
+  }
+  .account-main-content {
+    padding: 10px;
+  }
+  .account-card {
+    padding: 12px 14px;
+  }
+  .order-table {
+    font-size: 0.75rem;
+    min-width: 550px;
+  }
+  .order-table th,
+  .order-table td {
+    padding: 8px 10px;
+  }
+  .compact-stats-grid {
+    gap: 4px 6px;
+  }
+  .compact-stat-item {
+    font-size: 0.65rem;
+    padding: 3px 8px 3px 6px;
+  }
+  .compact-stat-value {
+    font-size: 0.7rem;
+  }
+  .compact-stat-label {
+    font-size: 0.55rem;
+  }
+  .compact-stat-icon {
+    font-size: 0.65rem;
+    width: 16px;
+  }
+}
+
+@media (max-width: 400px) {
+  .compact-stat-item {
+    font-size: 0.6rem;
+    padding: 2px 6px 2px 4px;
+  }
+  .compact-stat-value {
+    font-size: 0.65rem;
+  }
+  .compact-stat-label {
+    font-size: 0.5rem;
+  }
+  .compact-stat-icon {
+    font-size: 0.6rem;
+    width: 14px;
+  }
+  .account-header .header-left .hamburger {
+    font-size: 1.3rem;
+  }
+  .account-header h1 {
+    font-size: 0.85rem;
+  }
 }

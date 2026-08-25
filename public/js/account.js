@@ -1,5 +1,6 @@
 // ============================================================
-//  ACCOUNT PAGE JAVASCRIPT
+//  ACCOUNT PAGE JAVASCRIPT - COMPACT STATS
+//  Location: D:\my-business-website\public\js\account.js
 // ============================================================
 
 const token = window.customerToken;
@@ -138,7 +139,7 @@ function loadCustomerDashboard() {
 }
 
 // ============================================================
-//  RENDER CUSTOMER STATS
+//  RENDER CUSTOMER STATS - COMPACT VERSION
 // ============================================================
 function renderCustomerStats(orders) {
     const grid = document.getElementById('customerStatsGrid');
@@ -156,30 +157,31 @@ function renderCustomerStats(orders) {
         if (counts[o.status] !== undefined) counts[o.status]++;
     });
 
-    const configs = [
-        { key: 'pending_payment', label: 'Awaiting Payment', icon: 'fa-clock', css: 'pending_payment' },
-        { key: 'pending', label: 'Pending', icon: 'fa-clock', css: 'pending' },
-        { key: 'confirmed', label: 'Confirmed', icon: 'fa-check-circle', css: 'confirmed' },
-        { key: 'shipped', label: 'Shipped', icon: 'fa-truck', css: 'shipped' },
-        { key: 'delivered', label: 'Awaiting Pickup', icon: 'fa-box-open', css: 'delivered' },
-        { key: 'received', label: 'Received', icon: 'fa-check-double', css: 'received' },
-        { key: 'cancelled', label: 'Cancelled', icon: 'fa-times-circle', css: 'cancelled' },
+    const items = [
+        { key: 'pending_payment', label: 'Awaiting Payment', icon: 'fa-clock', color: '#f97316' },
+        { key: 'pending', label: 'Pending', icon: 'fa-clock', color: '#f59e0b' },
+        { key: 'confirmed', label: 'Confirmed', icon: 'fa-check-circle', color: '#22c55e' },
+        { key: 'shipped', label: 'Shipped', icon: 'fa-truck', color: '#3b82f6' },
+        { key: 'delivered', label: 'Awaiting Pickup', icon: 'fa-box-open', color: '#8b5cf6' },
+        { key: 'received', label: 'Received', icon: 'fa-check-double', color: '#14b8a6' },
+        { key: 'cancelled', label: 'Cancelled', icon: 'fa-times-circle', color: '#ef4444' }
     ];
 
-    let html = '';
-    configs.forEach(cfg => {
-        const count = counts[cfg.key] || 0;
-        const isPending = ['pending_payment', 'pending', 'delivered'].includes(cfg.key);
-        const blink = (count > 0 && isPending) ? '' : 'hidden';
-        const active = (currentFilterStatus === cfg.key) ? 'active' : '';
-        html += `
-            <div class="stat-card ${cfg.css} ${active}" data-status="${cfg.key}" onclick="filterOrdersByStatus('${cfg.key}')">
-                <div class="icon"><i class="fas ${cfg.icon}"></i></div>
-                <div class="number">${count}</div>
-                <div class="label">${cfg.label} <span class="blink-dot ${blink}"></span></div>
-            </div>
-        `;
+    let html = '<div class="compact-stats-grid">';
+    items.forEach(item => {
+        const count = counts[item.key] || 0;
+        const isPending = ['pending_payment', 'pending', 'delivered'].includes(item.key);
+        const blink = (count > 0 && isPending) ? '<span class="blink-dot"></span>' : '';
+        const active = (currentFilterStatus === item.key) ? 'active' : '';
+        html += `<div class="compact-stat-item ${active}" data-status="${item.key}" onclick="filterOrdersByStatus('${item.key}')">`;
+        html += `<div class="compact-stat-icon" style="color:${item.color};"><i class="fas ${item.icon}"></i></div>`;
+        html += `<div class="compact-stat-content">`;
+        html += `<span class="compact-stat-value">${count}</span>`;
+        html += `<span class="compact-stat-label">${item.label} ${blink}</span>`;
+        html += `</div></div>`;
     });
+    html += '</div>';
+
     grid.innerHTML = html;
 }
 
@@ -219,7 +221,7 @@ function updateCartBadges() {
 
 function filterOrdersByStatus(status) {
     currentFilterStatus = status;
-    document.querySelectorAll('#customerStatsGrid .stat-card').forEach(card => {
+    document.querySelectorAll('#customerStatsGrid .compact-stat-item').forEach(card => {
         card.classList.toggle('active', card.dataset.status === status);
     });
     if (currentSection === 'dashboard') {
@@ -230,8 +232,9 @@ function filterOrdersByStatus(status) {
 }
 
 // ============================================================
-//  ORDERS TABLE
+//  ORDERS TABLE (unchanged, kept for brevity)
 // ============================================================
+
 function loadOrdersTable() {
     const container = document.getElementById('ordersContainer');
     
@@ -548,8 +551,9 @@ function sendOrderChat(orderId, inputId, chatId) {
 }
 
 // ============================================================
-//  ORDER ACTIONS
+//  ORDER ACTIONS (unchanged)
 // ============================================================
+
 async function cancelOrder(id) {
     const reason = prompt('Please provide a reason for cancellation:');
     if (!reason) return;
@@ -638,8 +642,9 @@ async function requestReturn(id) {
 window.requestReturn = requestReturn;
 
 // ============================================================
-//  PROFILE
+//  PROFILE (unchanged)
 // ============================================================
+
 function loadProfile() {
     const user = window.currentUser || JSON.parse(localStorage.getItem('currentUser') || '{}');
     if (user.name) {
@@ -684,8 +689,9 @@ function updateProfile() {
 }
 
 // ============================================================
-//  ADDRESSES
+//  ADDRESSES (unchanged)
 // ============================================================
+
 function loadAddresses() {
     const container = document.getElementById('addressBookContainer');
     fetch('/api/addresses', { headers: { 'Authorization': `Bearer ${token}` } })
@@ -802,8 +808,9 @@ function deleteAddress(id) {
 }
 
 // ============================================================
-//  PAYMENT HISTORY
+//  PAYMENT HISTORY (unchanged)
 // ============================================================
+
 function loadPaymentHistory() {
     const tbody = document.getElementById('paymentHistoryBody');
     if (!tbody) return;
@@ -903,6 +910,7 @@ function loadPaymentHistory() {
 // ============================================================
 //  LOGOUT & DELETE ACCOUNT
 // ============================================================
+
 function logout() {
     if (typeof window.logout === 'function') {
         window.logout();

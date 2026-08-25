@@ -3,28 +3,22 @@
    Location: D:\my-business-website\public\css\admin.css
    ============================================================ */
 
-/* ============================================================
-   ADMIN STYLES - ISOLATED FROM SHOP
-   ============================================================ */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-/* Ensure admin styles don't leak to shop */
 .admin-body {
     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
     background: #f1f5f9;
     color: #1e293b;
     overflow-x: hidden;
     min-height: 100vh;
-    margin: 0;
-    padding: 0;
-}
-
-/* Reset any shop styles that might affect admin */
-.admin-body * {
-    box-sizing: border-box;
 }
 
 /* ============================================================
-   AUTH CONTAINER - Full screen, always on top
+   AUTH CONTAINER - FULL SCREEN OVERLAY
    ============================================================ */
 
 #authContainer {
@@ -39,10 +33,14 @@
     background: #f1f5f9;
     z-index: 99999;
     padding: 20px;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
 }
 
 #authContainer.hidden {
     display: none !important;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
 }
 
 #authContainer .auth-box {
@@ -53,10 +51,6 @@
     max-width: 400px;
     overflow: hidden;
 }
-
-/* ============================================================
-   AUTH TABS
-   ============================================================ */
 
 #authContainer .auth-tabs {
     display: flex;
@@ -83,10 +77,6 @@
 #authContainer .auth-tabs button:hover {
     background: #f1f5f9;
 }
-
-/* ============================================================
-   AUTH FORMS
-   ============================================================ */
 
 #authContainer .auth-form {
     padding: 24px;
@@ -185,17 +175,8 @@
     background: #f0fdf4;
 }
 
-/* Register tab visibility */
-#registerTab {
-    display: block;
-}
-
-#registerTab.hidden {
-    display: none !important;
-}
-
 /* ============================================================
-   ADMIN PANEL - Hidden by default
+   ADMIN PANEL - HIDDEN UNTIL LOGIN
    ============================================================ */
 
 #adminPanel {
@@ -479,6 +460,89 @@
 }
 
 /* ============================================================
+   COMPACT STATS - REPLACES LARGE CARDS
+   ============================================================ */
+
+.compact-stats-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    margin: 8px 0 12px;
+    padding: 4px 0;
+}
+
+.compact-stat-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #f8fafc;
+    padding: 4px 12px 4px 8px;
+    border-radius: 20px;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    font-size: 0.75rem;
+    line-height: 1.4;
+}
+
+.compact-stat-item:hover {
+    background: #eef2f6;
+    border-color: #94a3b8;
+    transform: translateY(-1px);
+}
+
+.compact-stat-item.active {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+.compact-stat-icon {
+    font-size: 0.75rem;
+    width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.compact-stat-content {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.compact-stat-value {
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #0f172a;
+}
+
+.compact-stat-label {
+    font-size: 0.65rem;
+    color: #475569;
+    font-weight: 500;
+}
+
+.compact-stat-label .blink-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #facc15;
+    margin-left: 2px;
+    animation: pulse-blink 1.2s infinite;
+}
+
+@keyframes pulse-blink {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.2; transform: scale(0.7); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+/* Hide old stat cards */
+.stats-grid {
+    display: none !important;
+}
+
+/* ============================================================
    SETTINGS SECTIONS
    ============================================================ */
 
@@ -588,95 +652,6 @@
 .settings-section .btn-secondary:hover {
     background: #cbd5e1;
 }
-
-/* ============================================================
-   STATS GRID
-   ============================================================ */
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
-    margin: 12px 0;
-}
-
-.stat-card {
-    background: white;
-    border-radius: 12px;
-    padding: 14px 10px;
-    text-align: center;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-    cursor: pointer;
-    transition: all 0.25s ease;
-    border: 2px solid transparent;
-    min-height: 80px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-}
-
-.stat-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.08);
-}
-
-.stat-card.active {
-    border-color: #2563eb;
-}
-
-.stat-card .icon {
-    font-size: 1.2rem;
-    margin-bottom: 4px;
-}
-
-.stat-card .number {
-    font-size: 1.5rem;
-    font-weight: 800;
-    line-height: 1.2;
-}
-
-.stat-card .label {
-    font-size: 0.6rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    color: #64748b;
-    letter-spacing: 0.3px;
-    margin-top: 2px;
-}
-
-.stat-card .blink-dot {
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #facc15;
-    margin-left: 3px;
-    animation: pulse-blink 1.2s infinite;
-}
-
-.stat-card .blink-dot.hidden {
-    display: none;
-}
-
-@keyframes pulse-blink {
-    0% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.2; transform: scale(0.7); }
-    100% { opacity: 1; transform: scale(1); }
-}
-
-.stat-card.pending { background: linear-gradient(145deg, #fde68a, #fcd34d); }
-.stat-card.pending_payment { background: linear-gradient(145deg, #fde68a, #fcd34d); }
-.stat-card.confirmed { background: linear-gradient(145deg, #86efac, #4ade80); }
-.stat-card.shipped { background: linear-gradient(145deg, #93c5fd, #60a5fa); }
-.stat-card.delivered { background: linear-gradient(145deg, #c4b5fd, #a78bfa); }
-.stat-card.received { background: linear-gradient(145deg, #5eead4, #2dd4bf); }
-.stat-card.cancelled { background: linear-gradient(145deg, #fca5a5, #f87171); }
-.stat-card.replacements { background: linear-gradient(145deg, #fdba74, #fb923c); }
-.stat-card.refunds { background: linear-gradient(145deg, #f9a8d4, #f472b6); }
-.stat-card.urgent { background: linear-gradient(145deg, #fca5a5, #f87171); }
-.stat-card.returns { background: linear-gradient(145deg, #a5f3fc, #67e8f9); }
-.stat-card.total { background: linear-gradient(145deg, #e2e8f0, #cbd5e1); }
 
 /* ============================================================
    ORDER ROWS
@@ -955,9 +930,6 @@
     .settings-section .form-row {
         grid-template-columns: 1fr;
     }
-    .stats-grid {
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    }
     .admin-header h1 {
         font-size: 0.9rem;
     }
@@ -967,6 +939,40 @@
     }
     .admin-main-content {
         padding: 12px;
+    }
+    .compact-stats-grid {
+        gap: 4px 6px;
+    }
+    .compact-stat-item {
+        font-size: 0.65rem;
+        padding: 3px 8px 3px 6px;
+    }
+    .compact-stat-value {
+        font-size: 0.7rem;
+    }
+    .compact-stat-label {
+        font-size: 0.55rem;
+    }
+    .compact-stat-icon {
+        font-size: 0.65rem;
+        width: 16px;
+    }
+}
+
+@media (max-width: 400px) {
+    .compact-stat-item {
+        font-size: 0.6rem;
+        padding: 2px 6px 2px 4px;
+    }
+    .compact-stat-value {
+        font-size: 0.65rem;
+    }
+    .compact-stat-label {
+        font-size: 0.5rem;
+    }
+    .compact-stat-icon {
+        font-size: 0.6rem;
+        width: 14px;
     }
 }
 
