@@ -116,8 +116,12 @@ function loadCustomerDashboard() {
         }
         allOrders = orders;
         
-        return fetch('/api/returns/customer', { headers: { 'Authorization': `Bearer ${token}` } })
+        // FIXED: Correct URL for returns - now handled by orders route
+        return fetch('/api/orders/returns/customer', { 
+            headers: { 'Authorization': `Bearer ${token}` } 
+        })
             .then(res => {
+                if (res.status === 404) return [];
                 if (res.status === 429) return [];
                 return res.json();
             })
@@ -158,7 +162,6 @@ function renderCustomerStats(orders) {
         if (counts[o.status] !== undefined) counts[o.status]++;
     });
 
-    // Define stat items
     var items = [
         { key: 'pending_payment', label: 'Awaiting Payment', icon: 'fa-clock', css: 'pending_payment' },
         { key: 'pending', label: 'Pending', icon: 'fa-clock', css: 'pending' },
@@ -192,7 +195,6 @@ function renderCustomerStats(orders) {
 function renderRecentOrders(orders) {
     const container = document.getElementById('recentOrdersContainer');
     
-    // If filter is active, show filtered orders in recent orders
     let displayOrders = orders;
     if (currentFilterStatus && currentFilterStatus !== 'all') {
         displayOrders = orders.filter(function(o) { 
@@ -238,29 +240,42 @@ function updateCartBadges() {
 }
 
 // ============================================================
-//  FILTER ORDERS BY STATUS - FIXED
+//  FILTER ORDERS BY STATUS
 // ============================================================
 
 function filterOrdersByStatus(status) {
     console.log('🔍 Filtering by status:', status);
-    
-    // Update current filter
     currentFilterStatus = status;
     
-    // Update active state on stat links
     document.querySelectorAll('#customerStatsGrid .stat-link').forEach(function(link) {
         link.classList.toggle('active', link.dataset.status === status);
     });
     
-    // Navigate to orders section
     navigateTo('orders');
-    
-    // Reload orders with filter
     loadOrdersTable();
 }
 
 // ============================================================
-//  ORDERS TABLE - FIXED TO RESPECT FILTER
+//  CLEAR FILTER
+// ============================================================
+
+function clearFilter() {
+    console.log('🔓 Clearing filter...');
+    currentFilterStatus = null;
+    document.querySelectorAll('#customerStatsGrid .stat-link').forEach(function(link) {
+        link.classList.remove('active');
+    });
+    if (currentSection === 'dashboard') {
+        renderRecentOrders(allOrders);
+        renderCustomerStats(allOrders);
+    } else if (currentSection === 'orders') {
+        loadOrdersTable();
+    }
+}
+window.clearFilter = clearFilter;
+
+// ============================================================
+//  ORDERS TABLE
 // ============================================================
 
 function loadOrdersTable() {
@@ -276,7 +291,6 @@ function loadOrdersTable() {
         return;
     }
     
-    // Apply filter if set
     let filtered = allOrders;
     if (currentFilterStatus && currentFilterStatus !== 'all' && currentFilterStatus !== null) {
         filtered = allOrders.filter(function(o) { 
@@ -284,7 +298,6 @@ function loadOrdersTable() {
         });
     }
     
-    // If no orders match the filter
     if (!Array.isArray(filtered) || filtered.length === 0) {
         var statusDisplay = currentFilterStatus ? currentFilterStatus.replace('_', ' ').toUpperCase() : 'All';
         container.innerHTML = '<p class="empty-msg">No orders with status: ' + statusDisplay + '</p>';
@@ -939,25 +952,6 @@ function loadPaymentHistory() {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#ef4444;">Error loading payment history. Please try again.</td></tr>';
     });
 }
-
-// ============================================================
-//  CLEAR FILTER - RESET TO SHOW ALL ORDERS
-// ============================================================
-
-function clearFilter() {
-    console.log('🔓 Clearing filter...');
-    currentFilterStatus = null;
-    document.querySelectorAll('#customerStatsGrid .stat-link').forEach(function(link) {
-        link.classList.remove('active');
-    });
-    if (currentSection === 'dashboard') {
-        renderRecentOrders(allOrders);
-        renderCustomerStats(allOrders);
-    } else if (currentSection === 'orders') {
-        loadOrdersTable();
-    }
-}
-window.clearFilter = clearFilter;
 
 // ============================================================
 //  LOGOUT & DELETE ACCOUNT

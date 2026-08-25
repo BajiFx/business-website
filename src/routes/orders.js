@@ -1,4 +1,9 @@
-﻿const express = require('express');
+﻿// ============================================================
+//  ORDERS ROUTES - Complete Fixed Version
+//  Location: D:\my-business-website\src\routes\orders.js
+// ============================================================
+
+const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { pool } = require('../config/database');
 const { authMiddleware } = require('../middleware/auth');
@@ -204,28 +209,34 @@ router.get('/', authMiddleware, async (req, res) => {
     `;
     const params = [];
     const conditions = [];
+    let paramIndex = 1;
     
     if (req.role === 'customer') {
-      conditions.push('o.customer_id = $' + (params.length + 1));
+      conditions.push(`o.customer_id = $${paramIndex}`);
       params.push(req.userId);
+      paramIndex++;
     }
     
     if (req.role === 'admin') {
       if (status && status !== 'all') {
-        conditions.push('o.status = $' + (params.length + 1));
+        conditions.push(`o.status = $${paramIndex}`);
         params.push(status);
+        paramIndex++;
       }
       if (search) {
-        conditions.push('(c.name ILIKE $' + (params.length + 1) + ' OR c.email ILIKE $' + (params.length + 1) + ' OR o.order_ref ILIKE $' + (params.length + 1) + ')');
+        conditions.push(`(c.name ILIKE $${paramIndex} OR c.email ILIKE $${paramIndex} OR o.order_ref ILIKE $${paramIndex})`);
         params.push(`%${search}%`);
+        paramIndex++;
       }
       if (startDate) {
-        conditions.push('o.created_at >= $' + (params.length + 1));
+        conditions.push(`o.created_at >= $${paramIndex}`);
         params.push(startDate);
+        paramIndex++;
       }
       if (endDate) {
-        conditions.push('o.created_at <= $' + (params.length + 1));
+        conditions.push(`o.created_at <= $${paramIndex}`);
         params.push(endDate + ' 23:59:59');
+        paramIndex++;
       }
     }
     
@@ -234,13 +245,13 @@ router.get('/', authMiddleware, async (req, res) => {
     }
     
     query += ' ORDER BY o.created_at DESC';
-    query += ' LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2);
+    query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(parseInt(limit), parseInt(offset));
     
     const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (err) {
-    console.error(err);
+    console.error('❌ Get orders error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -264,7 +275,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
     const itemsResult = await pool.query('SELECT * FROM order_items WHERE order_id = $1', [orderId]);
     res.json({ ...order, items: itemsResult.rows });
   } catch (err) {
-    console.error(err);
+    console.error('❌ Get order error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -301,7 +312,7 @@ router.get('/:id/tracking', authMiddleware, async (req, res) => {
     }
     res.json({ ...order, statusMessage });
   } catch (err) {
-    console.error(err);
+    console.error('❌ Tracking error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -351,7 +362,7 @@ router.put('/:id/cancel', authMiddleware, [
     io.to(`order_${orderId}`).emit('new-order-chat-message', { order_id: orderId, from_user: 'System', message: msg, timestamp: new Date() });
     res.json({ success: true, message: 'Order cancelled.' });
   } catch (err) {
-    console.error(err);
+    console.error('❌ Cancel order error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -386,7 +397,7 @@ router.put('/:id/refund', authMiddleware, [
     io.to(`order_${orderId}`).emit('new-order-chat-message', { order_id: orderId, from_user: 'System', message: msg, timestamp: new Date() });
     res.json({ success: true, message: 'Refund request submitted.' });
   } catch (err) {
-    console.error(err);
+    console.error('❌ Refund error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -428,7 +439,7 @@ router.put('/:id/receive', authMiddleware, async (req, res) => {
     }
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
+    console.error('❌ Receive order error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -462,7 +473,7 @@ router.post('/:id/reorder', authMiddleware, async (req, res) => {
       [JSON.stringify(cartItems), req.userId]);
     res.json({ success: true, items: cartItems });
   } catch (err) {
-    console.error(err);
+    console.error('❌ Reorder error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -535,7 +546,7 @@ router.put('/:id/confirm', authMiddleware, async (req, res) => {
     }
     res.json({ success: true, message: '✅ Order confirmed.' });
   } catch (err) {
-    console.error('Confirm error:', err);
+    console.error('❌ Confirm order error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -591,7 +602,7 @@ router.put('/:id/status', authMiddleware, async (req, res) => {
     }
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
+    console.error('❌ Update status error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -663,7 +674,7 @@ router.post('/:id/send-confirmation', authMiddleware, async (req, res) => {
     res.json({ success: true, message: '✅ Confirmation sent to customer.' });
 
   } catch (err) {
-    console.error(err);
+    console.error('❌ Send confirmation error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -682,7 +693,7 @@ router.get('/:id/chat', authMiddleware, async (req, res) => {
     const result = await pool.query('SELECT * FROM order_chat_messages WHERE order_id = $1 ORDER BY timestamp ASC', [orderId]);
     res.json(result.rows);
   } catch (err) {
-    console.error(err);
+    console.error('❌ Order chat error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -705,7 +716,7 @@ router.post('/:id/chat', authMiddleware, async (req, res) => {
     io.to(`order_${orderId}`).emit('new-order-chat-message', result.rows[0]);
     res.json({ success: true, msg: result.rows[0] });
   } catch (err) {
-    console.error(err);
+    console.error('❌ Send chat error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -889,7 +900,7 @@ router.post('/:id/replacement-payment', authMiddleware, async (req, res) => {
     io.to(`order_${orderId}`).emit('new-order-chat-message', { order_id: orderId, from_user: 'System', message: msg, timestamp: new Date() });
     res.json({ success: true, message: 'Payment recorded. Replacement approved.' });
   } catch (err) {
-    console.error(err);
+    console.error('❌ Replacement payment error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -939,7 +950,25 @@ router.post('/:id/return', authMiddleware, [
     io.emit('return-requested', { orderId });
     res.json({ success: true, message: 'Return request submitted.' });
   } catch (err) {
-    console.error(err);
+    console.error('❌ Return request error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+//  GET RETURNS - CUSTOMER (ADDED FIX)
+// ============================================================
+
+router.get('/returns/customer', authMiddleware, async (req, res) => {
+  try {
+    const customerId = req.userId;
+    const result = await pool.query(
+      `SELECT * FROM returns WHERE customer_id = $1 ORDER BY requested_at DESC`,
+      [customerId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('❌ Customer returns error:', err);
     res.status(500).json({ error: err.message });
   }
 });
