@@ -174,7 +174,6 @@ function renderCustomerStats(orders) {
         var count = counts[item.key] || 0;
         var isPending = ['pending_payment', 'pending', 'delivered'].includes(item.key);
         var blink = (count > 0 && isPending) ? '<span class="stat-blink"></span>' : '<span class="stat-blink hidden"></span>';
-        // Check if this status is currently active filter
         var active = (currentFilterStatus === item.key) ? 'active' : '';
         
         html += '<div class="stat-link ' + item.css + ' ' + active + '" data-status="' + item.key + '" onclick="filterOrdersByStatus(\'' + item.key + '\')">';
@@ -192,11 +191,25 @@ function renderCustomerStats(orders) {
 
 function renderRecentOrders(orders) {
     const container = document.getElementById('recentOrdersContainer');
-    if (!orders || !Array.isArray(orders) || orders.length === 0) {
-        container.innerHTML = '<p class="empty-msg">No recent orders.</p>';
+    
+    // If filter is active, show filtered orders in recent orders
+    let displayOrders = orders;
+    if (currentFilterStatus && currentFilterStatus !== 'all') {
+        displayOrders = orders.filter(function(o) { 
+            return o.status === currentFilterStatus; 
+        });
+    }
+    
+    if (!displayOrders || !Array.isArray(displayOrders) || displayOrders.length === 0) {
+        if (currentFilterStatus) {
+            container.innerHTML = '<p class="empty-msg">No orders with status: ' + currentFilterStatus.replace('_', ' ').toUpperCase() + '</p>';
+        } else {
+            container.innerHTML = '<p class="empty-msg">No recent orders.</p>';
+        }
         return;
     }
-    const recent = orders.slice(0, 5);
+    
+    const recent = displayOrders.slice(0, 5);
     container.innerHTML = recent.map(order => `
         <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f4f8; font-size:0.9rem; flex-wrap:wrap; gap:6px;">
             <span style="font-weight:600;">${order.order_ref || `#${order.id}`}</span>
@@ -239,22 +252,11 @@ function filterOrdersByStatus(status) {
         link.classList.toggle('active', link.dataset.status === status);
     });
     
-    // If we're on the dashboard, refresh the stats display with filtered orders
-    if (currentSection === 'dashboard') {
-        // Show only the filtered orders in recent orders
-        var filteredOrders = allOrders.filter(function(o) { return o.status === status; });
-        renderRecentOrders(filteredOrders);
-        
-        // Update the stats to highlight the active filter
-        renderCustomerStats(allOrders);
-    } 
-    // If we're on the orders page, load the filtered orders table
-    else if (currentSection === 'orders') {
-        loadOrdersTable();
-    }
-    
-    // Navigate to orders section to show the filtered list
+    // Navigate to orders section
     navigateTo('orders');
+    
+    // Reload orders with filter
+    loadOrdersTable();
 }
 
 // ============================================================
@@ -270,20 +272,22 @@ function loadOrdersTable() {
     }
     
     if (allOrders.length === 0) {
-        container.innerHTML = '<p class="empty-msg">No orders to show.</p>';
+        container.innerHTML = '<p class="empty-msg">You have no orders yet.</p>';
         return;
     }
     
     // Apply filter if set
     let filtered = allOrders;
-    if (currentFilterStatus && currentFilterStatus !== 'all') {
+    if (currentFilterStatus && currentFilterStatus !== 'all' && currentFilterStatus !== null) {
         filtered = allOrders.filter(function(o) { 
             return o.status === currentFilterStatus; 
         });
     }
     
+    // If no orders match the filter
     if (!Array.isArray(filtered) || filtered.length === 0) {
-        container.innerHTML = '<p class="empty-msg">No orders with status: ' + (currentFilterStatus || 'all') + '</p>';
+        var statusDisplay = currentFilterStatus ? currentFilterStatus.replace('_', ' ').toUpperCase() : 'All';
+        container.innerHTML = '<p class="empty-msg">No orders with status: ' + statusDisplay + '</p>';
         return;
     }
     
@@ -937,6 +941,25 @@ function loadPaymentHistory() {
 }
 
 // ============================================================
+//  CLEAR FILTER - RESET TO SHOW ALL ORDERS
+// ============================================================
+
+function clearFilter() {
+    console.log('🔓 Clearing filter...');
+    currentFilterStatus = null;
+    document.querySelectorAll('#customerStatsGrid .stat-link').forEach(function(link) {
+        link.classList.remove('active');
+    });
+    if (currentSection === 'dashboard') {
+        renderRecentOrders(allOrders);
+        renderCustomerStats(allOrders);
+    } else if (currentSection === 'orders') {
+        loadOrdersTable();
+    }
+}
+window.clearFilter = clearFilter;
+
+// ============================================================
 //  LOGOUT & DELETE ACCOUNT
 // ============================================================
 
@@ -975,24 +998,6 @@ async function deleteAccount() {
     }
 }
 window.deleteAccount = deleteAccount;
-
-// ============================================================
-//  CLEAR FILTER - RESET TO SHOW ALL ORDERS
-// ============================================================
-
-function clearFilter() {
-    currentFilterStatus = null;
-    document.querySelectorAll('#customerStatsGrid .stat-link').forEach(function(link) {
-        link.classList.remove('active');
-    });
-    if (currentSection === 'dashboard') {
-        renderRecentOrders(allOrders);
-        renderCustomerStats(allOrders);
-    } else if (currentSection === 'orders') {
-        loadOrdersTable();
-    }
-}
-window.clearFilter = clearFilter;
 
 // ============================================================
 //  INIT

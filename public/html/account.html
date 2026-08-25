@@ -121,11 +121,15 @@
     </div>
   </div>
 
-  <!-- Orders Section -->
+  <!-- Orders Section with GO BACK button -->
   <div class="section" id="section-orders">
     <div class="section-header">
       <h2>📦 My Orders</h2>
       <div>
+        <!-- FIXED: Go Back button navigates to dashboard -->
+        <button class="btn btn-secondary btn-sm" onclick="clearFilter(); navigateTo('dashboard');">
+          <i class="fas fa-arrow-left"></i> Go Back
+        </button>
         <button class="btn btn-secondary btn-sm" onclick="clearFilter()"><i class="fas fa-times"></i> Show All</button>
         <button class="btn btn-primary btn-sm" onclick="loadOrdersTable()"><i class="fas fa-sync-alt"></i> Refresh</button>
       </div>

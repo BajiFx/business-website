@@ -1068,3 +1068,31 @@
 .gap-8 { gap: 8px; }
 .gap-12 { gap: 12px; }
 .flex-wrap { flex-wrap: wrap; }
+/* ============================================================
+   GO BACK BUTTON
+   ============================================================ */
+
+.btn-secondary {
+    background: #e2e8f0;
+    color: #1e293b;
+    border: 1px solid #d1d5db;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+    background: #cbd5e1;
+    transform: translateY(-1px);
+}
+
+/* Fix for section-actions to include go back button */
+.section-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}

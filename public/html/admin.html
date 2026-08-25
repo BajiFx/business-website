@@ -68,9 +68,7 @@
                 <div id="registerStatus" class="auth-status"></div>
             </div>
 
-            <!-- ============================================================
-                 BACK TO SHOP LINK - ADDED BACK
-                 ============================================================ -->
+            <!-- Back to Shop Link -->
             <div style="text-align:center; padding: 0 24px 20px 24px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
                 <a href="/" style="color: #64748b; text-decoration: none; font-size: 0.85rem; font-weight: 500; transition: color 0.2s;">
                     <i class="fas fa-arrow-left"></i> Back to Shop
@@ -173,11 +171,15 @@
                 </div>
             </div>
 
-            <!-- Orders Section -->
+            <!-- Orders Section with GO BACK button -->
             <div class="section" id="section-orders">
                 <div class="section-header">
                     <h2>📦 Orders</h2>
                     <div class="section-actions">
+                        <!-- FIXED: Go Back button navigates to dashboard -->
+                        <button class="btn-secondary" onclick="clearAdminFilter(); navigateTo('dashboard');" style="padding:6px 14px; border-radius:6px; border:1px solid #d1d5db; background:#e2e8f0; cursor:pointer; font-weight:600; font-size:0.75rem;">
+                            <i class="fas fa-arrow-left"></i> Go Back
+                        </button>
                         <button class="btn-save" onclick="loadOrders()"><i class="fas fa-sync-alt"></i> Refresh</button>
                         <button class="btn-success" onclick="exportOrdersCSV()"><i class="fas fa-file-csv"></i> Export CSV</button>
                     </div>

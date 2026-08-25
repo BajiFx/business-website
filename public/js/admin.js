@@ -17,6 +17,7 @@ var promoData = [];
 var isLoggedIn = false;
 var isInitialized = false;
 var statsInterval = null;
+var currentFilterStatus = null;
 
 // ============================================================
 //  INIT - RUN ON PAGE LOAD - ALWAYS SHOW LOGIN FIRST
@@ -658,13 +659,15 @@ function renderStats(stats) {
             value = 'Ksh ' + parseFloat(value).toFixed(2);
         }
         var isClickable = item.key !== 'total_revenue';
-        var onclick = isClickable ? 'onclick="navigateTo(\'orders\')"' : '';
+        var onclick = isClickable ? 'onclick="filterOrdersByStatus(\'' + item.key + '\')"' : '';
         var style = isClickable ? '' : 'cursor:default;';
         // Determine if blinking dot needed
         var isPending = ['pending','pending_payment','delivered','replacements_pending','refunds_pending','urgent','returns_pending'].includes(item.key);
         var blink = (value > 0 && isPending) ? '<span class="stat-blink"></span>' : '<span class="stat-blink hidden"></span>';
+        // Check if this status is currently active filter
+        var active = (currentFilterStatus === item.key) ? 'active' : '';
         
-        html += '<div class="stat-link ' + item.css + '" ' + onclick + ' style="' + style + '">';
+        html += '<div class="stat-link ' + item.css + ' ' + active + '" ' + onclick + ' style="' + style + '" data-status="' + item.key + '">';
         html += '<span class="stat-icon"><i class="fas ' + item.icon + '"></i></span>';
         html += '<span class="stat-content">';
         html += '<span class="stat-value">' + value + '</span>';
@@ -677,11 +680,52 @@ function renderStats(stats) {
     grid.innerHTML = html;
 }
 
+// ============================================================
+//  FILTER ORDERS BY STATUS - ADMIN
+// ============================================================
+
+function filterOrdersByStatus(status) {
+    console.log('🔍 Admin filtering by status:', status);
+    
+    // Update current filter
+    currentFilterStatus = status;
+    
+    // Update active state on stat links
+    document.querySelectorAll('#statsGrid .stat-link').forEach(function(link) {
+        link.classList.toggle('active', link.dataset.status === status);
+    });
+    
+    // Navigate to orders section
+    navigateTo('orders');
+    
+    // Reload orders with filter
+    loadOrders();
+}
+
+// ============================================================
+//  CLEAR FILTER - ADMIN
+// ============================================================
+
+function clearAdminFilter() {
+    console.log('🔓 Clearing admin filter...');
+    currentFilterStatus = null;
+    document.querySelectorAll('#statsGrid .stat-link').forEach(function(link) {
+        link.classList.remove('active');
+    });
+    loadOrders();
+    // Also update stats to remove active highlight
+    loadDashboardStats();
+}
+
 function updateOrderBadge(stats) {
     var total = stats.total_orders || 0;
     var badge = document.querySelector('.menu-item[data-section="orders"] .badge');
     if (badge) badge.textContent = total;
 }
+
+// ============================================================
+//  RECENT ORDERS
+// ============================================================
 
 function loadRecentOrders() {
     if (!isLoggedIn) {
@@ -723,7 +767,7 @@ function loadRecentOrders() {
 }
 
 // ============================================================
-//  ORDERS
+//  ORDERS - FIXED WITH FILTER
 // ============================================================
 
 function loadOrders() {
@@ -738,6 +782,14 @@ function loadOrders() {
     var statusFilter = document.getElementById('orderFilterStatus') ? document.getElementById('orderFilterStatus').value : 'all';
     var searchFilter = document.getElementById('orderFilterSearch') ? document.getElementById('orderFilterSearch').value : '';
 
+    // If filter is set via stat click, use that instead
+    if (currentFilterStatus && currentFilterStatus !== 'all') {
+        statusFilter = currentFilterStatus;
+        // Update dropdown to match
+        var dropdown = document.getElementById('orderFilterStatus');
+        if (dropdown) dropdown.value = currentFilterStatus;
+    }
+
     var url = '/api/admin/orders?';
     if (statusFilter !== 'all') url += 'status=' + statusFilter + '&';
     if (searchFilter) url += 'search=' + encodeURIComponent(searchFilter) + '&';
@@ -749,7 +801,8 @@ function loadOrders() {
             if (!container) return;
             ordersData = orders;
             if (!orders || orders.length === 0) {
-                container.innerHTML = '<p class="empty-msg">No orders found.</p>';
+                var statusDisplay = currentFilterStatus ? currentFilterStatus.replace('_', ' ').toUpperCase() : 'All';
+                container.innerHTML = '<p class="empty-msg">No orders with status: ' + statusDisplay + '</p>';
                 return;
             }
             var html = '';
@@ -827,6 +880,19 @@ function updateOrderStatus(orderId, status) {
 }
 
 function filterOrders() {
+    // If filter is from dropdown, clear the stat filter
+    var dropdownStatus = document.getElementById('orderFilterStatus') ? document.getElementById('orderFilterStatus').value : 'all';
+    if (dropdownStatus === 'all') {
+        currentFilterStatus = null;
+        document.querySelectorAll('#statsGrid .stat-link').forEach(function(link) {
+            link.classList.remove('active');
+        });
+    } else {
+        currentFilterStatus = dropdownStatus;
+        document.querySelectorAll('#statsGrid .stat-link').forEach(function(link) {
+            link.classList.toggle('active', link.dataset.status === dropdownStatus);
+        });
+    }
     loadOrders();
 }
 
@@ -1572,5 +1638,7 @@ window.handleLogin = handleLogin;
 window.handleRegister = handleRegister;
 window.showDashboard = showDashboard;
 window.showLogin = showLogin;
+window.filterOrdersByStatus = filterOrdersByStatus;
+window.clearAdminFilter = clearAdminFilter;
 
 console.log('✅ Admin panel loaded successfully - BEAUTIFUL STAT LINKS');
