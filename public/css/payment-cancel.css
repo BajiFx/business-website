@@ -1,0 +1,46 @@
+/* ============================================================
+   PAYMENT CANCEL PAGE STYLES
+   ============================================================ */
+
+.payment-cancel {
+  max-width: 500px;
+  margin: 80px auto;
+  text-align: center;
+  padding: 40px 20px;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+}
+
+.payment-cancel .icon {
+  font-size: 4rem;
+  color: #ef4444;
+  margin-bottom: 16px;
+}
+
+.payment-cancel h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.payment-cancel p {
+  color: #64748b;
+  margin: 8px 0 20px;
+}
+
+.payment-cancel .btn {
+  padding: 12px 32px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.payment-cancel .btn:hover {
+  background: #1d4ed8;
+}

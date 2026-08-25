@@ -13,11 +13,12 @@
     "seed:pickup": "node scripts/seed-pickup-stations.js",
     "seed:all": "npm run migrate && npm run seed:locations && npm run seed:pickup",
     "backup": "node scripts/backup-database.js",
-    "mpesa:check": "node mpesa-credentials-check.js",
-    "mpesa:setup": "node mpesa-credentials-helper.js",
-    "mpesa:test": "node test-mpesa.js",
-    "airtel:setup": "node airtel-credentials-helper.js",
-    "postinstall": "npm run migrate || echo 'Migration skipped'"
+    "mpesa:check": "node scripts/mpesa-credentials-check.js",
+    "mpesa:setup": "node scripts/mpesa-credentials-helper.js",
+    "mpesa:test": "node scripts/test-mpesa.js",
+    "airtel:setup": "node scripts/airtel-credentials-helper.js",
+    "postinstall": "npm run migrate || echo 'Migration skipped'",
+    "fix": "node scripts/fix-database.js"
   },
   "dependencies": {
     "@paypal/checkout-server-sdk": "^1.0.3",

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seller - Live Customer Tracking</title>
+  
+  <!-- Main Global Styles -->
+  <link rel="stylesheet" href="/style.css">
+  
+  <!-- External Libraries -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  
+  <!-- Page-Specific Styles -->
+  <link rel="stylesheet" href="/css/seller-track.css">
+</head>
+<body class="seller-track-body">
+
+<!-- ===== HEADER ===== -->
+<div class="seller-track-header">
+  <h1><i class="fas fa-map"></i> Live Tracking</h1>
+  <div class="nav-links">
+    <a href="/"><i class="fas fa-home"></i> Home</a>
+    <a href="/admin.html"><i class="fas fa-chart-pie"></i> Admin</a>
+    <a href="/seller-chat.html"><i class="fas fa-comment"></i> Chat</a>
+  </div>
+</div>
+
+<!-- ===== MAP ===== -->
+<div id="map"></div>
+<div class="info-panel" id="info"><i class="fas fa-users"></i> Customers online: 0</div>
+
+<div class="customer-list" id="customerList">
+  <h4><i class="fas fa-user"></i> Active Customers</h4>
+  <div id="customerItems"><p class="empty-customers">None</p></div>
+</div>
+
+<!-- ===== SCRIPTS ===== -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/seller-track.js"></script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seller Chat</title>
+  
+  <!-- Main Global Styles -->
+  <link rel="stylesheet" href="/style.css">
+  
+  <!-- External Libraries -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  
+  <!-- Page-Specific Styles -->
+  <link rel="stylesheet" href="/css/seller-chat.css">
+</head>
+<body class="seller-chat-body">
+
+<!-- ===== HEADER ===== -->
+<div class="seller-chat-header">
+  <h1><i class="fas fa-comment"></i> Live Chat</h1>
+  <div class="nav-links">
+    <a href="/"><i class="fas fa-home"></i> Home</a>
+    <a href="/admin.html"><i class="fas fa-chart-pie"></i> Admin</a>
+    <a href="/seller-track.html"><i class="fas fa-map"></i> Tracking</a>
+  </div>
+</div>
+
+<!-- ===== CHAT CONTAINER ===== -->
+<div id="chatContainer">
+  <div class="chat-header">
+    <i class="fas fa-comment"></i>
+    <span>Seller Support Chat</span>
+    <span class="chat-status"><span class="online-dot"></span> Live</span>
+  </div>
+  <div id="messages"><p class="empty">Loading messages...</p></div>
+  <div id="inputArea">
+    <input id="msgInput" type="text" placeholder="Type your reply..." onkeypress="if(event.key==='Enter') sendMessage()">
+    <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i> Send</button>
+  </div>
+</div>
+
+<!-- ===== SCRIPTS ===== -->
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/seller-chat.js"></script>
+</body>
+</html>

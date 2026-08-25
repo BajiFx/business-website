@@ -1,0 +1,46 @@
+/* ============================================================
+   PAYMENT SUCCESS PAGE STYLES
+   ============================================================ */
+
+.payment-success {
+  max-width: 500px;
+  margin: 80px auto;
+  text-align: center;
+  padding: 40px 20px;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+}
+
+.payment-success .icon {
+  font-size: 4rem;
+  color: #22c55e;
+  margin-bottom: 16px;
+}
+
+.payment-success h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.payment-success p {
+  color: #64748b;
+  margin: 8px 0 20px;
+}
+
+.payment-success .btn {
+  padding: 12px 32px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.payment-success .btn:hover {
+  background: #1d4ed8;
+}

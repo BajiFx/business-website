@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <title>Admin – Orders</title>
+  
+  <!-- Main Global Styles -->
+  <link rel="stylesheet" href="/style.css">
+  
+  <!-- External Libraries -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  
+  <!-- Page-Specific Styles -->
+  <link rel="stylesheet" href="/css/admin-orders.css">
+  
+  <!-- Socket.IO -->
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div class="admin-header">
+  <h1 style="font-size:1.2rem;">🔐 Admin Panel</h1>
+  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <a href="/admin.html">Dashboard</a>
+    <a href="/admin-orders.html" style="color:#feca57;">Orders</a>
+    <a href="/">Shop</a>
+    <a href="#" onclick="logoutAdmin()" style="color:#ef4444;">Logout</a>
+  </div>
+</div>
+
+<!-- ===== ORDERS PAGE ===== -->
+<div class="orders-page">
+  <a href="/admin.html" class="back-link"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+    <h1>📦 Orders</h1>
+    <button class="btn btn-primary" onclick="loadOrders()"><i class="fas fa-sync"></i> Refresh</button>
+  </div>
+
+  <div class="filter-bar">
+    <label>Status:</label>
+    <select id="filterStatus">
+      <option value="all">All</option>
+      <option value="pending">Pending</option>
+      <option value="pending_payment">Awaiting Payment</option>
+      <option value="confirmed">Confirmed</option>
+      <option value="shipped">Shipped</option>
+      <option value="delivered">Delivered</option>
+      <option value="received">Received</option>
+      <option value="cancelled">Cancelled</option>
+      <option value="replacements">Replacements</option>
+      <option value="refunds">Refunds</option>
+      <option value="urgent">Urgent</option>
+      <option value="returns">Returns</option>
+    </select>
+    <label>Search:</label>
+    <input type="text" id="filterSearch" placeholder="Name, email, ref...">
+    <label>From:</label>
+    <input type="date" id="filterStart">
+    <label>To:</label>
+    <input type="date" id="filterEnd">
+    <button onclick="applyFilters()">Apply</button>
+    <button onclick="resetFilters()" style="background:#64748b;">Reset</button>
+  </div>
+
+  <div id="ordersContainer">
+    <p style="text-align:center; padding:20px; color:#94a3b8;">Loading orders...</p>
+  </div>
+</div>
+
+<!-- ===== SCRIPTS ===== -->
+<script src="/js/admin-orders.js"></script>
+</body>
+</html>

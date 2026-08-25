@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asset Minifier</title>
+  
+  <!-- Main Global Styles -->
+  <link rel="stylesheet" href="/style.css">
+  
+  <!-- External Libraries -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  
+  <!-- Page-Specific Styles -->
+  <link rel="stylesheet" href="/css/minify.css">
+</head>
+<body class="minify-body">
+  <div class="minify-container">
+    <h1><i class="fas fa-compress-arrows-alt"></i> Asset Minifier</h1>
+    <p class="sub">Minify JavaScript and CSS files to improve performance.</p>
+    
+    <div class="stats" id="stats">
+      <div class="stat">
+        <div class="number" id="jsCount">0</div>
+        <div class="label">JS Files</div>
+      </div>
+      <div class="stat">
+        <div class="number" id="cssCount">0</div>
+        <div class="label">CSS Files</div>
+      </div>
+      <div class="stat">
+        <div class="number" id="totalSize">0 KB</div>
+        <div class="label">Total Size</div>
+      </div>
+    </div>
+    
+    <div class="btn-group">
+      <button class="btn" id="minifyBtn" onclick="minifyAssets()">
+        <i class="fas fa-compress"></i> Minify Assets
+      </button>
+      <button class="btn btn-success" onclick="window.location.reload()">
+        <i class="fas fa-sync-alt"></i> Refresh
+      </button>
+      <a href="/admin.html" class="btn btn-danger" style="text-decoration:none;">
+        <i class="fas fa-arrow-left"></i> Back to Admin
+      </a>
+    </div>
+    
+    <div class="output" id="output"></div>
+  </div>
+
+  <script src="/js/minify.js"></script>
+</body>
+</html>

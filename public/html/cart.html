@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <title>Shopping Cart</title>
+  
+  <!-- Main Global Styles -->
+  <link rel="stylesheet" href="/style.css">
+  
+  <!-- External Libraries -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  
+  <!-- Page-Specific Styles -->
+  <link rel="stylesheet" href="/css/cart.css">
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div class="header">
+  <h1>🛍️ <span id="shopNameHeader">Our Business</span></h1>
+  <div class="header-right">
+    <a href="/"><i class="fas fa-home"></i> Home</a>
+    <a href="/account.html"><i class="fas fa-user"></i> Account</a>
+    <a href="/cart.html" class="cart-link">
+      <i class="fas fa-shopping-cart" style="font-size:1.2rem;"></i>
+      <span id="cartBadge">0</span>
+    </a>
+  </div>
+</div>
+
+<!-- ===== CART PAGE ===== -->
+<div class="cart-page">
+  <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Continue Shopping</a>
+  <h1>🛒 Your Cart</h1>
+  <p class="sub">Review your items, then place your order.</p>
+
+  <div id="stockTimer" class="timer" style="display:none;">⏳ Items reserved for <span id="timerDisplay">15:00</span></div>
+
+  <div id="cartItemsContainer"></div>
+
+  <div id="checkoutSections" style="display:none;">
+    <div style="margin: 6px 0;">
+      <button class="review-all-btn" onclick="openReviewAllModal()">
+        <i class="fas fa-eye"></i> Click here to review all products details before submitting
+      </button>
+    </div>
+
+    <div class="cart-grid">
+
+      <!-- Delivery Location -->
+      <div class="cart-section" id="locationSection">
+        <h3><i class="fas fa-map-marker-alt" style="color:#2563eb;"></i> Where to send your order?</h3>
+        
+        <div style="background:#f0fdf4; padding:8px 12px; border-radius:6px; margin-bottom:10px; border-left:3px solid #22c55e;">
+          <p style="font-size:0.8rem; color:#166534; margin:0;">
+            <i class="fas fa-info-circle"></i> 
+            Tell us exactly where to deliver. Please give clear directions so our driver can find you easily.
+          </p>
+        </div>
+        
+        <div class="location-fields">
+          <div>
+            <label>📍 County <span style="color:#ef4444;">*</span></label>
+            <input type="text" id="deliveryCounty" placeholder="e.g., Kisumu, Nairobi, Mombasa">
+          </div>
+          <div>
+            <label>📍 Sub-County / Constituency <span style="color:#ef4444;">*</span></label>
+            <input type="text" id="deliverySubCounty" placeholder="e.g., Kisumu East, Nyando, Muhoroni">
+          </div>
+          <div>
+            <label>📍 Specific Location / Directions <span style="color:#ef4444;">*</span></label>
+            <textarea id="deliveryAddress" rows="3" placeholder="e.g., Near Ahero Market, along Kisumu-Kakamega Road"></textarea>
+          </div>
+          <div>
+            <label>📝 Extra info (optional)</label>
+            <input type="text" id="deliveryInstructions" placeholder="e.g., Call me when you arrive, or leave with guard">
+          </div>
+        </div>
+        
+        <input type="hidden" id="recipientName" value="">
+        <input type="hidden" id="recipientPhone" value="">
+        <input type="hidden" id="customerLat" value="">
+        <input type="hidden" id="customerLng" value="">
+        <input type="hidden" id="locationAccuracy" value="">
+      </div>
+
+      <div class="cart-section">
+        <h3><i class="fas fa-truck" style="color:#f59e0b;"></i> Shipping Speed</h3>
+        <div id="freeShippingBanner" class="free-shipping-banner">🎉 Free Standard Shipping!</div>
+        <div class="shipping-options" id="shippingOptions"></div>
+        <div class="shipping-info">💡 Fee based on order total – more value when you buy more</div>
+      </div>
+
+      <div class="cart-section">
+        <h3><i class="fas fa-gift" style="color:#22c55e;"></i> Promo Code</h3>
+        <div class="promo-input">
+          <input type="text" id="promoInput" placeholder="Enter promo code">
+          <button onclick="applyPromo()">Apply</button>
+        </div>
+        <div class="promo-hint">
+          <i class="fas fa-info-circle"></i> 
+          What is a promo code? A discount code that gives you savings on your order.
+        </div>
+        <div id="promoMessage" style="font-size:0.65rem; margin-top:2px;"></div>
+
+        <div style="margin-top:8px; border-top:1px solid #e8ecf1; padding-top:6px;">
+          <h3 style="font-size:0.7rem; font-weight:700; margin:0 0 2px 0;"><i class="fas fa-pen" style="color:#64748b;"></i> Special Instructions</h3>
+          <textarea id="orderNotes" placeholder="e.g., Leave at gate, call on arrival" rows="1"></textarea>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="cart-section" style="margin-top:10px; background:#f8fafc; border:2px solid #e2e8f0;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div style="flex:1; min-width:200px;">
+          <div class="summary-row"><span class="label">Subtotal</span><span class="amount" id="subtotalPrice">Ksh 0</span></div>
+          <div id="shippingSummaryRow" class="summary-row"><span class="label">Shipping</span><span class="amount" id="shippingPrice">Ksh 0</span></div>
+          <div id="discountSummaryRow" class="summary-row" style="display:none;"><span class="label">Discount</span><span class="amount" id="discountAmount">-Ksh 0</span></div>
+          <div class="summary-row total"><span>Total</span><span id="cartTotal">Ksh 0</span></div>
+        </div>
+        <button class="btn-place" id="placeOrderBtn" onclick="placeOrder()" style="max-width:250px;">
+          <i class="fas fa-check-circle"></i> Place Order
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="recommendedSection" style="margin-top:16px;">
+    <h3 style="font-size:0.9rem; font-weight:700;">You may also like</h3>
+    <div id="recommendedGrid" class="related-grid"></div>
+  </div>
+</div>
+
+<!-- ===== PRODUCT PREVIEW MODAL ===== -->
+<div class="modal-overlay" id="productPreviewModal">
+  <div class="modal-box">
+    <button class="close-modal" onclick="closeProductPreview()">&times;</button>
+    <div class="modal-title" id="previewTitle">Product Details</div>
+    <div id="previewContent"></div>
+    <div style="margin-top:12px;">
+      <h4 style="font-size:0.8rem; font-weight:700; margin-bottom:6px;">You may also like</h4>
+      <div id="previewRelated" class="related-grid"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeProductPreview()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== REVIEW ALL MODAL ===== -->
+<div class="modal-overlay" id="reviewAllModal">
+  <div class="modal-box">
+    <button class="close-modal" onclick="closeReviewAll()">&times;</button>
+    <div class="modal-title">📋 Review All Products</div>
+    <div id="reviewAllContent"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeReviewAll()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAYMENT MODAL ===== -->
+<div class="modal-overlay" id="paymentModal">
+  <div class="modal-box">
+    <button class="close-modal" onclick="closePaymentModal()">&times;</button>
+    <h3>💳 Choose Payment Method</h3>
+    <div id="paymentBody">
+      <p>Total amount: <strong id="paymentTotal">Ksh 0</strong></p>
+      
+      <div class="payment-methods" id="paymentMethods">
+        <div class="method" onclick="selectPaymentMethod('mpesa')">
+          <i class="fas fa-mobile-alt" style="color:#4CAF50;"></i> M-Pesa
+        </div>
+        <div class="method" onclick="selectPaymentMethod('airtel')">
+          <i class="fas fa-phone" style="color:#FF6600;"></i> Airtel Money
+        </div>
+        <div class="method" onclick="selectPaymentMethod('bank')">
+          <i class="fas fa-university" style="color:#2563eb;"></i> Bank Transfer
+        </div>
+      </div>
+      
+      <div id="paymentDetails" style="display:none; margin-top:10px;">
+        <div id="phoneField" style="display:none;">
+          <label>Phone Number:</label>
+          <input type="text" id="paymentPhone" placeholder="0712345678" class="payment-field">
+        </div>
+        
+        <div id="bankField" style="display:none;">
+          <label>Select your bank:</label>
+          <div class="bank-search-container">
+            <input type="text" id="bankSearch" placeholder="Search for your bank..." oninput="filterBanks()" class="payment-field">
+            <div class="bank-dropdown" id="bankDropdown"></div>
+          </div>
+          <input type="hidden" id="selectedBank">
+          <label style="margin-top:8px;">Account Number:</label>
+          <input type="text" id="paymentAccount" placeholder="Account number" class="payment-field">
+          <label style="margin-top:8px;">PIN:</label>
+          <input type="password" id="paymentBankPin" placeholder="Enter your PIN" class="payment-field">
+        </div>
+        
+        <button class="btn btn-success" id="payNowBtn" onclick="processPayment()" style="margin-top:8px; padding:10px 20px; border-radius:8px; border:none; background:#22c55e; color:white; font-weight:700; cursor:pointer; width:100%;">
+          💳 Pay Now
+        </button>
+        <div id="paymentStatus" style="margin-top:8px; font-size:0.85rem;"></div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closePaymentModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== BOTTOM NAV - FIXED ===== -->
+<div class="bottom-nav">
+  <a href="/"><i class="fas fa-home"></i><span>Home</span></a>
+  <a href="/category.html"><i class="fas fa-th-large"></i><span>Category</span></a>
+  <a href="/account.html"><i class="fas fa-envelope"></i><span>Messages</span></a>
+  <a href="/cart.html" class="active" style="position:relative;">
+    <i class="fas fa-shopping-cart"></i>
+    <span class="nav-badge" id="navCartBadge">0</span>
+    <span>Cart</span>
+  </a>
+  <a href="/account.html"><i class="fas fa-user"></i><span>Account</span></a>
+</div>
+
+<!-- ===== SCRIPTS ===== -->
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/cart.js"></script>
+</body>
+</html>

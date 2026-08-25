@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <title>Order Tracking</title>
+  
+  <!-- Main Global Styles -->
+  <link rel="stylesheet" href="/style.css">
+  
+  <!-- External Libraries -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  
+  <!-- Page-Specific Styles -->
+  <link rel="stylesheet" href="/css/order-tracking.css">
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div class="header">
+  <h1>🛍️ <span id="shopNameHeader">Our Business</span></h1>
+  <div class="header-right">
+    <a href="/">Home</a>
+    <a href="/account.html">My Account</a>
+    <a href="#" onclick="logout()" style="color:#ef4444;">Logout</a>
+  </div>
+</div>
+
+<!-- ===== TRACKING PAGE ===== -->
+<div class="track-page" id="trackPage">
+  <a href="/account.html" class="back-link"><i class="fas fa-arrow-left"></i> Back to Orders</a>
+  
+  <div class="track-card" id="trackCard">
+    <!-- Loading -->
+    <div id="loadingState" class="loading-spinner">
+      <i class="fas fa-spinner fa-spin fa-2x"></i>
+      <p>Loading order details...</p>
+    </div>
+    
+    <!-- Order Content -->
+    <div id="orderContent" style="display:none;">
+      <!-- Header -->
+      <div class="track-header">
+        <div class="icon">📦</div>
+        <h2 id="trackTitle">Order Details</h2>
+        <div class="track-ref" id="trackRef">Loading...</div>
+        <div class="track-status" id="trackStatus">Loading...</div>
+        <div id="trackStatusMessage" class="status-message"></div>
+        <div id="trackDeliveryEstimate" style="font-size:0.8rem; color:#475569; margin-top:4px;"></div>
+      </div>
+
+      <!-- Timeline -->
+      <div id="trackTimeline"></div>
+
+      <!-- Order Info -->
+      <div class="info-grid" id="trackInfo"></div>
+
+      <!-- Items -->
+      <div class="items-section">
+        <h3>🛒 Order Items</h3>
+        <table class="order-items-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Variant</th>
+              <th>Qty</th>
+              <th>Price</th>
+              <th>Subtotal</th>
+              <th>ID</th>
+            </tr>
+          </thead>
+          <tbody id="trackItemsBody"></tbody>
+        </table>
+        <div class="order-total" id="trackTotal">Total: Ksh 0</div>
+      </div>
+
+      <!-- Replacement/Refund Status -->
+      <div id="replacementStatus" style="margin:8px 0;"></div>
+
+      <!-- ACTION GROUP -->
+      <div class="action-group" id="trackActions">
+        <div class="action-label">📋 Available Actions</div>
+      </div>
+
+      <!-- Chat -->
+      <div class="chat-section">
+        <h4>💬 Order Chat</h4>
+        <div class="chat-box" id="trackChat">Loading messages...</div>
+        <div class="chat-input-row">
+          <input type="text" id="trackChatInput" placeholder="Type a message...">
+          <button onclick="sendTrackChat()">Send</button>
+        </div>
+      </div>
+
+      <!-- Receipt -->
+      <div class="receipt-area">
+        <button class="btn btn-primary print-btn" onclick="window.print()">
+          <i class="fas fa-print"></i> Download Receipt
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAYMENT MODAL ===== -->
+<div class="modal-overlay" id="paymentModal">
+  <div class="modal-box">
+    <button class="close-modal" onclick="closePaymentModal()">&times;</button>
+    <h3>💳 Complete Payment</h3>
+    <div id="paymentBody">
+      <p>You need to pay an extra <strong id="paymentAmount">Ksh 0</strong></p>
+      
+      <div class="payment-methods" id="paymentMethods">
+        <div class="method" onclick="selectPaymentMethod('mpesa')">
+          <i class="fas fa-mobile-alt" style="color:#4CAF50;"></i> M-Pesa
+        </div>
+        <div class="method" onclick="selectPaymentMethod('airtel')">
+          <i class="fas fa-phone" style="color:#FF6600;"></i> Airtel Money
+        </div>
+        <div class="method" onclick="selectPaymentMethod('paypal')">
+          <i class="fab fa-paypal" style="color:#0070BA;"></i> PayPal
+        </div>
+      </div>
+      
+      <div id="paymentDetails" style="display:none;">
+        <div id="phoneField" style="display:none;">
+          <label>Phone Number:</label>
+          <input type="text" id="paymentPhone" placeholder="0712345678">
+        </div>
+        <div id="paypalField" style="display:none;">
+          <p style="font-size:0.8rem; color:#64748b;">You will be redirected to PayPal to complete payment.</p>
+        </div>
+        
+        <div id="paymentStatus" class="payment-status"></div>
+        <button class="btn-pay" id="payNowBtn" onclick="processPayment()">Pay Now</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== REPLACEMENT MODAL ===== -->
+<div class="modal-overlay" id="replacementModal">
+  <div class="modal-box">
+    <button class="close-modal" onclick="closeReplacementModal()">&times;</button>
+    <h3 id="replacementTitle">🔄 Replace Products</h3>
+    <div id="replacementBody"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeReplacementModal()">Cancel</button>
+      <button class="btn btn-primary" id="replacementNextBtn" onclick="nextReplacementStep()">Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== REFUND MODAL ===== -->
+<div class="modal-overlay" id="refundModal">
+  <div class="modal-box">
+    <button class="close-modal" onclick="closeRefundModal()">&times;</button>
+    <h3>💰 Request Refund</h3>
+    <div id="refundBody">
+      <p>Please tell us why you are requesting a refund:</p>
+      <textarea id="refundReason" class="refund-reason-textarea" placeholder="Explain why you need a refund..."></textarea>
+      <div id="refundInfo" style="margin-top:8px; font-size:0.85rem; color:#475569;"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeRefundModal()">Cancel</button>
+      <button class="btn btn-success" onclick="submitRefund()">Submit Refund Request</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CANCEL MODAL ===== -->
+<div class="modal-overlay" id="cancelModal">
+  <div class="modal-box">
+    <button class="close-modal" onclick="closeCancelModal()">&times;</button>
+    <h3>❌ Cancel Order</h3>
+    <div id="cancelBody">
+      <p>Please tell us why you want to cancel this order:</p>
+      <select id="cancelReason" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px; font-size:0.9rem;">
+        <option value="Changed my mind">Changed my mind</option>
+        <option value="Found a better price">Found a better price</option>
+        <option value="Shipping too long">Shipping too long</option>
+        <option value="Ordered by mistake">Ordered by mistake</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeCancelModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="submitCancel()">Confirm Cancellation</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== RETURN MODAL ===== -->
+<div class="modal-overlay" id="returnModal">
+  <div class="modal-box">
+    <button class="close-modal" onclick="closeReturnModal()">&times;</button>
+    <h3>📦 Request Return</h3>
+    <div id="returnBody">
+      <p>Select the product to return:</p>
+      <div id="returnProductsList"></div>
+      <p style="margin-top:8px;">Reason for return:</p>
+      <textarea id="returnReason" class="refund-reason-textarea" placeholder="Why are you returning this item?"></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeReturnModal()">Cancel</button>
+      <button class="btn btn-success" onclick="submitReturn()">Submit Return</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== BOTTOM NAV - FIXED ===== -->
+<div class="bottom-nav">
+  <a href="/"><i class="fas fa-home"></i><span>Home</span></a>
+  <a href="/category.html"><i class="fas fa-th-large"></i><span>Category</span></a>
+  <a href="/account.html"><i class="fas fa-envelope"></i><span>Messages</span></a>
+  <a href="/cart.html" style="position:relative;">
+    <i class="fas fa-shopping-cart"></i>
+    <span class="nav-badge" id="navCartBadge">0</span>
+    <span>Cart</span>
+  </a>
+  <a href="/account.html"><i class="fas fa-user"></i><span>Account</span></a>
+</div>
+
+<!-- ===== SCRIPTS ===== -->
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/order-tracking.js"></script>
+</body>
+</html>

@@ -1,0 +1,266 @@
+/* ============================================================
+   ADMIN ORDERS PAGE STYLES
+   Location: D:\my-business-website\public\css\admin-orders.css
+   ============================================================ */
+
+.orders-page {
+  max-width: 100%;
+  padding: 0 12px 20px;
+}
+
+.orders-page h1 {
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  background: white;
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  align-items: center;
+}
+
+.filter-bar label {
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: #475569;
+}
+
+.filter-bar input,
+.filter-bar select {
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.filter-bar button {
+  padding: 4px 12px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.filter-bar button:hover {
+  background: #1d4ed8;
+}
+
+.order-card {
+  background: white;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  border-left: 4px solid transparent;
+}
+
+.order-card.urgent {
+  border-left-color: #ef4444;
+}
+
+.order-card .order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  border-bottom: 1px solid #e8ecf1;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+}
+
+.order-header .id {
+  font-weight: 700;
+}
+
+.order-header .status {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.6rem;
+  font-weight: 600;
+}
+
+.status-pending { background: #fef3c7; color: #92400e; }
+.status-pending_payment { background: #fef3c7; color: #92400e; }
+.status-confirmed { background: #d1fae5; color: #065f46; }
+.status-shipped { background: #dbeafe; color: #1e40af; }
+.status-delivered { background: #e0e7ff; color: #3730a3; }
+.status-received { background: #dcfce7; color: #166534; }
+.status-cancelled { background: #fee2e2; color: #991b1b; }
+.status-completed { background: #d1fae5; color: #065f46; }
+
+.order-icons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 4px 0;
+}
+
+.icon-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: #f1f5f9;
+}
+
+.icon-indicator .blink-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.icon-indicator .blink-dot.red { background: #ef4444; animation: blink 1s infinite; }
+.icon-indicator .blink-dot.green { background: #22c55e; animation: blink 1s infinite; }
+.icon-indicator .blink-dot.yellow { background: #f59e0b; animation: blink 1s infinite; }
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+.order-detail {
+  display: none;
+  margin-top: 10px;
+  padding: 10px;
+  background: #f8fafc;
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+.order-detail.active {
+  display: block;
+}
+
+.timeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0;
+}
+
+.timeline .step {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: #e2e8f0;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.6rem;
+  color: #475569;
+}
+
+.timeline .step.active {
+  background: #2563eb;
+  color: white;
+  font-weight: 600;
+}
+
+.timeline .step .time {
+  font-size: 0.5rem;
+  opacity: 0.7;
+  margin-left: 2px;
+}
+
+.chat-box {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 6px;
+  max-height: 140px;
+  overflow-y: auto;
+  background: white;
+}
+
+.chat-msg {
+  padding: 3px 8px;
+  border-bottom: 1px solid #f1f4f8;
+  font-size: 0.75rem;
+}
+
+.chat-msg.seller { background: #e2e8f0; border-radius: 4px; margin: 2px 0; }
+.chat-msg.customer { background: #dbeafe; border-radius: 4px; margin: 2px 0; }
+.chat-msg.system { background: #fef3c7; border-radius: 4px; margin: 2px 0; font-style: italic; }
+
+.btn {
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.7rem;
+}
+
+.btn-primary { background: #2563eb; color: white; }
+.btn-danger { background: #ef4444; color: white; }
+.btn-success { background: #22c55e; color: white; }
+.btn-warning { background: #f59e0b; color: white; }
+.btn-info { background: #0ea5e9; color: white; }
+.btn-sm { padding: 2px 8px; font-size: 0.6rem; }
+
+.admin-header {
+  background: #1e293b;
+  color: white;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-header a {
+  color: #94a3b8;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.admin-header a:hover {
+  color: white;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 12px;
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.payments-container {
+  font-size: 0.7rem;
+  margin-top: 4px;
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 4px;
+}
+
+.location-box {
+  margin: 6px 0;
+  padding: 8px 10px;
+  background: #f0f9ff;
+  border-radius: 6px;
+  border-left: 3px solid #2563eb;
+  font-size: 0.75rem;
+}
+
+.location-box a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.location-box a:hover {
+  text-decoration: underline;
+}
