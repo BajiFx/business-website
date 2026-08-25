@@ -20,7 +20,7 @@
 <body class="admin-body">
 
     <!-- ============================================================
-         AUTH CONTAINER - ALWAYS VISIBLE FIRST
+         AUTH CONTAINER - SHOWN BY DEFAULT
          ============================================================ -->
     <div id="authContainer" class="auth-container active">
         <div class="auth-box">
@@ -66,6 +66,15 @@
                 </div>
                 <button class="btn-primary" id="registerBtn">Create Account</button>
                 <div id="registerStatus" class="auth-status"></div>
+            </div>
+
+            <!-- ============================================================
+                 BACK TO SHOP LINK - ADDED BACK
+                 ============================================================ -->
+            <div style="text-align:center; padding: 0 24px 20px 24px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+                <a href="/" style="color: #64748b; text-decoration: none; font-size: 0.85rem; font-weight: 500; transition: color 0.2s;">
+                    <i class="fas fa-arrow-left"></i> Back to Shop
+                </a>
             </div>
         </div>
     </div>
@@ -141,8 +150,7 @@
                 <h1><i class="fas fa-chart-pie"></i> <span id="headerTitle">Dashboard</span></h1>
             </div>
             <div class="header-right">
-                <!-- FIXED: Back to Shop link - opens in new tab to avoid losing admin session -->
-                <a href="/" target="_blank">← Back to Shop</a>
+                <a href="/" target="_blank">← Shop</a>
                 <button class="logout-btn" onclick="logout()">Logout</button>
             </div>
         </div>

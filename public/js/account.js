@@ -174,6 +174,7 @@ function renderCustomerStats(orders) {
         var count = counts[item.key] || 0;
         var isPending = ['pending_payment', 'pending', 'delivered'].includes(item.key);
         var blink = (count > 0 && isPending) ? '<span class="stat-blink"></span>' : '<span class="stat-blink hidden"></span>';
+        // Check if this status is currently active filter
         var active = (currentFilterStatus === item.key) ? 'active' : '';
         
         html += '<div class="stat-link ' + item.css + ' ' + active + '" data-status="' + item.key + '" onclick="filterOrdersByStatus(\'' + item.key + '\')">';
@@ -223,20 +224,41 @@ function updateCartBadges() {
     });
 }
 
+// ============================================================
+//  FILTER ORDERS BY STATUS - FIXED
+// ============================================================
+
 function filterOrdersByStatus(status) {
+    console.log('🔍 Filtering by status:', status);
+    
+    // Update current filter
     currentFilterStatus = status;
-    document.querySelectorAll('#customerStatsGrid .stat-link').forEach(card => {
-        card.classList.toggle('active', card.dataset.status === status);
+    
+    // Update active state on stat links
+    document.querySelectorAll('#customerStatsGrid .stat-link').forEach(function(link) {
+        link.classList.toggle('active', link.dataset.status === status);
     });
+    
+    // If we're on the dashboard, refresh the stats display with filtered orders
     if (currentSection === 'dashboard') {
+        // Show only the filtered orders in recent orders
+        var filteredOrders = allOrders.filter(function(o) { return o.status === status; });
+        renderRecentOrders(filteredOrders);
+        
+        // Update the stats to highlight the active filter
         renderCustomerStats(allOrders);
-    } else if (currentSection === 'orders') {
+    } 
+    // If we're on the orders page, load the filtered orders table
+    else if (currentSection === 'orders') {
         loadOrdersTable();
     }
+    
+    // Navigate to orders section to show the filtered list
+    navigateTo('orders');
 }
 
 // ============================================================
-//  ORDERS TABLE
+//  ORDERS TABLE - FIXED TO RESPECT FILTER
 // ============================================================
 
 function loadOrdersTable() {
@@ -252,13 +274,16 @@ function loadOrdersTable() {
         return;
     }
     
+    // Apply filter if set
     let filtered = allOrders;
     if (currentFilterStatus && currentFilterStatus !== 'all') {
-        filtered = allOrders.filter(o => o.status === currentFilterStatus);
+        filtered = allOrders.filter(function(o) { 
+            return o.status === currentFilterStatus; 
+        });
     }
     
-    if (!Array.isArray(filtered)) {
-        container.innerHTML = '<p class="empty-msg">No orders to show.</p>';
+    if (!Array.isArray(filtered) || filtered.length === 0) {
+        container.innerHTML = '<p class="empty-msg">No orders with status: ' + (currentFilterStatus || 'all') + '</p>';
         return;
     }
     
@@ -952,6 +977,24 @@ async function deleteAccount() {
 window.deleteAccount = deleteAccount;
 
 // ============================================================
+//  CLEAR FILTER - RESET TO SHOW ALL ORDERS
+// ============================================================
+
+function clearFilter() {
+    currentFilterStatus = null;
+    document.querySelectorAll('#customerStatsGrid .stat-link').forEach(function(link) {
+        link.classList.remove('active');
+    });
+    if (currentSection === 'dashboard') {
+        renderRecentOrders(allOrders);
+        renderCustomerStats(allOrders);
+    } else if (currentSection === 'orders') {
+        loadOrdersTable();
+    }
+}
+window.clearFilter = clearFilter;
+
+// ============================================================
 //  INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
@@ -972,6 +1015,7 @@ window.loadPaymentHistory = loadPaymentHistory;
 window.toggleOrderDetails = toggleOrderDetails;
 window.sendOrderChat = sendOrderChat;
 window.filterOrdersByStatus = filterOrdersByStatus;
+window.clearFilter = clearFilter;
 window.showAddAddress = showAddAddress;
 window.closeAddressModal = closeAddressModal;
 window.saveAddress = saveAddress;

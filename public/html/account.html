@@ -20,7 +20,7 @@
 <body>
 
 <!-- ===== HEADER ===== -->
-<div class="header">
+<div class="account-header">
   <div class="header-left">
     <button class="hamburger" onclick="toggleSidebar()">☰</button>
     <h1>🛍️ <span id="shopNameHeader">Our Business</span></h1>
@@ -112,7 +112,7 @@
 
     <div class="account-card">
       <h3 style="font-size:1rem; font-weight:700; margin:0 0 8px 0;">📊 Your Order Dashboard</h3>
-      <div class="stats-grid" id="customerStatsGrid"></div>
+      <div id="customerStatsGrid"></div>
     </div>
 
     <div class="account-card">
@@ -125,7 +125,10 @@
   <div class="section" id="section-orders">
     <div class="section-header">
       <h2>📦 My Orders</h2>
-      <button class="btn btn-primary btn-sm" onclick="loadOrdersTable()"><i class="fas fa-sync-alt"></i> Refresh</button>
+      <div>
+        <button class="btn btn-secondary btn-sm" onclick="clearFilter()"><i class="fas fa-times"></i> Show All</button>
+        <button class="btn btn-primary btn-sm" onclick="loadOrdersTable()"><i class="fas fa-sync-alt"></i> Refresh</button>
+      </div>
     </div>
     <div class="account-card">
       <div id="ordersContainer"><p class="empty-msg">Loading orders...</p></div>
@@ -201,7 +204,9 @@
     <div class="form-group">
       <label>Label</label>
       <select id="addressLabel">
-        <option>Home</option><option>Office</option><option>Other</option>
+        <option>Home</option>
+        <option>Office</option>
+        <option>Other</option>
       </select>
     </div>
     <div class="form-group">
@@ -228,7 +233,7 @@
 </div>
 
 <!-- ===== BOTTOM NAV - FIXED ===== -->
-<div class="bottom-nav">
+<div class="account-bottom-nav">
   <a href="/"><i class="fas fa-home"></i><span>Home</span></a>
   <a href="/category.html"><i class="fas fa-th-large"></i><span>Category</span></a>
   <a href="/account.html" class="active"><i class="fas fa-envelope"></i><span>Messages</span></a>
