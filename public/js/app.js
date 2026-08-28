@@ -70,6 +70,117 @@ if (storedUser) {
 }
 
 // ============================================================
+//  PASSWORD STRENGTH CHECKER
+// ============================================================
+
+function checkPasswordStrength(password) {
+    let score = 0;
+    let feedback = [];
+    
+    if (password.length >= 8) {
+        score += 1;
+    } else {
+        feedback.push('At least 8 characters');
+    }
+    
+    if (/[A-Z]/.test(password)) {
+        score += 1;
+    } else {
+        feedback.push('At least one uppercase letter');
+    }
+    
+    if (/[a-z]/.test(password)) {
+        score += 1;
+    } else {
+        feedback.push('At least one lowercase letter');
+    }
+    
+    if (/[0-9]/.test(password)) {
+        score += 1;
+    } else {
+        feedback.push('At least one number');
+    }
+    
+    if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+        score += 1;
+    }
+    
+    let strength = 'weak';
+    let color = '#ef4444';
+    let percentage = 20;
+    
+    if (score >= 5) {
+        strength = 'strong';
+        color = '#22c55e';
+        percentage = 100;
+    } else if (score >= 4) {
+        strength = 'good';
+        color = '#f59e0b';
+        percentage = 75;
+    } else if (score >= 3) {
+        strength = 'fair';
+        color = '#f97316';
+        percentage = 50;
+    } else if (score >= 2) {
+        strength = 'weak';
+        color = '#ef4444';
+        percentage = 25;
+    } else {
+        strength = 'very weak';
+        color = '#ef4444';
+        percentage = 10;
+    }
+    
+    return {
+        score,
+        strength,
+        color,
+        percentage,
+        feedback,
+        isValid: score >= 3 && password.length >= 8
+    };
+}
+
+function showPasswordStrength(password, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    const result = checkPasswordStrength(password);
+    
+    if (!password) {
+        container.innerHTML = '';
+        container.style.display = 'none';
+        return;
+    }
+    
+    container.style.display = 'block';
+    container.innerHTML = `
+        <div style="margin-top:4px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+                <span style="font-size:0.65rem; color:#64748b;">Password strength:</span>
+                <span style="font-size:0.65rem; font-weight:700; color:${result.color};">${result.strength.toUpperCase()}</span>
+            </div>
+            <div style="width:100%; height:4px; background:#e2e8f0; border-radius:4px; overflow:hidden;">
+                <div style="width:${result.percentage}%; height:100%; background:${result.color}; border-radius:4px; transition: width 0.3s ease;"></div>
+            </div>
+            ${!result.isValid && password.length > 0 ? `
+                <div style="margin-top:4px; font-size:0.55rem; color:#ef4444;">
+                    ${result.feedback.map(f => `• ${f}`).join('<br>')}
+                </div>
+            ` : ''}
+            ${result.isValid ? `
+                <div style="margin-top:4px; font-size:0.55rem; color:#22c55e;">
+                    ✅ Password meets requirements
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+window.checkPasswordStrength = checkPasswordStrength;
+window.showPasswordStrength = showPasswordStrength;
+
+// ============================================================
 //  CART FUNCTIONS
 // ============================================================
 function getCart() {
@@ -182,15 +293,11 @@ function updateNavCartBadge() {
 window.updateNavCartBadge = updateNavCartBadge;
 
 // ============================================================
-//  DISTANCE CALCULATION FUNCTIONS - FIXED
+//  DISTANCE CALCULATION FUNCTIONS
 // ============================================================
 
-/**
- * Calculate distance between two coordinates (Haversine formula)
- * Returns distance in meters
- */
 function getDistance(lat1, lng1, lat2, lng2) {
-    const R = 6371e3; // Earth's radius in meters
+    const R = 6371e3;
     const φ1 = lat1 * Math.PI / 180;
     const φ2 = lat2 * Math.PI / 180;
     const Δφ = (lat2 - lat1) * Math.PI / 180;
@@ -201,12 +308,9 @@ function getDistance(lat1, lng1, lat2, lng2) {
               Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     
-    return R * c; // Distance in meters
+    return R * c;
 }
 
-/**
- * Format distance for display
- */
 function formatDistance(meters) {
     if (meters < 1000) {
         return Math.round(meters) + ' m';
@@ -214,9 +318,6 @@ function formatDistance(meters) {
     return (meters / 1000).toFixed(1) + ' km';
 }
 
-/**
- * Format time for display (walking speed ~1.4 m/s)
- */
 function formatTime(seconds) {
     if (seconds < 60) {
         return Math.round(seconds) + ' sec';
@@ -226,7 +327,6 @@ function formatTime(seconds) {
     return mins + ' min ' + (secs > 0 ? secs + ' sec' : '');
 }
 
-// Make distance functions globally accessible
 window.getDistance = getDistance;
 window.formatDistance = formatDistance;
 window.formatTime = formatTime;
@@ -358,6 +458,13 @@ async function handleAuthLogin() {
     if (!status) return;
     status.textContent = '';
 
+    const strength = checkPasswordStrength(password);
+    if (password && !strength.isValid) {
+        status.textContent = '❌ Password is too weak. ' + strength.feedback.join(', ');
+        status.style.color = '#ef4444';
+        return;
+    }
+
     if (!email || !password) {
         status.textContent = '❌ Email and password are required.';
         status.style.color = '#ef4444';
@@ -438,8 +545,15 @@ async function handleAuthRegister() {
         return;
     }
     
-    if (password.length < 6) {
-        status.textContent = '❌ Password must be at least 6 characters.';
+    const strength = checkPasswordStrength(password);
+    if (!strength.isValid) {
+        status.textContent = '❌ Password is too weak. ' + strength.feedback.join(', ');
+        status.style.color = '#ef4444';
+        return;
+    }
+    
+    if (password.length < 8) {
+        status.textContent = '❌ Password must be at least 8 characters.';
         status.style.color = '#ef4444';
         return;
     }
@@ -494,6 +608,106 @@ async function handleAuthRegister() {
     }
 }
 window.handleAuthRegister = handleAuthRegister;
+
+// ============================================================
+//  OPEN CHAT TAB - COMPLETE FIXED VERSION
+// ============================================================
+
+function openChatTab() {
+    // First, try to find chat box on current page
+    const chatBox = document.getElementById('chatBox');
+    const chatToggle = document.getElementById('chatToggle');
+    
+    // If chat box exists on this page
+    if (chatBox) {
+        // If chat is already open, just focus it
+        if (chatBox.style.display === 'flex') {
+            chatBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
+        
+        // If chat toggle function exists, use it
+        if (typeof toggleChat === 'function') {
+            toggleChat();
+            // After toggling, scroll to chat
+            setTimeout(() => {
+                chatBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+            return;
+        }
+        
+        // Fallback: manually show chat box
+        chatBox.style.display = 'flex';
+        chatBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+    
+    // If chat box doesn't exist on this page, try to open chat widget
+    const chatWidget = document.getElementById('floatingWidgets');
+    if (chatWidget) {
+        const toggleBtn = document.getElementById('chatToggle');
+        if (toggleBtn && typeof toggleChat === 'function') {
+            toggleChat();
+            return;
+        }
+    }
+    
+    // If no chat on this page, show a toast and stay on page
+    showToast('💬 Chat is available on the homepage or product pages.', 'info');
+    
+    // Create floating chat button if it doesn't exist
+    createFloatingChatButton();
+}
+
+// ============================================================
+//  CREATE FLOATING CHAT BUTTON (If not exists)
+// ============================================================
+
+function createFloatingChatButton() {
+    // Check if button already exists
+    if (document.getElementById('floatingChatBtn')) return;
+    
+    // Create floating chat button
+    const btn = document.createElement('button');
+    btn.id = 'floatingChatBtn';
+    btn.innerHTML = '💬';
+    btn.style.cssText = `
+        position: fixed;
+        bottom: 100px;
+        right: 16px;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: #2563eb;
+        color: white;
+        border: none;
+        font-size: 1.5rem;
+        box-shadow: 0 4px 16px rgba(37,99,235,0.3);
+        cursor: pointer;
+        z-index: 999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+    `;
+    btn.onmouseover = () => btn.style.transform = 'scale(1.05)';
+    btn.onmouseout = () => btn.style.transform = 'scale(1)';
+    btn.onclick = function() {
+        // If user is logged in, redirect to homepage with chat open
+        if (isLoggedIn()) {
+            window.location.href = '/?openChat=true';
+        } else {
+            openAuthModal('login');
+            showToast('Please login to chat', 'warning');
+        }
+    };
+    document.body.appendChild(btn);
+    
+    // Show toast with instruction
+    setTimeout(() => {
+        showToast('💬 Click the chat button to start chatting!', 'info');
+    }, 500);
+}
 
 // ============================================================
 //  CHANGE QUANTITY IN CART
@@ -940,13 +1154,16 @@ window.changeSlide = changeSlide;
 async function renderGrid() {
     const grid = document.getElementById('productGrid');
     if (!grid) return;
-    if (!rotatedProducts.length) {
+    
+    const products = window._filteredProducts || rotatedProducts || allProducts || [];
+    
+    if (!products.length) {
         grid.innerHTML = `<p style="text-align:center;padding:40px;">No products available yet.</p>`;
         return;
     }
 
     const variantMap = {};
-    for (let product of rotatedProducts) {
+    for (let product of products) {
         try {
             const res = await fetch(`/api/products/${product.id}/detail`);
             if (!res.ok) {
@@ -960,7 +1177,7 @@ async function renderGrid() {
         }
     }
 
-    grid.innerHTML = rotatedProducts.map(p => {
+    grid.innerHTML = products.map(p => {
         const cart = getCart();
         const inCart = cart.some(item => item.id === p.id);
         const btnText = inCart ? 'Add More' : 'Add to Cart';
@@ -1021,6 +1238,8 @@ async function renderGrid() {
             </div>
         `;
     }).join('');
+    
+    window._filteredProducts = null;
 }
 window.renderGrid = renderGrid;
 
@@ -1180,20 +1399,18 @@ function sendChatMessage() {
 window.sendChatMessage = sendChatMessage;
 
 // ============================================================
-//  LOCATION REQUEST & STATUS - FIXED
+//  LOCATION REQUEST & STATUS
 // ============================================================
 
 async function checkLocationStatus() {
     if (!isLoggedIn()) return false;
     try {
-        // FIXED: Correct endpoint path
         const res = await fetch('/api/location/customer/status', {
             headers: { 'Authorization': `Bearer ${window.customerToken}` }
         });
         if (!res.ok) return false;
         const data = await res.json();
         
-        // Handle both 'none' and null status
         if (data.status === 'approved') {
             const liveSection = document.getElementById('liveLocationSection');
             if (liveSection) liveSection.style.display = 'block';
@@ -1206,7 +1423,6 @@ async function checkLocationStatus() {
                         attribution: '&copy; OpenStreetMap'
                     }).addTo(liveMapInstance);
                     
-                    // Connect to socket for live updates
                     const liveSocket = io({ auth: { token: window.customerToken } });
                     liveSocket.on('admin_location', (data) => {
                         const { lat, lng } = data;
@@ -1216,7 +1432,6 @@ async function checkLocationStatus() {
                         checkLocationStatus();
                     });
                     
-                    // Fetch shop for admin location
                     fetch('/api/shop').then(res => res.json()).then(shop => {
                         if (shop.admin_lat && shop.admin_lng) {
                             updateLiveLocation(parseFloat(shop.admin_lat), parseFloat(shop.admin_lng));
@@ -1235,7 +1450,7 @@ async function checkLocationStatus() {
 window.checkLocationStatus = checkLocationStatus;
 
 // ============================================================
-//  UPDATE LIVE LOCATION - FIXED
+//  UPDATE LIVE LOCATION
 // ============================================================
 
 function updateLiveLocation(lat, lng) {
@@ -1256,10 +1471,9 @@ function updateLiveLocation(lat, lng) {
                 const userLat = pos.coords.latitude;
                 const userLng = pos.coords.longitude;
                 
-                // Use the getDistance function (now defined)
                 const dist = getDistance(userLat, userLng, lat, lng);
                 const distText = formatDistance(dist);
-                const time = (dist / 1.4); // Walking speed ~1.4 m/s
+                const time = (dist / 1.4);
                 const timeText = formatTime(time);
                 
                 const distanceEl = document.getElementById('liveDistance');
@@ -1267,7 +1481,6 @@ function updateLiveLocation(lat, lng) {
                     distanceEl.textContent = `📍 Distance: ${distText} (about ${timeText} walk)`;
                 }
                 
-                // Draw route line
                 if (liveRouteLine) {
                     liveMapInstance.removeLayer(liveRouteLine);
                 }
@@ -1278,7 +1491,6 @@ function updateLiveLocation(lat, lng) {
                 }).addTo(liveMapInstance);
             },
             () => {
-                // Geolocation error - show fallback
                 const distanceEl = document.getElementById('liveDistance');
                 if (distanceEl) {
                     distanceEl.textContent = '📍 Unable to get your location. Please enable GPS.';
@@ -1404,38 +1616,6 @@ function startHeroSlideshow() {
         }
     }, 5000);
 }
-
-// ============================================================
-//  OPEN CHAT TAB - FIX FOR MESSAGES BOTTOM NAV
-// ============================================================
-
-function openChatTab() {
-    // Check if we're on a page with chat box
-    const chatBox = document.getElementById('chatBox');
-    
-    if (chatBox) {
-        // If chat box exists, toggle it open
-        if (typeof toggleChat === 'function') {
-            toggleChat();
-        } else {
-            // Try to find and open chat
-            chatBox.style.display = 'flex';
-        }
-        // Scroll to chat
-        chatBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } else {
-        // If no chat box on this page, go to home page and open chat
-        window.location.href = '/';
-        // After navigation, open chat (will be handled by index.html)
-        setTimeout(() => {
-            if (typeof toggleChat === 'function') {
-                toggleChat();
-            }
-        }, 1000);
-    }
-}
-window.openChatTab = openChatTab; 
-
 window.startHeroSlideshow = startHeroSlideshow;
 
 function addImageToSlideshow(imageUrl) {
@@ -1516,5 +1696,9 @@ window.getCartStorageKey = getCartStorageKey;
 window.loadProducts = loadProducts;
 window.renderSlider = renderSlider;
 window.updateLiveLocation = updateLiveLocation;
+window.openChatTab = openChatTab;
+window.createFloatingChatButton = createFloatingChatButton;
+window.checkPasswordStrength = checkPasswordStrength;
+window.showPasswordStrength = showPasswordStrength;
 
 console.log('✅ App initialized successfully');
