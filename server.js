@@ -20,7 +20,7 @@ const fs = require('fs');
 
 const { pool, logError } = require('./src/config/database');
 const { globalErrorHandler } = require('./src/middleware/errorHandler');
-const { generalLimiter, sensitiveLimiter } = require('./src/middleware/rateLimiter');
+const { generalLimiter, apiLimiter, loginLimiter, sensitiveLimiter } = require('./src/middleware/rateLimiter');
 const { setupSocketHandlers } = require('./src/socket/socketHandler');
 const { initPaypalClient } = require('./src/services/paypal');
 const { restockOrder, appendOrderStatus, getSystemSetting } = require('./src/services/orderService');
@@ -188,12 +188,21 @@ app.get('/api/health', async (req, res) => {
 });
 
 // ============================================================
-//  RATE LIMITERS
+//  RATE LIMITERS - FIXED
 // ============================================================
 
-app.use('/api', generalLimiter);
-app.use('/api/auth/login', sensitiveLimiter);
-app.use('/api/auth/customer/login', sensitiveLimiter);
+// Apply API limiter to all API routes - less strict
+app.use('/api', apiLimiter);
+
+// Public endpoints - allow more requests (less strict)
+app.use('/api/shop', generalLimiter);
+app.use('/api/products', generalLimiter);
+
+// Login endpoints - strict (prevent brute force)
+app.use('/api/auth/login', loginLimiter);
+app.use('/api/auth/customer/login', loginLimiter);
+
+// Sensitive endpoints
 app.use('/api/orders', sensitiveLimiter);
 app.use('/api/payments', sensitiveLimiter);
 
